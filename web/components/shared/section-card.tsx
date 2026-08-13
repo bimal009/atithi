@@ -1,13 +1,25 @@
 import Link from "next/link"
-import { ArrowRightIcon } from "lucide-react"
+import { ArrowUpRightIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 /**
- * Card wrapper for a titled block of content, with an optional "view all" link.
- * Content sits flush so tables can run edge to edge.
+ * Card wrapper for a titled block of content, with an optional quick-link
+ * icon button next to the title. Content sits flush so tables can run edge
+ * to edge.
  */
 export function SectionCard({
   title,
@@ -30,25 +42,33 @@ export function SectionCard({
 }) {
   return (
     <Card className={cn("gap-0", className)}>
-      <CardHeader className="flex-row items-center justify-between gap-2 pb-(--card-spacing)">
-        <div className="flex flex-col gap-0.5">
-          <CardTitle>{title}</CardTitle>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {action ??
-          (href && (
-            <Button
-              variant="ghost"
-              size="sm"
-              render={<Link href={href} />}
-              className="text-muted-foreground"
-            >
-              {linkLabel}
-              <ArrowRightIcon data-icon="inline-end" />
-            </Button>
-          ))}
+      <CardHeader className="pb-(--card-spacing)">
+        <CardTitle>{title}</CardTitle>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+        <CardAction>
+          {action ??
+            (href && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      nativeButton={false}
+                      render={<Link href={href} />}
+                      className="text-muted-foreground"
+                    />
+                  }
+                >
+                  <ArrowUpRightIcon />
+                  <span className="sr-only">{linkLabel}</span>
+                </TooltipTrigger>
+                <TooltipContent>{linkLabel}</TooltipContent>
+              </Tooltip>
+            ))}
+        </CardAction>
       </CardHeader>
       <CardContent className={cn(flush && "px-0")}>{children}</CardContent>
     </Card>

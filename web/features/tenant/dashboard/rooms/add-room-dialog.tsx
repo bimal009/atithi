@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -23,11 +23,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 
 const ROOM_TYPES: RoomType[] = ["standard", "deluxe", "suite", "family"]
 
 function emptyForm() {
-  return { number: "", floor: "1", type: "standard" as RoomType, price: "", capacity: "2" }
+  return {
+    number: "",
+    floor: "1",
+    type: "standard" as RoomType,
+    price: "",
+    capacity: "2",
+    amenities: "",
+    notes: "",
+  }
 }
 
 export function AddRoomDialog({
@@ -68,7 +77,7 @@ export function AddRoomDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="room-number">Room number</FieldLabel>
@@ -102,7 +111,7 @@ export function AddRoomDialog({
                 <Select
                   value={form.type}
                   onValueChange={(value) =>
-                    setForm((f) => ({ ...f, type: value as RoomType }))
+                    setForm((f) => ({ ...f, type: (value as RoomType) ?? f.type }))
                   }
                 >
                   <SelectTrigger id="type" className="w-full capitalize">
@@ -143,6 +152,31 @@ export function AddRoomDialog({
                   setForm((f) => ({ ...f, price: e.target.value }))
                 }
                 placeholder="2200"
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="amenities">Amenities</FieldLabel>
+              <Input
+                id="amenities"
+                value={form.amenities}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, amenities: e.target.value }))
+                }
+                placeholder="Wi-Fi, AC, mountain view"
+              />
+              <FieldDescription>Comma-separated, shown to front desk.</FieldDescription>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="room-notes">Notes (optional)</FieldLabel>
+              <Textarea
+                id="room-notes"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, notes: e.target.value }))
+                }
+                placeholder="Anything housekeeping or front desk should know."
               />
             </Field>
           </FieldGroup>

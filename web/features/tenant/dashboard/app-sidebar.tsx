@@ -3,14 +3,20 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
-import { HotelIcon } from "lucide-react"
+import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
 import { TENANT } from "@/lib/mock-data"
-import { ROLE_LABELS, ROLE_NAV } from "@/features/tenant/dashboard/nav-config"
-import type { StaffRole } from "@/types"
+import { NAV_GROUPS } from "@/features/tenant/dashboard/nav-config"
+import { Badge } from "@/components/ui/badge"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -18,68 +24,138 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
-
-function getRoleFromPathname(pathname: string): StaffRole {
-  const segments = pathname.split("/").filter(Boolean)
-  const role = segments[2]
-  if (role === "owner" || role === "frontdesk" || role === "waiter" || role === "kitchen") {
-    return role
-  }
-  return "owner"
-}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const params = useParams<{ tenant: string }>()
-  const tenant = params.tenant
-  const role = getRoleFromPathname(pathname)
-  const basePath = `/${tenant}/dashboard/${role}`
-  const items = ROLE_NAV[role]
+  const basePath = `/${params.tenant}/dashboard`
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="gap-3 px-2 pt-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
+              size="lg"
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href={basePath} />}
             >
-              <HotelIcon className="size-5!" />
-              <span className="truncate text-base font-semibold">
-                {TENANT.hotelName}
-              </span>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <HotelIcon className="size-4.5" />
+              </div>
+              <div className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-sm font-semibold">
+                  {TENANT.hotelName}
+                </span>
+                <span className="truncate text-xs text-sidebar-foreground/60">
+                  {TENANT.city}
+                </span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{ROLE_LABELS[role]}</SidebarGroupLabel>
-          <SidebarGroupContent className="flex flex-col gap-2">
-            <SidebarMenu>
-              {items.map((item) => {
-                const href = `${basePath}${item.href}`
-                const isActive =
-                  item.href === "" ? pathname === href : pathname.startsWith(href)
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      tooltip={item.title}
-                      isActive={isActive}
-                      render={<Link href={href} />}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarSeparator />
+      <SidebarContent className="gap-0">
+        {NAV_GROUPS.map((group, index) => (
+          <SidebarGroup key={group.label ?? `group-${index}`}>
+            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+            <SidebarGroupContent className="flex flex-col gap-0.5">
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const href = `${basePath}${item.href}`
+                  const isActive =
+                    item.href === "" ? pathname === href : pathname.startsWith(href)
+
+                  if (!item.items) {
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          tooltip={item.title}
+                          isActive={isActive}
+                          className="data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/10 data-active:hover:text-primary"
+                          render={<Link href={href} />}
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                          {item.badge && (
+                            <Badge className="ml-auto" variant="secondary">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  }
+
+                  const isSubActive = item.items.some(
+                    (sub) => pathname === `${basePath}${sub.href}`
+                  )
+
+                  return (
+                    <Collapsible key={item.title} defaultOpen={isSubActive}>
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger
+                          render={
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              isActive={isSubActive}
+                              className="group data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary"
+                            />
+                          }
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                          <ChevronRightIcon className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open:rotate-90" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((sub) => {
+                              const subHref = `${basePath}${sub.href}`
+                              return (
+                                <SidebarMenuSubItem key={sub.title}>
+                                  <SidebarMenuSubButton
+                                    isActive={pathname === subHref}
+                                    className="data-active:bg-primary/5 data-active:font-medium data-active:text-primary"
+                                    render={<Link href={subHref} />}
+                                  >
+                                    <span>{sub.title}</span>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              )
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+      <SidebarSeparator />
+      <SidebarFooter className="px-2 pb-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Settings"
+              isActive={pathname === `${basePath}/settings`}
+              className="data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/10 data-active:hover:text-primary"
+              render={<Link href={`${basePath}/settings`} />}
+            >
+              <SettingsIcon />
+              <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

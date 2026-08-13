@@ -1,11 +1,15 @@
 import type {
+  AddOn,
   Booking,
+  CurrentUser,
   KotOrder,
   MenuItem,
+  MenuSet,
   Room,
+  Service,
   StaffMember,
+  SubMenu,
   Tenant,
-  CurrentUser,
 } from "@/types"
 
 export const TENANT: Tenant = {
@@ -15,27 +19,10 @@ export const TENANT: Tenant = {
   ownerName: "Bimal Thapa",
 }
 
-export const CURRENT_USERS: Record<string, CurrentUser> = {
-  owner: {
-    name: "Bimal Thapa",
-    email: "bimal@himalayaview.com",
-    role: "owner",
-  },
-  frontdesk: {
-    name: "Sabina Tamang",
-    email: "sabina@himalayaview.com",
-    role: "frontdesk",
-  },
-  waiter: {
-    name: "Rohan Maharjan",
-    email: "rohan@himalayaview.com",
-    role: "waiter",
-  },
-  kitchen: {
-    name: "Prakash Lama",
-    email: "prakash@himalayaview.com",
-    role: "kitchen",
-  },
+export const CURRENT_USER: CurrentUser = {
+  name: "Bimal Thapa",
+  email: "bimal@himalayaview.com",
+  role: "owner",
 }
 
 function daysFromNow(offset: number, hour = 12, minute = 0): string {
@@ -319,7 +306,21 @@ export const STAFF: StaffMember[] = [
   },
 ]
 
-export const MENU_ITEMS: MenuItem[] = [
+export const SUB_MENUS: SubMenu[] = [
+  { id: "sm01", name: "Restaurant Menu", description: "Starters, mains, and Nepali specials served all day." },
+  { id: "sm02", name: "Bar Menu", description: "Tea, coffee, and cold beverages." },
+  { id: "sm03", name: "Dessert Menu", description: "Sweets served after meals." },
+]
+
+const CATEGORY_TO_SUB_MENU: Record<string, string> = {
+  Starters: "Restaurant Menu",
+  "Main Course": "Restaurant Menu",
+  "Nepali Specials": "Restaurant Menu",
+  Beverages: "Bar Menu",
+  Desserts: "Dessert Menu",
+}
+
+const MENU_ITEMS_BASE: Omit<MenuItem, "subMenu">[] = [
   { id: "m01", name: "Veg Momo", category: "Starters", price: 220, isVeg: true, available: true },
   { id: "m02", name: "Chicken Momo", category: "Starters", price: 260, isVeg: false, available: true },
   { id: "m03", name: "Buff Sekuwa", category: "Starters", price: 380, isVeg: false, available: true },
@@ -342,6 +343,47 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: "m20", name: "Fresh Lime Soda", category: "Beverages", price: 120, isVeg: true, available: true },
   { id: "m21", name: "Gulab Jamun", category: "Desserts", price: 140, isVeg: true, available: true },
   { id: "m22", name: "Kheer", category: "Desserts", price: 160, isVeg: true, available: true },
+]
+
+export const MENU_ITEMS: MenuItem[] = MENU_ITEMS_BASE.map((item) => ({
+  ...item,
+  subMenu: CATEGORY_TO_SUB_MENU[item.category] ?? SUB_MENUS[0].name,
+}))
+
+export const ADD_ONS: AddOn[] = [
+  { id: "ad01", name: "Extra Cheese", price: 60, available: true },
+  { id: "ad02", name: "Extra Spicy", price: 0, available: true },
+  { id: "ad03", name: "Extra Chicken", price: 120, available: true },
+  { id: "ad04", name: "Extra Sauce", price: 40, available: true },
+  { id: "ad05", name: "Extra Rice", price: 80, available: true },
+  { id: "ad06", name: "Butter Topping", price: 50, available: false },
+]
+
+export const MENU_SETS: MenuSet[] = [
+  {
+    id: "ms01",
+    name: "Momo Combo",
+    description: "Veg momo with a masala tea.",
+    itemIds: ["m01", "m17"],
+    price: 250,
+    available: true,
+  },
+  {
+    id: "ms02",
+    name: "Family Dal Bhat Set",
+    description: "Two chicken curry sets with a Newari khaja starter.",
+    itemIds: ["m07", "m07", "m13"],
+    price: 1350,
+    available: true,
+  },
+  {
+    id: "ms03",
+    name: "Evening Snack Platter",
+    description: "Buff sekuwa, aloo tama, and fresh lime soda.",
+    itemIds: ["m03", "m15", "m20"],
+    price: 680,
+    available: true,
+  },
 ]
 
 export const KOT_ORDERS: KotOrder[] = [
@@ -527,3 +569,73 @@ export function getTodayRevenue() {
 export const MENU_CATEGORIES = Array.from(
   new Set(MENU_ITEMS.map((m) => m.category))
 )
+
+export function getBookingsTrend(days = 14) {
+  const result: { date: string; bookings: number; revenue: number }[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    d.setHours(0, 0, 0, 0)
+    const key = d.toDateString()
+    const dayBookings = BOOKINGS.filter(
+      (b) =>
+        new Date(b.checkIn).toDateString() === key && b.status !== "cancelled"
+    )
+    result.push({
+      date: d.toISOString(),
+      bookings: dayBookings.length,
+      revenue: dayBookings.reduce((sum, b) => sum + b.totalAmount, 0),
+    })
+  }
+  return result
+}
+
+export interface Guest {
+  id: string
+  name: string
+  phone: string
+  visits: number
+  lastStay: string
+  totalSpend: number
+}
+
+export function getGuests(): Guest[] {
+  const byGuest = new Map<string, Guest>()
+  for (const booking of BOOKINGS) {
+    if (booking.status === "cancelled") continue
+    const key = `${booking.guestName}__${booking.guestPhone}`
+    const existing = byGuest.get(key)
+    if (existing) {
+      existing.visits += 1
+      existing.totalSpend += booking.totalAmount
+      if (new Date(booking.checkIn) > new Date(existing.lastStay)) {
+        existing.lastStay = booking.checkIn
+      }
+    } else {
+      byGuest.set(key, {
+        id: key,
+        name: booking.guestName,
+        phone: booking.guestPhone,
+        visits: 1,
+        lastStay: booking.checkIn,
+        totalSpend: booking.totalAmount,
+      })
+    }
+  }
+  return Array.from(byGuest.values()).sort(
+    (a, b) => +new Date(b.lastStay) - +new Date(a.lastStay)
+  )
+}
+
+export function getRoomStatusBreakdown() {
+  const statuses: Room["status"][] = [
+    "available",
+    "occupied",
+    "cleaning",
+    "maintenance",
+  ]
+  return statuses.map((status) => ({
+    status,
+    count: ROOMS.filter((r) => r.status === status).length,
+  }))
+}

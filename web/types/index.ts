@@ -63,8 +63,46 @@ export interface MenuItem {
   id: string
   name: string
   category: string
+  subMenu?: string
   price: number
+  discount?: number
   isVeg: boolean
+  available: boolean
+  description?: string
+  ingredients?: string
+  photoUrl?: string
+  addOnIds?: string[]
+}
+
+export interface SubMenu {
+  id: string
+  name: string
+  description?: string
+}
+
+export interface AddOn {
+  id: string
+  name: string
+  price: number
+  available: boolean
+}
+
+export interface MenuSet {
+  id: string
+  name: string
+  description?: string
+  itemIds: string[]
+  price: number
+  available: boolean
+}
+
+export interface Service {
+  id: string
+  name: string
+  description: string
+  category: string
+  price: number
+  durationMinutes: number
   available: boolean
 }
 

@@ -37,12 +37,17 @@ const STATUS_MAP: Record<string, { variant: BadgeVariant; tone: Tone }> = {
   frontdesk: { variant: "secondary", tone: "none" },
   waiter: { variant: "outline", tone: "muted" },
   kitchen: { variant: "outline", tone: "none" },
+
+  // menu item
+  unavailable: { variant: "destructive", tone: "none" },
 }
 
 const STATUS_LABELS: Record<string, string> = {
   "checked-in": "Checked in",
   "checked-out": "Checked out",
   frontdesk: "Front desk",
+  available: "Available",
+  unavailable: "Unavailable",
 }
 
 export function StatusBadge({

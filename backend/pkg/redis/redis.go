@@ -19,7 +19,6 @@ func ConnectRedis(ctx context.Context, url string) (*redis.Client, error) {
 	defer cancel()
 
 	if err := client.Ping(pingCtx).Err(); err != nil {
-		client.Close()
 		return nil, err
 	}
 

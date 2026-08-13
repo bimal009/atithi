@@ -37,10 +37,10 @@ export default function LandingPage() {
             <span className="text-lg font-semibold">Atithi</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<Link href="/login" />}>
+            <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
               Log in
             </Button>
-            <Button render={<Link href="/signup" />}>Sign up</Button>
+            <Button nativeButton={false} render={<Link href="/signup" />}>Sign up</Button>
           </div>
         </div>
       </header>
@@ -55,10 +55,10 @@ export default function LandingPage() {
             one dashboard built for independent hotels in Nepal.
           </p>
           <div className="flex items-center gap-3">
-            <Button size="lg" render={<Link href="/signup" />}>
+            <Button size="lg" nativeButton={false} render={<Link href="/signup" />}>
               Get started
             </Button>
-            <Button size="lg" variant="outline" render={<Link href="/login" />}>
+            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/login" />}>
               Log in
             </Button>
           </div>

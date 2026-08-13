@@ -24,11 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 
 const ASSIGNABLE_ROLES: StaffRole[] = ["frontdesk", "waiter", "kitchen", "owner"]
 
 function emptyForm() {
-  return { name: "", email: "", phone: "", role: "frontdesk" as StaffRole }
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    role: "frontdesk" as StaffRole,
+    notes: "",
+  }
 }
 
 export function AddStaffDialog({
@@ -69,7 +76,7 @@ export function AddStaffDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
             <Field>
               <FieldLabel htmlFor="staff-name">Full name</FieldLabel>
               <Input
@@ -114,7 +121,7 @@ export function AddStaffDialog({
               <Select
                 value={form.role}
                 onValueChange={(value) =>
-                  setForm((f) => ({ ...f, role: value as StaffRole }))
+                  setForm((f) => ({ ...f, role: (value as StaffRole) ?? f.role }))
                 }
               >
                 <SelectTrigger id="staff-role" className="w-full">
@@ -128,6 +135,18 @@ export function AddStaffDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="staff-notes">Notes (optional)</FieldLabel>
+              <Textarea
+                id="staff-notes"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, notes: e.target.value }))
+                }
+                placeholder="Shift preference, certifications, etc."
+              />
             </Field>
           </FieldGroup>
 

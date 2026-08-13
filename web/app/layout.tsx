@@ -4,6 +4,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import QueryProviders from "@/lib/providers/queryProviders";
+import React from "react";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -22,7 +25,7 @@ export const metadata: Metadata = {
   description: "Manage room bookings, restaurant orders, and staff in one place.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }:{children:React.ReactNode}) {
   return (
     <html
       lang="en"
@@ -36,8 +39,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <TooltipProvider>
+           <QueryProviders>{children}</QueryProviders>
+            <Toaster />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
