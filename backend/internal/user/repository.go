@@ -17,6 +17,7 @@ type UserRepo interface {
 	Get(ctx context.Context, id string) (model.User, error)
 	GetAll(ctx context.Context) ([]model.User, error)
 	Update(ctx context.Context, user *model.User) (model.User, error)
+	UpdateTx(ctx context.Context, tx pgx.Tx, user *model.User) (model.User, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -203,6 +204,18 @@ func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 }
 
 func (r *userRepo) Update(ctx context.Context, user *model.User) (model.User, error) {
+	return updateUser(ctx, r.DB, user)
+}
+
+func (r *userRepo) UpdateTx(ctx context.Context, tx pgx.Tx, user *model.User) (model.User, error) {
+	return updateUser(ctx, tx, user)
+}
+
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+func updateUser(ctx context.Context, q querier, user *model.User) (model.User, error) {
 	query := `
 		UPDATE users
 		SET
@@ -228,7 +241,7 @@ func (r *userRepo) Update(ctx context.Context, user *model.User) (model.User, er
 
 	var updatedUser model.User
 
-	err := r.DB.QueryRow(
+	err := q.QueryRow(
 		ctx,
 		query,
 		user.Name,

@@ -1,9 +1,11 @@
 package auth
 
-import "time"
+import (
+	"time"
 
-// LoginRequest starts the phone-OTP flow. The same call signs up a new phone
-// number and logs in an existing one.
+	model "github.com/bimal009/atithi/internal/models"
+)
+
 type LoginRequest struct {
 	PhoneNumber string `json:"phoneNumber" validate:"required,nepaliphone"`
 }
@@ -42,4 +44,38 @@ type ResendOtpRequest struct {
 type ValidateOtpRequest struct {
 	PhoneNumber string `json:"phoneNumber" validate:"required,nepaliphone"`
 	Otp         string `json:"otp" validate:"required,len=6,number"`
+}
+
+type SessionMeta struct {
+	IPAddress string
+	UserAgent string
+}
+
+// SessionResponse mirrors model.Session without the token, which stays in the
+// HttpOnly cookie so page scripts can never read it.
+type SessionResponse struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"userId"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	IPAddress *string   `json:"ipAddress,omitempty"`
+	UserAgent *string   `json:"userAgent,omitempty"`
+}
+
+func NewSessionResponse(s model.Session) SessionResponse {
+	return SessionResponse{
+		ID:        s.ID,
+		UserID:    s.UserID,
+		ExpiresAt: s.ExpiresAt,
+		CreatedAt: s.CreatedAt,
+		UpdatedAt: s.UpdatedAt,
+		IPAddress: s.IPAddress,
+		UserAgent: s.UserAgent,
+	}
+}
+
+type AuthResponse struct {
+	User    model.User      `json:"user"`
+	Session SessionResponse `json:"session"`
 }

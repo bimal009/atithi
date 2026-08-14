@@ -13,6 +13,7 @@ import (
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
 	"github.com/bimal009/atithi/internal/routes"
+	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/pkg/db"
 	"github.com/bimal009/atithi/pkg/logger"
@@ -52,9 +53,12 @@ func main() {
 
 	userRepo := user.NewUserRepo(pool)
 	accountRepo := account.NewAccountRepo(pool)
+	sessionRepo := session.NewSessionRepo(pool)
 
-	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, pool)
-	authHandler := auth.NewAuthHandler(slog, authService)
+	sessionTTL := time.Duration(cfg.Session.CookieMaxAge) * time.Second
+
+	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionRepo, sessionTTL, pool)
+	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
 
 	r := gin.Default()
 

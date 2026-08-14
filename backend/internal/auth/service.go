@@ -10,6 +10,7 @@ import (
 
 	"github.com/bimal009/atithi/internal/account"
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/utils"
@@ -28,7 +29,7 @@ const (
 
 type AuthService interface {
 	Login(ctx context.Context, req *LoginRequest) (model.User, error)
-	ValidateOtp(ctx context.Context, phoneNumber, otp string) (model.User, error)
+	ValidateOtp(ctx context.Context, phoneNumber, otp string, meta SessionMeta) (model.User, model.Session, error)
 	Resend(ctx context.Context, phoneNumber string) error
 }
 
@@ -48,6 +49,8 @@ type authService struct {
 	userRepo    user.UserRepo
 	redis       *redis.Client
 	accountRepo account.AccountRepo
+	sessionRepo session.SessionRepo
+	sessionTTL  time.Duration
 	DB          *pgxpool.Pool
 }
 
@@ -56,6 +59,8 @@ func NewAuthService(
 	userRepo user.UserRepo,
 	redisClient *redis.Client,
 	accountRepo account.AccountRepo,
+	sessionRepo session.SessionRepo,
+	sessionTTL time.Duration,
 	db *pgxpool.Pool,
 ) AuthService {
 	return &authService{
@@ -63,6 +68,8 @@ func NewAuthService(
 		userRepo:    userRepo,
 		redis:       redisClient,
 		accountRepo: accountRepo,
+		sessionRepo: sessionRepo,
+		sessionTTL:  sessionTTL,
 		DB:          db,
 	}
 }
@@ -192,31 +199,63 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (model.User,
 	return createdUser, nil
 }
 
-func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string) (model.User, error) {
+func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string, meta SessionMeta) (model.User, model.Session, error) {
 	storedOTP, err := s.getOTP(ctx, phoneNumber)
 	if err != nil {
-		return model.User{}, err
+		return model.User{}, model.Session{}, err
 	}
 
 	if storedOTP != otp {
-		return model.User{}, apperr.ErrInvalidOtp
+		return model.User{}, model.Session{}, apperr.ErrInvalidOtp
 	}
 
 	existingUser, err := s.userRepo.GetByPhone(ctx, phoneNumber)
 	if err != nil {
-		return model.User{}, err
+		return model.User{}, model.Session{}, err
 	}
+
+	token, err := utils.GenerateVerificationToken()
+	if err != nil {
+		return model.User{}, model.Session{}, fmt.Errorf("failed to generate session token: %w", err)
+	}
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		s.slog.Error("failed to begin tx", "error", err)
+		return model.User{}, model.Session{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
 	if !existingUser.EmailVerified {
 		existingUser.EmailVerified = true
 
-		updatedUser, err := s.userRepo.Update(ctx, &existingUser)
+		updatedUser, err := s.userRepo.UpdateTx(ctx, tx, &existingUser)
 		if err != nil {
 			s.slog.Error("failed to update user after otp validation", "user_id", existingUser.ID, "error", err)
-			return model.User{}, err
+			return model.User{}, model.Session{}, err
 		}
 
 		existingUser = updatedUser
+	}
+
+	newSession := &model.Session{
+		ID:        uuid.NewString(),
+		UserID:    existingUser.ID,
+		Token:     token,
+		ExpiresAt: time.Now().Add(s.sessionTTL),
+		IPAddress: optionalString(meta.IPAddress),
+		UserAgent: optionalString(meta.UserAgent),
+	}
+
+	createdSession, err := s.sessionRepo.Create(ctx, tx, newSession)
+	if err != nil {
+		s.slog.Error("failed to create session", "user_id", existingUser.ID, "error", err)
+		return model.User{}, model.Session{}, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		s.slog.Error("failed to commit tx", "error", err)
+		return model.User{}, model.Session{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	if err := s.deleteOTP(ctx, phoneNumber); err != nil {
@@ -225,9 +264,17 @@ func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string) 
 
 	s.redis.Del(ctx, otpCooldownKey(phoneNumber))
 
-	s.slog.Info("otp validated", "user_id", existingUser.ID, "phone", existingUser.PhoneNumber)
+	s.slog.Info("otp validated", "user_id", existingUser.ID, "session_id", createdSession.ID, "phone", existingUser.PhoneNumber)
 
-	return existingUser, nil
+	return existingUser, createdSession, nil
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+
+	return &value
 }
 
 func (s *authService) Resend(ctx context.Context, phoneNumber string) error {
