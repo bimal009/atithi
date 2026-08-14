@@ -8,6 +8,7 @@ import (
 	"github.com/bimal009/atithi/pkg/responses"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type AppError struct {
@@ -27,11 +28,13 @@ func New(status int, code, message string) *AppError {
 var (
 	ErrUserNotFound         = New(http.StatusNotFound, "not_found", "user not found")
 	ErrUserAlreadyExists    = New(http.StatusConflict, "conflict", "user already exists")
+	ErrHotelSlugExists      = New(http.StatusConflict, "conflict", "slug already exists")
 	ErrVerificationNotFound = New(http.StatusNotFound, "not_found", "verification not found")
 	ErrAccountNotFound      = New(http.StatusNotFound, "not_found", "account not found")
 	ErrInvalidOtp           = New(http.StatusBadRequest, "invalid_otp", "invalid or expired otp")
 	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "please wait before requesting another otp")
 	ErrSessionNotFound      = New(http.StatusTooManyRequests, "not_found", "session not found")
+	ErrHotelNotFound        = New(http.StatusTooManyRequests, "not_found", "hotel not found")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {
@@ -57,4 +60,12 @@ func HandleError(c *gin.Context, logger *slog.Logger, err error) {
 
 	logger.Error("unhandled error", "error", err)
 	c.JSON(http.StatusInternalServerError, responses.InternalServerError("internal server error"))
+}
+
+func IsUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+	return false
 }

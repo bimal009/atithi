@@ -1,1 +1,205 @@
 package hotel
+
+import (
+	"context"
+	"errors"
+
+	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/pkg/apperr"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type HotelRepo interface {
+	Create(ctx context.Context, hotel *model.Hotel) (model.Hotel, error)
+	Get(ctx context.Context, id string) (model.Hotel, error)
+	GetBySlug(ctx context.Context, slug string) (model.Hotel, error)
+	GetAll(ctx context.Context) ([]model.Hotel, error)
+	Update(ctx context.Context, hotel *model.Hotel) (model.Hotel, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type hotelRepo struct {
+	DB *pgxpool.Pool
+}
+
+func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
+	return &hotelRepo{
+		DB: db,
+	}
+}
+
+const hotelColumns = `
+	id, name, slug, description, logo_url, address, city, country,
+	phone_number, email, is_active, created_at, updated_at
+`
+
+func scanHotel(row pgx.Row, h *model.Hotel) error {
+	return row.Scan(
+		&h.ID,
+		&h.Name,
+		&h.Slug,
+		&h.Description,
+		&h.LogoURL,
+		&h.Address,
+		&h.City,
+		&h.PhoneNumber,
+		&h.Email,
+		&h.IsActive,
+		&h.CreatedAt,
+		&h.UpdatedAt,
+	)
+}
+
+func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel, error) {
+	query := `
+		INSERT INTO hotels (
+			id, name, slug, description, logo_url, address, city, country, phone_number, email
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING ` + hotelColumns
+
+	var created model.Hotel
+
+	err := scanHotel(r.DB.QueryRow(
+		ctx, query,
+		hotel.ID,
+		hotel.Name,
+		hotel.Slug,
+		hotel.Description,
+		hotel.LogoURL,
+		hotel.Address,
+		hotel.City,
+		hotel.PhoneNumber,
+		hotel.Email,
+	), &created)
+
+	if err != nil {
+		if apperr.IsUniqueViolation(err) {
+			return model.Hotel{}, apperr.ErrHotelSlugExists
+		}
+		return model.Hotel{}, err
+	}
+
+	return created, nil
+}
+
+func (r *hotelRepo) Get(ctx context.Context, id string) (model.Hotel, error) {
+	query := `SELECT ` + hotelColumns + ` FROM hotels WHERE id = $1`
+
+	var hotel model.Hotel
+
+	err := scanHotel(r.DB.QueryRow(ctx, query, id), &hotel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Hotel{}, apperr.ErrHotelNotFound
+		}
+		return model.Hotel{}, err
+	}
+
+	return hotel, nil
+}
+
+func (r *hotelRepo) GetBySlug(ctx context.Context, slug string) (model.Hotel, error) {
+	query := `SELECT ` + hotelColumns + ` FROM hotels WHERE slug = $1`
+
+	var hotel model.Hotel
+
+	err := scanHotel(r.DB.QueryRow(ctx, query, slug), &hotel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Hotel{}, apperr.ErrHotelNotFound
+		}
+		return model.Hotel{}, err
+	}
+
+	return hotel, nil
+}
+
+func (r *hotelRepo) GetAll(ctx context.Context) ([]model.Hotel, error) {
+	query := `SELECT ` + hotelColumns + ` FROM hotels ORDER BY created_at DESC`
+
+	rows, err := r.DB.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	hotels := make([]model.Hotel, 0)
+
+	for rows.Next() {
+		var hotel model.Hotel
+		if err := scanHotel(rows, &hotel); err != nil {
+			return nil, err
+		}
+		hotels = append(hotels, hotel)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return hotels, nil
+}
+
+func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel, error) {
+	query := `
+		UPDATE hotels
+		SET
+			name = $1,
+			slug = $2,
+			description = $3,
+			logo_url = $4,
+			address = $5,
+			city = $6,
+			country = $7,
+			phone_number = $8,
+			email = $9,
+			is_active = $10,
+			updated_at = NOW()
+		WHERE id = $11
+		RETURNING ` + hotelColumns
+
+	var updated model.Hotel
+
+	err := scanHotel(r.DB.QueryRow(
+		ctx, query,
+		hotel.Name,
+		hotel.Slug,
+		hotel.Description,
+		hotel.LogoURL,
+		hotel.Address,
+		hotel.City,
+		hotel.PhoneNumber,
+		hotel.Email,
+		hotel.IsActive,
+		hotel.ID,
+	), &updated)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Hotel{}, apperr.ErrHotelNotFound
+		}
+		if apperr.IsUniqueViolation(err) {
+			return model.Hotel{}, apperr.ErrHotelSlugExists
+		}
+		return model.Hotel{}, err
+	}
+
+	return updated, nil
+}
+
+func (r *hotelRepo) Delete(ctx context.Context, id string) error {
+	query := `DELETE FROM hotels WHERE id = $1`
+
+	result, err := r.DB.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return apperr.ErrHotelNotFound
+	}
+
+	return nil
+}

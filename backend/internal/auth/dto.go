@@ -51,8 +51,6 @@ type SessionMeta struct {
 	UserAgent string
 }
 
-// SessionResponse mirrors model.Session without the token, which stays in the
-// HttpOnly cookie so page scripts can never read it.
 type SessionResponse struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"userId"`

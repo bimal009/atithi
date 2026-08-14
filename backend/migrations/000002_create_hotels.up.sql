@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS hotels (
     logo_url        TEXT,
     address         TEXT NOT NULL,
     city            VARCHAR(100),
-    country         VARCHAR(100) NOT NULL DEFAULT 'Nepal',
     phone_number    VARCHAR(20) NOT NULL,
     email           VARCHAR(255),
     is_active       BOOLEAN NOT NULL DEFAULT true,
