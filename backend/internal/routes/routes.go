@@ -9,26 +9,37 @@ import (
 type Handlers struct {
 	Auth  *auth.AuthHandler
 	Hotel *hotel.HotelHandler
+	// RequireAuth is the session middleware. Routes that need a logged-in
+	// user go behind it.
+	RequireAuth gin.HandlerFunc
 }
 
 func Register(r *gin.Engine, h *Handlers) {
 	api := r.Group("/api/v1")
 
-	registerAuthRoutes(api, h.Auth)
-	registerHotelRoutes(api, h.Hotel)
+	registerAuthRoutes(api, h.Auth, h.RequireAuth)
+	registerHotelRoutes(api, h.Hotel, h.RequireAuth)
 }
 
-func registerAuthRoutes(rg *gin.RouterGroup, h *auth.AuthHandler) {
-	auth := rg.Group("/auth")
+func registerAuthRoutes(rg *gin.RouterGroup, h *auth.AuthHandler, requireAuth gin.HandlerFunc) {
+	authGroup := rg.Group("/auth")
 	{
-		auth.POST("/login", h.Login)
-		auth.POST("/validate-otp", h.ValidateOtp)
-		auth.POST("/resend-otp", h.Resend)
+		authGroup.POST("/login", h.Login)
+		authGroup.POST("/validate-otp", h.ValidateOtp)
+		authGroup.POST("/resend-otp", h.Resend)
+
+		// Refresh and logout stay open: both take the token off the request
+		// themselves, and a caller whose session just died still needs logout
+		// to clear the cookie and refresh to tell them to log in again.
+		authGroup.POST("/refresh", h.Refresh)
+		authGroup.POST("/logout", h.Logout)
+
+		authGroup.GET("/me", requireAuth, h.Me)
 	}
 }
 
-func registerHotelRoutes(rg *gin.RouterGroup, h *hotel.HotelHandler) {
-	hotels := rg.Group("/hotels")
+func registerHotelRoutes(rg *gin.RouterGroup, h *hotel.HotelHandler, requireAuth gin.HandlerFunc) {
+	hotels := rg.Group("/hotels", requireAuth)
 	{
 		hotels.POST("", h.Create)
 		hotels.GET("", h.GetAll)

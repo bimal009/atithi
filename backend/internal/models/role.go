@@ -12,9 +12,11 @@ type Permission struct {
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 }
 
+// HotelRole is a role a member can hold. A nil HotelID means the role is
+// global: seeded by migration, shared by every hotel and not owned by one.
 type HotelRole struct {
 	ID          string    `db:"id" json:"id"`
-	HotelID     string    `db:"hotel_id" json:"hotelId"`
+	HotelID     *string   `db:"hotel_id" json:"hotelId,omitempty"`
 	Name        string    `db:"name" json:"name"`
 	Slug        string    `db:"slug" json:"slug"`
 	Description *string   `db:"description" json:"description,omitempty"`

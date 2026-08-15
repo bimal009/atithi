@@ -107,10 +107,10 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, er
 
 	err := r.DB.QueryRow(ctx, query, email).Scan(
 		&user.ID,
+		&user.PhoneNumber,
 		&user.Name,
 		&user.Email,
 		&user.EmailVerified,
-		&user.PhoneNumber,
 		&user.Image,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -139,10 +139,10 @@ func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 
 	err := r.DB.QueryRow(ctx, query, id).Scan(
 		&user.ID,
+		&user.PhoneNumber,
 		&user.Name,
 		&user.Email,
 		&user.EmailVerified,
-		&user.PhoneNumber,
 		&user.Image,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -180,10 +180,10 @@ func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 
 		err := rows.Scan(
 			&user.ID,
+			&user.PhoneNumber,
 			&user.Name,
 			&user.Email,
 			&user.EmailVerified,
-			&user.PhoneNumber,
 			&user.Image,
 			&user.CreatedAt,
 			&user.UpdatedAt,

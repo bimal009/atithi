@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/bimal009/atithi/config"
+	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/responses"
 	"github.com/bimal009/atithi/pkg/validator"
@@ -35,6 +37,20 @@ func (h *AuthHandler) setSessionCookie(c *gin.Context, token string) {
 	}
 
 	c.SetCookie(h.cookie.CookieName, token, h.cookie.CookieMaxAge, "/", "", h.secure, true)
+}
+
+func (h *AuthHandler) clearSessionCookie(c *gin.Context) {
+	if h.secure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
+	c.SetCookie(h.cookie.CookieName, "", -1, "/", "", h.secure, true)
+}
+
+func (h *AuthHandler) sessionToken(c *gin.Context) string {
+	return middleware.SessionToken(c, h.cookie.CookieName)
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -72,18 +88,65 @@ func (h *AuthHandler) ValidateOtp(c *gin.Context) {
 		UserAgent: c.Request.UserAgent(),
 	}
 
-	user, session, err := h.service.ValidateOtp(c.Request.Context(), req.PhoneNumber, req.Otp, meta)
+	user, issued, err := h.service.ValidateOtp(c.Request.Context(), req.PhoneNumber, req.Otp, meta)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
 	}
 
-	h.setSessionCookie(c, session.Token)
+	h.setSessionCookie(c, issued.Token)
 
 	c.JSON(http.StatusOK, responses.Success("otp validated", AuthResponse{
 		User:    user,
-		Session: NewSessionResponse(session),
+		Session: NewSessionResponse(issued.Session),
 	}))
+}
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	token := h.sessionToken(c)
+	if token == "" {
+		apperr.HandleError(c, h.slog, apperr.ErrSessionNotFound)
+		return
+	}
+
+	issued, err := h.service.Refresh(c.Request.Context(), token)
+	if err != nil {
+		if errors.Is(err, apperr.ErrSessionExpired) || errors.Is(err, apperr.ErrSessionNotFound) {
+			h.clearSessionCookie(c)
+		}
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	h.setSessionCookie(c, issued.Token)
+
+	c.JSON(http.StatusOK, responses.Success("session refreshed", NewSessionResponse(issued.Session)))
+}
+
+// Me returns the user behind the current session. It sits behind RequireAuth,
+// so the context already holds a verified user id.
+func (h *AuthHandler) Me(c *gin.Context) {
+	user, err := h.service.Me(c.Request.Context(), middleware.UserID(c))
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("current user", user))
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	token := h.sessionToken(c)
+
+	if token != "" {
+		if err := h.service.Logout(c.Request.Context(), token); err != nil && !errors.Is(err, apperr.ErrSessionNotFound) {
+			apperr.HandleError(c, h.slog, err)
+			return
+		}
+	}
+
+	h.clearSessionCookie(c)
+
+	c.JSON(http.StatusOK, responses.Success[any]("logged out", nil))
 }
 
 func (h *AuthHandler) Resend(c *gin.Context) {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -25,6 +26,14 @@ type Session struct {
 	Secret       string `env:"SESSION_SECRET,required"`
 	CookieName   string `env:"COOKIE_NAME" envDefault:"_hiatithi_secure_token"`
 	CookieMaxAge int    `env:"COOKIE_MAX_AGE" envDefault:"604800"` // 7 days
+
+	// IdleTTL is how long a session survives without a refresh. Refreshing
+	// pushes it forward; it should match CookieMaxAge so the browser drops the
+	// cookie at roughly the same moment the server stops honouring it.
+	IdleTTL time.Duration `env:"SESSION_IDLE_TTL" envDefault:"168h"`
+	// AbsoluteTTL is the hard ceiling on a session's life. Refreshing never
+	// moves it, so a stolen cookie cannot be kept alive forever.
+	AbsoluteTTL time.Duration `env:"SESSION_ABSOLUTE_TTL" envDefault:"720h"`
 }
 
 type OAuthConfig struct {

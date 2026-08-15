@@ -8,7 +8,15 @@ import (
 )
 
 func GenerateVerificationToken() (string, error) {
-	b := make([]byte, 32)
+	return randomHex(32)
+}
+
+func GenerateSessionToken() (string, error) {
+	return randomHex(32)
+}
+
+func randomHex(n int) (string, error) {
+	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}

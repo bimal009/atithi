@@ -33,8 +33,20 @@ var (
 	ErrAccountNotFound      = New(http.StatusNotFound, "not_found", "account not found")
 	ErrInvalidOtp           = New(http.StatusBadRequest, "invalid_otp", "invalid or expired otp")
 	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "please wait before requesting another otp")
-	ErrSessionNotFound      = New(http.StatusTooManyRequests, "not_found", "session not found")
+	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "session not found")
+	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "session expired, please log in again")
 	ErrHotelNotFound        = New(http.StatusTooManyRequests, "not_found", "hotel not found")
+
+	ErrRoleNotFound        = New(http.StatusNotFound, "not_found", "role not found")
+	ErrRoleSlugExists      = New(http.StatusConflict, "conflict", "a role with this slug already exists")
+	ErrSystemRoleImmutable = New(http.StatusForbidden, "forbidden", "system roles cannot be modified or deleted")
+	ErrRoleInUse           = New(http.StatusConflict, "conflict", "role is still assigned to members")
+
+	ErrPermissionNotFound = New(http.StatusNotFound, "not_found", "permission not found")
+	ErrPermissionExists   = New(http.StatusConflict, "conflict", "permission already exists")
+
+	ErrMemberNotFound = New(http.StatusNotFound, "not_found", "member not found")
+	ErrMemberExists   = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {
@@ -66,6 +78,14 @@ func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		return pgErr.Code == "23505"
+	}
+	return false
+}
+
+func IsForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23503"
 	}
 	return false
 }

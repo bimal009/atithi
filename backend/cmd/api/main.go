@@ -12,6 +12,7 @@ import (
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
@@ -55,10 +56,12 @@ func main() {
 	accountRepo := account.NewAccountRepo(pool)
 	sessionRepo := session.NewSessionRepo(pool)
 
-	sessionTTL := time.Duration(cfg.Session.CookieMaxAge) * time.Second
+	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
-	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionRepo, sessionTTL, pool)
+	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionService, pool)
 	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
+
+	requireAuth := middleware.RequireAuth(sessionService, cfg.Session.CookieName, slog)
 
 	r := gin.Default()
 
@@ -78,7 +81,8 @@ func main() {
 	})
 
 	routes.Register(r, &routes.Handlers{
-		Auth: authHandler,
+		Auth:        authHandler,
+		RequireAuth: requireAuth,
 	})
 
 	srv := &http.Server{
