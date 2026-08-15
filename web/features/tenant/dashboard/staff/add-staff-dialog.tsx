@@ -76,7 +76,7 @@ export function AddStaffDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
             <Field>
               <FieldLabel htmlFor="staff-name">Full name</FieldLabel>
               <Input

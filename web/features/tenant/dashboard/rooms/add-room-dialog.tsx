@@ -3,7 +3,7 @@
 import * as React from "react"
 import { PlusIcon } from "lucide-react"
 
-import type { Room, RoomType } from "@/types"
+import type { Room, RoomType, RoomTypeConfig } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,14 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { MultiImageUpload } from "@/features/tenant/dashboard/rooms/multi-image-upload"
 
-const ROOM_TYPES: RoomType[] = ["standard", "deluxe", "suite", "family"]
-
-function emptyForm() {
+function emptyForm(defaultType: RoomType) {
   return {
     number: "",
     floor: "1",
-    type: "standard" as RoomType,
+    type: defaultType,
     price: "",
     capacity: "2",
     amenities: "",
@@ -40,12 +39,15 @@ function emptyForm() {
 }
 
 export function AddRoomDialog({
+  roomTypes,
   onCreate,
 }: {
+  roomTypes: RoomTypeConfig[]
   onCreate: (room: Room) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState(emptyForm())
+  const [form, setForm] = React.useState(emptyForm(roomTypes[0]?.type ?? ""))
+  const [images, setImages] = React.useState<string[]>([])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -57,9 +59,11 @@ export function AddRoomDialog({
       status: "available",
       price: Number(form.price) || 0,
       capacity: Number(form.capacity) || 1,
+      images: images.length ? images : undefined,
     })
     setOpen(false)
-    setForm(emptyForm())
+    setForm(emptyForm(roomTypes[0]?.type ?? ""))
+    setImages([])
   }
 
   return (
@@ -77,7 +81,15 @@ export function AddRoomDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
+            <Field>
+              <FieldLabel>Photos</FieldLabel>
+              <MultiImageUpload value={images} onChange={setImages} />
+              <FieldDescription>
+                JPG, PNG, WebP or AVIF, up to 5 MB each.
+              </FieldDescription>
+            </Field>
+
             <Field className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="room-number">Room number</FieldLabel>
@@ -114,13 +126,13 @@ export function AddRoomDialog({
                     setForm((f) => ({ ...f, type: (value as RoomType) ?? f.type }))
                   }
                 >
-                  <SelectTrigger id="type" className="w-full capitalize">
+                  <SelectTrigger id="type" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROOM_TYPES.map((type) => (
-                      <SelectItem key={type} value={type} className="capitalize">
-                        {type}
+                    {roomTypes.map((roomType) => (
+                      <SelectItem key={roomType.type} value={roomType.type}>
+                        {roomType.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

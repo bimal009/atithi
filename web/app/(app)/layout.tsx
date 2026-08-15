@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { HotelIcon } from "lucide-react";
 
+import { Logo } from "@/components/shared/logo";
 import { UserMenu } from "@/features/auth/components/user-menu";
 import { requireOnboardedUser } from "@/features/auth/server/session";
 
@@ -17,10 +17,9 @@ export default async function AppLayout({
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link
             href="/hotels"
-            className="flex items-center gap-2 rounded-sm transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="rounded-sm transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <HotelIcon className="size-5" aria-hidden />
-            <span className="text-lg font-semibold">Atithi</span>
+            <Logo />
           </Link>
           <UserMenu user={user} />
         </div>

@@ -60,6 +60,7 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *hotel.HotelHandler, requireAuth
 	{
 		hotels.POST("", h.Create)
 		hotels.GET("", h.GetAll)
+		hotels.GET("/check-slug", h.CheckSlug)
 		hotels.GET("/:id", h.Get)
 		hotels.GET("/slug/:slug", h.GetBySlug)
 		hotels.PATCH("/:id", h.Update)

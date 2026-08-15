@@ -22,6 +22,7 @@ type HotelService interface {
 	GetAll(ctx context.Context, userID string) ([]model.Hotel, error)
 	Update(ctx context.Context, id, userID string, req *UpdateHotelRequest) (model.Hotel, error)
 	Delete(ctx context.Context, id, userID string) error
+	SlugAvailable(ctx context.Context, slug string) (bool, error)
 }
 
 type hotelService struct {
@@ -183,6 +184,22 @@ func (s *hotelService) Update(ctx context.Context, id, userID string, req *Updat
 	s.slog.Info("hotel updated", "hotel_id", updatedHotel.ID)
 
 	return updatedHotel, nil
+}
+
+// SlugAvailable is unauthenticated by nature of the check itself: slugs are
+// globally unique, so availability cannot depend on which hotels the caller
+// can see.
+func (s *hotelService) SlugAvailable(ctx context.Context, slug string) (bool, error) {
+	if !SlugFormat.MatchString(slug) {
+		return false, nil
+	}
+
+	exists, err := s.repo.SlugExists(ctx, slug)
+	if err != nil {
+		return false, err
+	}
+
+	return !exists, nil
 }
 
 func (s *hotelService) Delete(ctx context.Context, id, userID string) error {

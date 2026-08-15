@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { ROOMS } from "@/lib/mock-data"
+import { ROOM_TYPE_CONFIGS, ROOMS } from "@/lib/mock-data"
 import { useMockLoading } from "@/hooks/use-mock-loading"
 import type { Room, RoomStatus, RoomType } from "@/types"
 import { PageHeader } from "@/components/shared/page-header"
@@ -30,10 +30,7 @@ const LEGEND: Array<{ status: RoomStatus; label: string; className: string }> = 
 
 const TYPE_FILTERS: Array<{ value: "all" | RoomType; label: string }> = [
   { value: "all", label: "All room types" },
-  { value: "standard", label: "Standard" },
-  { value: "deluxe", label: "Deluxe" },
-  { value: "suite", label: "Suite" },
-  { value: "family", label: "Family" },
+  ...ROOM_TYPE_CONFIGS.map((config) => ({ value: config.type, label: config.label })),
 ]
 
 export default function RoomsPage() {
@@ -56,7 +53,10 @@ export default function RoomsPage() {
         title="Rooms"
         description={`${rooms.length} rooms across ${new Set(rooms.map((r) => r.floor)).size} floors — tap a room to update its status`}
         actions={
-          <AddRoomDialog onCreate={(room) => setRooms((prev) => [...prev, room])} />
+          <AddRoomDialog
+            roomTypes={ROOM_TYPE_CONFIGS}
+            onCreate={(room) => setRooms((prev) => [...prev, room])}
+          />
         }
       />
 

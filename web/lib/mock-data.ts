@@ -1,16 +1,28 @@
 import type {
   AddOn,
   Booking,
+  BookingChannel,
+  Conversation,
   CurrentUser,
   KotOrder,
   MenuItem,
   MenuSet,
+  Role,
   Room,
+  RoomTypeConfig,
   Service,
   StaffMember,
   SubMenu,
+  Table,
   Tenant,
 } from "@/types"
+import { orderTotal } from "@/lib/utils"
+
+export const BOOKING_CHANNELS: { value: BookingChannel; label: string }[] = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+]
 
 export const TENANT: Tenant = {
   slug: "hotel-himalaya-view",
@@ -61,6 +73,66 @@ export const ROOMS: Room[] = [
   { id: "r304", number: "304", floor: 3, type: "family", status: "cleaning", price: 5200, capacity: 4 },
 ]
 
+export const ROOM_TYPE_CONFIGS: RoomTypeConfig[] = [
+  {
+    type: "standard",
+    label: "Standard",
+    description: "Compact double room with the everyday essentials.",
+    basePrice: 2200,
+    capacity: 2,
+    amenities: ["Wi-Fi", "TV", "Attached bath"],
+  },
+  {
+    type: "deluxe",
+    label: "Deluxe",
+    description: "Larger room with upgraded furnishing and a view.",
+    basePrice: 3500,
+    capacity: 2,
+    amenities: ["Wi-Fi", "TV", "AC", "Mini fridge"],
+  },
+  {
+    type: "suite",
+    label: "Suite",
+    description: "Separate living area, ideal for longer stays.",
+    basePrice: 6800,
+    capacity: 3,
+    amenities: ["Wi-Fi", "TV", "AC", "Living area", "Bathtub"],
+  },
+  {
+    type: "family",
+    label: "Family",
+    description: "Extra beds and space for guests travelling together.",
+    basePrice: 5200,
+    capacity: 4,
+    amenities: ["Wi-Fi", "TV", "AC", "Extra beds"],
+  },
+]
+
+export function getRoomTypeStats(
+  configs: RoomTypeConfig[] = ROOM_TYPE_CONFIGS,
+  rooms: Room[] = ROOMS
+) {
+  return configs.map((config) => {
+    const roomsOfType = rooms.filter((r) => r.type === config.type)
+    return {
+      ...config,
+      roomCount: roomsOfType.length,
+      occupied: roomsOfType.filter((r) => r.status === "occupied").length,
+    }
+  })
+}
+
+export const TABLES: Table[] = [
+  { id: "tb01", name: "Table 1", capacity: 2, section: "indoor" },
+  { id: "tb02", name: "Table 2", capacity: 2, section: "indoor" },
+  { id: "tb03", name: "Table 3", capacity: 4, section: "indoor" },
+  { id: "tb04", name: "Table 4", capacity: 4, section: "indoor" },
+  { id: "tb05", name: "Table 5", capacity: 6, section: "indoor" },
+  { id: "tb06", name: "Table 6", capacity: 2, section: "outdoor" },
+  { id: "tb07", name: "Table 7", capacity: 4, section: "outdoor" },
+  { id: "tb08", name: "Table 8", capacity: 4, section: "rooftop" },
+]
+
 export const BOOKINGS: Booking[] = [
   {
     id: "bk001",
@@ -68,6 +140,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "980-1122334",
     roomId: "r101",
     roomNumber: "101",
+    channel: "whatsapp",
     checkIn: daysFromNow(-1, 13, 0),
     checkOut: daysFromNow(2, 11, 0),
     status: "checked-in",
@@ -81,6 +154,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "981-2233445",
     roomId: "r104",
     roomNumber: "104",
+    channel: "instagram",
     checkIn: daysFromNow(-2, 12, 0),
     checkOut: daysFromNow(1, 11, 0),
     status: "checked-in",
@@ -94,6 +168,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "984-3344556",
     roomId: "r201",
     roomNumber: "201",
+    channel: "facebook",
     checkIn: daysFromNow(0, 14, 0),
     checkOut: daysFromNow(3, 11, 0),
     status: "confirmed",
@@ -108,6 +183,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "985-4455667",
     roomId: "r203",
     roomNumber: "203",
+    channel: "whatsapp",
     checkIn: daysFromNow(0, 13, 0),
     checkOut: daysFromNow(4, 11, 0),
     status: "confirmed",
@@ -121,6 +197,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "986-5566778",
     roomId: "r206",
     roomNumber: "206",
+    channel: "instagram",
     checkIn: daysFromNow(-3, 12, 0),
     checkOut: daysFromNow(0, 11, 0),
     status: "checked-in",
@@ -134,6 +211,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "982-6677889",
     roomId: "r302",
     roomNumber: "302",
+    channel: "facebook",
     checkIn: daysFromNow(-4, 12, 0),
     checkOut: daysFromNow(-1, 11, 0),
     status: "checked-out",
@@ -147,6 +225,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "983-7788990",
     roomId: "r208",
     roomNumber: "208",
+    channel: "whatsapp",
     checkIn: daysFromNow(-6, 12, 0),
     checkOut: daysFromNow(-3, 11, 0),
     status: "checked-out",
@@ -160,6 +239,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "970-8899001",
     roomId: "r105",
     roomNumber: "105",
+    channel: "instagram",
     checkIn: daysFromNow(1, 13, 0),
     checkOut: daysFromNow(3, 11, 0),
     status: "confirmed",
@@ -173,6 +253,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "971-9900112",
     roomId: "r107",
     roomNumber: "107",
+    channel: "facebook",
     checkIn: daysFromNow(2, 13, 0),
     checkOut: daysFromNow(6, 11, 0),
     status: "confirmed",
@@ -186,6 +267,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "972-0011223",
     roomId: "r301",
     roomNumber: "301",
+    channel: "whatsapp",
     checkIn: daysFromNow(-10, 12, 0),
     checkOut: daysFromNow(-8, 11, 0),
     status: "cancelled",
@@ -200,6 +282,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "973-1122334",
     roomId: "r202",
     roomNumber: "202",
+    channel: "instagram",
     checkIn: daysFromNow(0, 15, 0),
     checkOut: daysFromNow(2, 11, 0),
     status: "confirmed",
@@ -213,6 +296,7 @@ export const BOOKINGS: Booking[] = [
     guestPhone: "974-2233445",
     roomId: "r303",
     roomNumber: "303",
+    channel: "facebook",
     checkIn: daysFromNow(-1, 12, 0),
     checkOut: daysFromNow(0, 11, 0),
     status: "checked-in",
@@ -221,6 +305,87 @@ export const BOOKINGS: Booking[] = [
     createdAt: daysFromNow(-2, 19, 0),
   },
 ]
+
+export const CONVERSATIONS: Conversation[] = [
+  {
+    id: "cv001",
+    guestName: "Sujata Shrestha",
+    guestPhone: "980-1122334",
+    channel: "whatsapp",
+    unread: 2,
+    messages: [
+      { id: "m1", sender: "guest", text: "Hi, is late checkout possible tomorrow?", sentAt: minutesAgo(40) },
+      { id: "m2", sender: "staff", text: "Let me check with housekeeping, one moment.", sentAt: minutesAgo(35) },
+      { id: "m3", sender: "guest", text: "Sure, thank you!", sentAt: minutesAgo(30) },
+      { id: "m4", sender: "guest", text: "Also, can we get an extra towel sent up?", sentAt: minutesAgo(6) },
+    ],
+  },
+  {
+    id: "cv002",
+    guestName: "Anish Gurung",
+    channel: "instagram",
+    unread: 0,
+    messages: [
+      { id: "m5", sender: "guest", text: "Saw your reel of the mountain view rooms 😍 any availability this weekend?", sentAt: minutesAgo(180) },
+      { id: "m6", sender: "staff", text: "Yes! Deluxe rooms are open Fri–Sun. Want me to hold one?", sentAt: minutesAgo(170) },
+      { id: "m7", sender: "guest", text: "Yes please, booking now.", sentAt: minutesAgo(165) },
+    ],
+  },
+  {
+    id: "cv003",
+    guestName: "Kritika Basnet",
+    channel: "facebook",
+    unread: 1,
+    messages: [
+      { id: "m8", sender: "guest", text: "Hello, do you arrange airport pickup?", sentAt: minutesAgo(90) },
+      { id: "m9", sender: "staff", text: "We do, Rs 1200 each way. Want us to book it?", sentAt: minutesAgo(80) },
+      { id: "m10", sender: "guest", text: "Yes, 2 PM arrival please.", sentAt: minutesAgo(15) },
+    ],
+  },
+  {
+    id: "cv004",
+    guestName: "Bishal Rana",
+    channel: "whatsapp",
+    unread: 0,
+    messages: [
+      { id: "m11", sender: "guest", text: "What time is breakfast served?", sentAt: minutesAgo(500) },
+      { id: "m12", sender: "staff", text: "7 to 10 AM at the rooftop restaurant.", sentAt: minutesAgo(495) },
+    ],
+  },
+  {
+    id: "cv005",
+    guestName: "Rina Maharjan",
+    channel: "instagram",
+    unread: 3,
+    messages: [
+      { id: "m13", sender: "guest", text: "Hey! Following up on my DM from yesterday about the family suite.", sentAt: minutesAgo(60) },
+      { id: "m14", sender: "guest", text: "Still available for next month?", sentAt: minutesAgo(55) },
+      { id: "m15", sender: "guest", text: "Let me know when you get a chance 🙏", sentAt: minutesAgo(20) },
+    ],
+  },
+  {
+    id: "cv006",
+    guestName: "Dipendra Karki",
+    channel: "facebook",
+    unread: 0,
+    messages: [
+      { id: "m16", sender: "guest", text: "Do you have parking for a group of 3 cars?", sentAt: minutesAgo(1440) },
+      { id: "m17", sender: "staff", text: "Yes, we have covered parking for up to 6 vehicles.", sentAt: minutesAgo(1430) },
+      { id: "m18", sender: "guest", text: "Perfect, thank you.", sentAt: minutesAgo(1420) },
+    ],
+  },
+]
+
+export function getConversationsByChannel() {
+  return BOOKING_CHANNELS.map((channel) => ({
+    ...channel,
+    conversations: CONVERSATIONS.filter((c) => c.channel === channel.value),
+  }))
+}
+
+export function getUnreadMessageCount() {
+  return CONVERSATIONS.reduce((sum, c) => sum + c.unread, 0)
+}
 
 export const STAFF: StaffMember[] = [
   {
@@ -305,6 +470,44 @@ export const STAFF: StaffMember[] = [
     joinedAt: "2023-05-22",
   },
 ]
+
+export const ROLES: Role[] = [
+  {
+    slug: "owner",
+    name: "Owner",
+    description: "Full access — billing, staff, roles, and every module.",
+    permissions: ["Manage staff & roles", "Manage billing", "Manage all modules"],
+    isSystem: true,
+  },
+  {
+    slug: "frontdesk",
+    name: "Front Desk",
+    description: "Runs the front desk — bookings, check-ins, and guests.",
+    permissions: ["Manage bookings", "Check guests in/out", "View customers"],
+    isSystem: true,
+  },
+  {
+    slug: "waiter",
+    name: "Waiter",
+    description: "Takes restaurant and room-service orders.",
+    permissions: ["Create orders", "View menu", "View tables"],
+    isSystem: true,
+  },
+  {
+    slug: "kitchen",
+    name: "Kitchen",
+    description: "Sees incoming KOTs and updates order status.",
+    permissions: ["View kitchen tickets", "Update order status"],
+    isSystem: true,
+  },
+]
+
+export function getRoleStats() {
+  return ROLES.map((role) => ({
+    ...role,
+    memberCount: STAFF.filter((s) => s.role === role.slug).length,
+  }))
+}
 
 export const SUB_MENUS: SubMenu[] = [
   { id: "sm01", name: "Restaurant Menu", description: "Starters, mains, and Nepali specials served all day." },
@@ -519,6 +722,16 @@ export const KOT_ORDERS: KotOrder[] = [
   },
 ]
 
+/**
+ * Mutates the shared array in place so a fresh page mount (e.g. navigating
+ * back from the standalone new-order page) picks up the new ticket. Every
+ * other list on this prototype is page-local `useState`, so this is the one
+ * exception needed to make a page-to-page create flow actually show up.
+ */
+export function addKotOrder(order: KotOrder) {
+  KOT_ORDERS.unshift(order)
+}
+
 export function getRoomStats() {
   const total = ROOMS.length
   const occupied = ROOMS.filter((r) => r.status === "occupied").length
@@ -558,12 +771,21 @@ export function getTodayRevenue() {
     (b) =>
       new Date(b.checkIn).toDateString() === today && b.status !== "cancelled"
   ).reduce((sum, b) => sum + b.totalAmount, 0)
-  const kotRevenue = KOT_ORDERS.reduce(
-    (sum, o) =>
-      sum + o.items.reduce((s, i) => s + i.price * i.quantity, 0),
-    0
-  )
+  const kotRevenue = KOT_ORDERS.reduce((sum, o) => sum + orderTotal(o.items), 0)
   return roomRevenue + kotRevenue
+}
+
+export function getBookingsByChannel() {
+  return BOOKING_CHANNELS.map((channel) => {
+    const bookings = BOOKINGS.filter(
+      (b) => b.channel === channel.value && b.status !== "cancelled"
+    )
+    return {
+      ...channel,
+      bookingCount: bookings.length,
+      revenue: bookings.reduce((sum, b) => sum + b.totalAmount, 0),
+    }
+  })
 }
 
 export const MENU_CATEGORIES = Array.from(

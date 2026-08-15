@@ -40,3 +40,14 @@ export const deleteHotel = async (id: string): Promise<ApiResponse<null>> => {
   );
   return data;
 };
+
+export const checkSlugAvailability = async (
+  slug: string,
+  signal?: AbortSignal,
+): Promise<boolean> => {
+  const { data } = await axiosInstance.get<ApiResponse<{ available: boolean }>>(
+    "/hotels/check-slug",
+    { params: { slug }, signal },
+  );
+  return data.data.available;
+};

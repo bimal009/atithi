@@ -40,6 +40,20 @@ export function RoomStatusDialog({
               </DialogDescription>
             </DialogHeader>
 
+            {room.images && room.images.length > 0 && (
+              <div className="grid grid-cols-4 gap-2">
+                {room.images.map((url) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- local blob preview, not a served asset
+                  <img
+                    key={url}
+                    src={url}
+                    alt=""
+                    className="aspect-square rounded-lg border object-cover"
+                  />
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Current status</span>
               <StatusBadge status={room.status} />

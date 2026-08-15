@@ -1,8 +1,19 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
+import type { OrderItem } from "@/types"
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export function orderItemTotal(item: OrderItem) {
+  const addOnsTotal = item.addOns?.reduce((sum, a) => sum + a.price, 0) ?? 0
+  return (item.price + addOnsTotal) * item.quantity
+}
+
+export function orderTotal(items: OrderItem[]) {
+  return items.reduce((sum, item) => sum + orderItemTotal(item), 0)
 }
 
 export function formatCurrency(amount: number) {

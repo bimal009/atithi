@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { AlertCircleIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { SectionCards } from "@/components/shared/section-cards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateHotelDialog } from "@/features/hotel/components/create-hotel-dialog";
-import { HotelsTable } from "@/features/hotel/components/hotels-table";
+import { HotelsGrid } from "@/features/hotel/components/hotels-grid";
 import type { Hotel } from "@/features/hotel/types";
 import { serverFetch } from "@/lib/server-api";
 
@@ -34,10 +33,6 @@ export default async function HotelsPage() {
   }
 
   const hotels = result.data ?? [];
-  const active = hotels.filter((hotel) => hotel.isActive).length;
-  const cities = new Set(
-    hotels.map((hotel) => hotel.city).filter(Boolean),
-  ).size;
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,27 +42,7 @@ export default async function HotelsPage() {
         actions={<CreateHotelDialog />}
       />
 
-      <SectionCards
-        stats={[
-          {
-            label: "Properties",
-            value: String(hotels.length),
-            description: "Across your account",
-          },
-          {
-            label: "Active",
-            value: String(active),
-            description: `${hotels.length - active} paused`,
-          },
-          {
-            label: "Cities",
-            value: String(cities),
-            description: "Locations covered",
-          },
-        ]}
-      />
-
-      <HotelsTable hotels={hotels} />
+      <HotelsGrid hotels={hotels} />
     </div>
   );
 }

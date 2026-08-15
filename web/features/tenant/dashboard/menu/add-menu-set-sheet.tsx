@@ -70,7 +70,7 @@ export function AddMenuSetSheet({
               Bundle a few dishes into a combo at a special price.
             </DialogDescription>
           </DialogHeader>
-          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
             <Field>
               <FieldLabel htmlFor="set-name">Set name</FieldLabel>
               <Input
@@ -110,7 +110,7 @@ export function AddMenuSetSheet({
             </Field>
             <Field>
               <FieldLabel>Included dishes</FieldLabel>
-              <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto rounded-lg border p-1">
+              <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto scrollbar-none rounded-lg border p-1">
                 {MENU_ITEMS.map((item) => (
                   <label
                     key={item.id}

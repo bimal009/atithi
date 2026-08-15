@@ -3,7 +3,8 @@
 import * as React from "react"
 import { CalendarIcon, PlusIcon } from "lucide-react"
 
-import type { Booking, Room } from "@/types"
+import { BOOKING_CHANNELS } from "@/lib/mock-data"
+import type { Booking, BookingChannel, Room } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -33,6 +34,7 @@ function emptyForm() {
     guestName: "",
     guestPhone: "",
     roomId: "",
+    channel: "whatsapp" as BookingChannel,
     guests: "1",
     notes: "",
   }
@@ -144,6 +146,7 @@ export function NewBookingDialog({
       guestPhone: form.guestPhone,
       roomId: room.id,
       roomNumber: room.number,
+      channel: form.channel,
       checkIn: checkIn.toISOString(),
       checkOut: checkOut.toISOString(),
       status: "confirmed",
@@ -179,7 +182,7 @@ export function NewBookingDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[60vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
             <Field className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="guest-name">Guest name</FieldLabel>
@@ -205,6 +208,30 @@ export function NewBookingDialog({
                   placeholder="98X-XXXXXXX"
                 />
               </Field>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="channel">Booking channel</FieldLabel>
+              <Select
+                value={form.channel}
+                onValueChange={(value) =>
+                  setForm((f) => ({
+                    ...f,
+                    channel: (value as BookingChannel) ?? f.channel,
+                  }))
+                }
+              >
+                <SelectTrigger id="channel" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOOKING_CHANNELS.map((channel) => (
+                    <SelectItem key={channel.value} value={channel.value}>
+                      {channel.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">

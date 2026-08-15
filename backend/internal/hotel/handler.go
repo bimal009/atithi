@@ -69,6 +69,22 @@ func (h *HotelHandler) GetBySlug(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("hotel fetched", hotel))
 }
 
+func (h *HotelHandler) CheckSlug(c *gin.Context) {
+	slug := c.Query("slug")
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("slug is required"))
+		return
+	}
+
+	available, err := h.service.SlugAvailable(c.Request.Context(), slug)
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("slug checked", gin.H{"available": available}))
+}
+
 func (h *HotelHandler) GetAll(c *gin.Context) {
 	hotels, err := h.service.GetAll(c.Request.Context(), middleware.UserID(c))
 	if err != nil {

@@ -4,6 +4,7 @@ import {
   CalendarCheckIcon,
   LayoutDashboardIcon,
   LayoutGridIcon,
+  MessageSquareIcon,
   ShoppingBasketIcon,
   UsersIcon,
   UsersRoundIcon,
@@ -32,7 +33,16 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Front of house",
     items: [
-      { title: "Bookings", href: "/bookings", icon: CalendarCheckIcon },
+      { title: "Messages", href: "/messages", icon: MessageSquareIcon },
+      {
+        title: "Bookings",
+        href: "/bookings",
+        icon: CalendarCheckIcon,
+        items: [
+          { title: "All Bookings", href: "/bookings" },
+          { title: "Channels", href: "/bookings/channels" },
+        ],
+      },
       {
         title: "Orders",
         href: "/orders",
@@ -71,6 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: LayoutGridIcon,
         items: [
           { title: "Rooms", href: "/rooms" },
+          { title: "Room Types", href: "/rooms/types" },
           { title: "Tables", href: "/tables" },
         ],
       },
@@ -80,7 +91,15 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Management",
     items: [
       { title: "Customers", href: "/customers", icon: UsersRoundIcon },
-      { title: "Staff", href: "/staff", icon: UsersIcon },
+      {
+        title: "Staff",
+        href: "/staff",
+        icon: UsersIcon,
+        items: [
+          { title: "All Staff", href: "/staff" },
+          { title: "Roles & Permissions", href: "/staff/roles" },
+        ],
+      },
     ],
   },
 ]

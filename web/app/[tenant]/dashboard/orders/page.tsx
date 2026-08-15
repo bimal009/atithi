@@ -1,16 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { ChefHatIcon } from "lucide-react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { ChefHatIcon, PlusIcon } from "lucide-react"
 
 import { KOT_ORDERS } from "@/lib/mock-data"
-import { formatCurrency, timeAgo } from "@/lib/utils"
+import { formatCurrency, orderTotal, timeAgo } from "@/lib/utils"
 import type { KotOrder, OrderStatus } from "@/types"
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -18,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { NewOrderSheet } from "@/features/tenant/dashboard/orders/new-order-sheet"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const STATUS_FILTERS: Array<{ value: "all" | OrderStatus; label: string }> = [
@@ -31,7 +33,8 @@ const STATUS_FILTERS: Array<{ value: "all" | OrderStatus; label: string }> = [
 
 export default function OrdersPage() {
   usePageTitle("Orders")
-  const [orders, setOrders] = React.useState(KOT_ORDERS)
+  const params = useParams<{ tenant: string }>()
+  const orders = KOT_ORDERS
   const [status, setStatus] = React.useState<"all" | OrderStatus>("all")
 
   const filtered = orders
@@ -64,7 +67,7 @@ export default function OrdersPage() {
       cell: (o) => (
         <span className="text-muted-foreground">
           {o.items.reduce((n, i) => n + i.quantity, 0)} items ·{" "}
-          {formatCurrency(o.items.reduce((s, i) => s + i.price * i.quantity, 0))}
+          {formatCurrency(orderTotal(o.items))}
         </span>
       ),
     },
@@ -100,9 +103,14 @@ export default function OrdersPage() {
           </span>
         }
         actions={
-          <NewOrderSheet
-            onCreate={(order) => setOrders((prev) => [order, ...prev])}
-          />
+          <Button
+            data-icon="inline-start"
+            nativeButton={false}
+            render={<Link href={`/${params.tenant}/dashboard/orders/new`} />}
+          >
+            <PlusIcon aria-hidden />
+            New Order
+          </Button>
         }
       />
 

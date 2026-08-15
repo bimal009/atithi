@@ -113,7 +113,7 @@ export function AddDishDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] overflow-y-auto py-4">
+          <FieldGroup className="max-h-[65vh] overflow-y-auto scrollbar-none py-4">
             <Field className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="dish-type">Type</FieldLabel>
@@ -282,7 +282,7 @@ export function AddDishDialog({
               <FieldDescription>
                 Extras guests can attach to this dish when ordering.
               </FieldDescription>
-              <div className="flex max-h-40 flex-col gap-0.5 overflow-y-auto rounded-lg border p-1">
+              <div className="flex max-h-40 flex-col gap-0.5 overflow-y-auto scrollbar-none rounded-lg border p-1">
                 {ADD_ONS.map((addOn) => (
                   <label
                     key={addOn.id}

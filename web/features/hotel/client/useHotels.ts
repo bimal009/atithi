@@ -1,17 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
 
-import { createHotel, deleteHotel, updateHotel } from "../api/hotel";
+import { checkSlugAvailability, createHotel, deleteHotel, updateHotel } from "../api/hotel";
+import { SLUG_REGEX } from "../schema";
 import { CreateHotelInput, UpdateHotelInput } from "../types";
 
 export const hotelKeys = {
   all: ["hotels"] as const,
   detail: (id: string) => ["hotels", id] as const,
+  slugAvailability: (slug: string) => ["hotels", "slug-availability", slug] as const,
+};
+
+// `slug` is expected to already be debounced by the caller (the create-hotel
+// dialog derives it from nuqs's own debounced URL sync) — this hook only
+// owns the availability request itself.
+export const useSlugAvailability = (slug: string, options?: { ignore?: string }) => {
+  const trimmed = slug.trim();
+  const isCheckable =
+    trimmed.length >= 2 && SLUG_REGEX.test(trimmed) && trimmed !== options?.ignore;
+
+  const query = useQuery({
+    queryKey: hotelKeys.slugAvailability(trimmed),
+    queryFn: ({ signal }) => checkSlugAvailability(trimmed, signal),
+    enabled: isCheckable,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  return {
+    checking: isCheckable && query.isFetching,
+    available: isCheckable ? query.data : undefined,
+  };
 };
 
 export const useCreateHotel = () => {

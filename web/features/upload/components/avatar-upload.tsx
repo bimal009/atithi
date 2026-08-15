@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { CameraIcon, Trash2Icon, UserRoundIcon } from "lucide-react";
+import { CameraIcon, CloudUploadIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -29,9 +28,7 @@ export function AvatarUpload({
   className?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [progress, setProgress] = React.useState<number | null>(null);
-
-  const uploading = progress !== null;
+  const [uploading, setUploading] = React.useState(false);
 
   const handleFile = async (file: File) => {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
@@ -44,19 +41,16 @@ export function AvatarUpload({
       return;
     }
 
-    setProgress(0);
+    setUploading(true);
 
     try {
-      const uploaded = await uploadImage(file, {
-        folder,
-        onProgress: setProgress,
-      });
+      const uploaded = await uploadImage(file, { folder });
       onChange(uploaded.url);
       toast.success("Photo uploaded");
     } catch {
       toast.error("Could not upload that photo");
     } finally {
-      setProgress(null);
+      setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
@@ -65,17 +59,15 @@ export function AvatarUpload({
     <div className={cn("flex flex-col items-center gap-3", className)}>
       <div className="relative">
         <Avatar className="size-24 border">
-          {value ? <AvatarImage src={value} alt="Your profile photo" /> : null}
+          {value ? <AvatarImage className="object-contain" src={value} alt="Your profile photo" /> : null}
           <AvatarFallback className="text-lg font-medium">
-            {fallback ?? <UserRoundIcon className="size-8" aria-hidden />}
+            {uploading ? (
+              <Spinner className="size-8" />
+            ) : (
+              fallback ?? <CloudUploadIcon className="size-8" aria-hidden />
+            )}
           </AvatarFallback>
         </Avatar>
-
-        {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
-            <Spinner className="size-6" />
-          </div>
-        )}
 
         <Button
           type="button"
@@ -90,16 +82,8 @@ export function AvatarUpload({
         </Button>
       </div>
 
-      {/* Fixed height so the layout does not jump when the bar appears. */}
       <div className="flex h-9 flex-col items-center justify-center gap-1.5">
-        {uploading ? (
-          <>
-            <Progress value={progress ?? 0} className="h-1.5 w-40" />
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Uploading {progress}%
-            </span>
-          </>
-        ) : value ? (
+        {value ? (
           <Button
             type="button"
             variant="ghost"

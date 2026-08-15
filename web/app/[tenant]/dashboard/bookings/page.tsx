@@ -3,9 +3,9 @@
 import * as React from "react"
 import { CalendarCheckIcon } from "lucide-react"
 
-import { BOOKINGS, ROOMS } from "@/lib/mock-data"
+import { BOOKING_CHANNELS, BOOKINGS, ROOMS } from "@/lib/mock-data"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import type { Booking, BookingStatus } from "@/types"
+import type { Booking, BookingChannel, BookingStatus } from "@/types"
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ChannelBadge } from "@/features/tenant/dashboard/bookings/channel-badge"
 import { NewBookingDialog } from "@/features/tenant/dashboard/bookings/new-booking-dialog"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
@@ -29,10 +30,16 @@ const STATUS_FILTERS: Array<{ value: "all" | BookingStatus; label: string }> = [
   { value: "cancelled", label: "Cancelled" },
 ]
 
+const CHANNEL_FILTERS: Array<{ value: "all" | BookingChannel; label: string }> = [
+  { value: "all", label: "All channels" },
+  ...BOOKING_CHANNELS,
+]
+
 export default function BookingsPage() {
   usePageTitle("Bookings")
   const [bookings, setBookings] = React.useState(BOOKINGS)
   const [status, setStatus] = React.useState<"all" | BookingStatus>("all")
+  const [channel, setChannel] = React.useState<"all" | BookingChannel>("all")
 
   function setBookingStatus(id: string, next: BookingStatus) {
     setBookings((prev) =>
@@ -42,6 +49,7 @@ export default function BookingsPage() {
 
   const filtered = bookings
     .filter((b) => status === "all" || b.status === status)
+    .filter((b) => channel === "all" || b.channel === channel)
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
 
   const columns: DataTableColumn<Booking>[] = [
@@ -58,6 +66,7 @@ export default function BookingsPage() {
       ),
     },
     { key: "room", header: "Room", cell: (b) => <span className="tabular-nums">{b.roomNumber}</span> },
+    { key: "channel", header: "Channel", cell: (b) => <ChannelBadge channel={b.channel} /> },
     { key: "checkIn", header: "Check-in", cell: (b) => <span className="text-muted-foreground">{formatDate(b.checkIn)}</span> },
     { key: "checkOut", header: "Check-out", cell: (b) => <span className="text-muted-foreground">{formatDate(b.checkOut)}</span> },
     { key: "amount", header: "Amount", cell: (b) => <span className="tabular-nums">{formatCurrency(b.totalAmount)}</span> },
@@ -128,18 +137,32 @@ export default function BookingsPage() {
         searchPlaceholder="Search guest or room…"
         searchFn={(b, q) => `${b.guestName} ${b.roomNumber}`.toLowerCase().includes(q)}
         toolbar={
-          <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTERS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CHANNEL_FILTERS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTERS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         }
         emptyIcon={CalendarCheckIcon}
         emptyTitle="No bookings found"

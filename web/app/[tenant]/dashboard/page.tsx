@@ -11,7 +11,7 @@ import {
   getTodayRevenue,
   KOT_ORDERS,
 } from "@/lib/mock-data"
-import { formatCurrency, formatDate, timeAgo } from "@/lib/utils"
+import { formatCurrency, formatDate, orderTotal, timeAgo } from "@/lib/utils"
 import { useMockLoading } from "@/hooks/use-mock-loading"
 import { ActivityList, type ActivityItem } from "@/components/shared/activity-list"
 import { PageHeader } from "@/components/shared/page-header"
@@ -66,7 +66,7 @@ export default function OverviewPage() {
       icon: UtensilsIcon,
       title: o.table,
       subtitle: `${o.items.reduce((n, i) => n + i.quantity, 0)} items · ${formatCurrency(
-        o.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+        orderTotal(o.items)
       )}`,
       status: o.status,
       meta: timeAgo(o.placedAt),

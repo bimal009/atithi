@@ -1,11 +1,7 @@
 import Link from "next/link"
-import {
-  BedDoubleIcon,
-  CalendarCheckIcon,
-  ChefHatIcon,
-  HotelIcon,
-} from "lucide-react"
+import { BedDoubleIcon, CalendarCheckIcon, ChefHatIcon } from "lucide-react"
 
+import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -32,10 +28,7 @@ export default function LandingPage() {
     <div className="flex min-h-svh flex-col">
       <header className="border-b">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <HotelIcon className="size-5" />
-            <span className="text-lg font-semibold">Atithi</span>
-          </div>
+          <Logo />
           <div className="flex items-center gap-2">
             <Button nativeButton={false} render={<Link href="/login" />}>
               Log in

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import QueryProviders from "@/lib/providers/queryProviders";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import React from "react";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -39,10 +40,12 @@ export default function RootLayout({ children }:{children:React.ReactNode}) {
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-           <QueryProviders>{children}</QueryProviders>
-            <Toaster />
-          </TooltipProvider>
+          <NuqsAdapter>
+            <TooltipProvider>
+             <QueryProviders>{children}</QueryProviders>
+              <Toaster />
+            </TooltipProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

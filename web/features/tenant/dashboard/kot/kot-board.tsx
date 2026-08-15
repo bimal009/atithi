@@ -3,7 +3,7 @@
 import { ChefHatIcon } from "lucide-react"
 
 import type { KotOrder, OrderStatus } from "@/types"
-import { formatCurrency, timeAgo } from "@/lib/utils"
+import { formatCurrency, orderTotal, timeAgo } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -81,10 +81,7 @@ export function KotBoard({
               ) : (
                 columnOrders.map((order) => {
                   const itemCount = order.items.reduce((n, i) => n + i.quantity, 0)
-                  const total = order.items.reduce(
-                    (sum, i) => sum + i.price * i.quantity,
-                    0
-                  )
+                  const total = orderTotal(order.items)
 
                   return (
                     <Card
@@ -108,11 +105,18 @@ export function KotBoard({
 
                       <div className="flex flex-col gap-1 px-4 text-sm text-muted-foreground">
                         {order.items.slice(0, 3).map((item) => (
-                          <div key={item.id} className="flex items-center gap-1.5">
-                            <span className="tabular-nums text-foreground">
-                              {item.quantity}×
-                            </span>
-                            <span className="truncate">{item.name}</span>
+                          <div key={item.id} className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="tabular-nums text-foreground">
+                                {item.quantity}×
+                              </span>
+                              <span className="truncate">{item.name}</span>
+                            </div>
+                            {item.addOns && item.addOns.length > 0 && (
+                              <span className="truncate pl-5 text-xs">
+                                + {item.addOns.map((a) => a.name).join(", ")}
+                              </span>
+                            )}
                           </div>
                         ))}
                         {order.items.length > 3 && (

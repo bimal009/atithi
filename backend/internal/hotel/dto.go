@@ -1,5 +1,9 @@
 package hotel
 
+import "regexp"
+
+var SlugFormat = regexp.MustCompile(`^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$`)
+
 type CreateHotelRequest struct {
 	Name        string  `json:"name" validate:"required,min=2,max=255"`
 	Slug        string  `json:"slug" validate:"required,min=2,max=255,alphanumdash"`
