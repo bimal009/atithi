@@ -29,39 +29,16 @@ func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
 	}
 }
 
-const hotelColumns = `
-	id, name, slug, description, logo_url, address, city, country,
-	phone_number, email, is_active, created_at, updated_at
-`
-
-func scanHotel(row pgx.Row, h *model.Hotel) error {
-	return row.Scan(
-		&h.ID,
-		&h.Name,
-		&h.Slug,
-		&h.Description,
-		&h.LogoURL,
-		&h.Address,
-		&h.City,
-		&h.PhoneNumber,
-		&h.Email,
-		&h.IsActive,
-		&h.CreatedAt,
-		&h.UpdatedAt,
-	)
-}
-
 func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
-		INSERT INTO hotels (
-			id, name, slug, description, logo_url, address, city, country, phone_number, email
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING ` + hotelColumns
+		INSERT INTO hotels (id, name, slug, description, logo_url, address, city, phone_number, email)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+	`
 
 	var created model.Hotel
 
-	err := scanHotel(r.DB.QueryRow(
+	err := r.DB.QueryRow(
 		ctx, query,
 		hotel.ID,
 		hotel.Name,
@@ -72,7 +49,20 @@ func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel
 		hotel.City,
 		hotel.PhoneNumber,
 		hotel.Email,
-	), &created)
+	).Scan(
+		&created.ID,
+		&created.Name,
+		&created.Slug,
+		&created.Description,
+		&created.LogoURL,
+		&created.Address,
+		&created.City,
+		&created.PhoneNumber,
+		&created.Email,
+		&created.IsActive,
+		&created.CreatedAt,
+		&created.UpdatedAt,
+	)
 
 	if err != nil {
 		if apperr.IsUniqueViolation(err) {
@@ -85,11 +75,29 @@ func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel
 }
 
 func (r *hotelRepo) Get(ctx context.Context, id string) (model.Hotel, error) {
-	query := `SELECT ` + hotelColumns + ` FROM hotels WHERE id = $1`
+	query := `
+		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+		FROM hotels
+		WHERE id = $1
+	`
 
 	var hotel model.Hotel
 
-	err := scanHotel(r.DB.QueryRow(ctx, query, id), &hotel)
+	err := r.DB.QueryRow(ctx, query, id).Scan(
+		&hotel.ID,
+		&hotel.Name,
+		&hotel.Slug,
+		&hotel.Description,
+		&hotel.LogoURL,
+		&hotel.Address,
+		&hotel.City,
+		&hotel.PhoneNumber,
+		&hotel.Email,
+		&hotel.IsActive,
+		&hotel.CreatedAt,
+		&hotel.UpdatedAt,
+	)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Hotel{}, apperr.ErrHotelNotFound
@@ -101,11 +109,29 @@ func (r *hotelRepo) Get(ctx context.Context, id string) (model.Hotel, error) {
 }
 
 func (r *hotelRepo) GetBySlug(ctx context.Context, slug string) (model.Hotel, error) {
-	query := `SELECT ` + hotelColumns + ` FROM hotels WHERE slug = $1`
+	query := `
+		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+		FROM hotels
+		WHERE slug = $1
+	`
 
 	var hotel model.Hotel
 
-	err := scanHotel(r.DB.QueryRow(ctx, query, slug), &hotel)
+	err := r.DB.QueryRow(ctx, query, slug).Scan(
+		&hotel.ID,
+		&hotel.Name,
+		&hotel.Slug,
+		&hotel.Description,
+		&hotel.LogoURL,
+		&hotel.Address,
+		&hotel.City,
+		&hotel.PhoneNumber,
+		&hotel.Email,
+		&hotel.IsActive,
+		&hotel.CreatedAt,
+		&hotel.UpdatedAt,
+	)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Hotel{}, apperr.ErrHotelNotFound
@@ -117,7 +143,11 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug string) (model.Hotel, er
 }
 
 func (r *hotelRepo) GetAll(ctx context.Context) ([]model.Hotel, error) {
-	query := `SELECT ` + hotelColumns + ` FROM hotels ORDER BY created_at DESC`
+	query := `
+		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+		FROM hotels
+		ORDER BY created_at DESC
+	`
 
 	rows, err := r.DB.Query(ctx, query)
 	if err != nil {
@@ -129,7 +159,20 @@ func (r *hotelRepo) GetAll(ctx context.Context) ([]model.Hotel, error) {
 
 	for rows.Next() {
 		var hotel model.Hotel
-		if err := scanHotel(rows, &hotel); err != nil {
+		if err := rows.Scan(
+			&hotel.ID,
+			&hotel.Name,
+			&hotel.Slug,
+			&hotel.Description,
+			&hotel.LogoURL,
+			&hotel.Address,
+			&hotel.City,
+			&hotel.PhoneNumber,
+			&hotel.Email,
+			&hotel.IsActive,
+			&hotel.CreatedAt,
+			&hotel.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		hotels = append(hotels, hotel)
@@ -152,17 +195,17 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 			logo_url = $4,
 			address = $5,
 			city = $6,
-			country = $7,
-			phone_number = $8,
-			email = $9,
-			is_active = $10,
-			updated_at = NOW()
-		WHERE id = $11
-		RETURNING ` + hotelColumns
+			phone_number = $7,
+			email = $8,
+			is_active = $9,
+			updated_at = now()
+		WHERE id = $10
+		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+	`
 
 	var updated model.Hotel
 
-	err := scanHotel(r.DB.QueryRow(
+	err := r.DB.QueryRow(
 		ctx, query,
 		hotel.Name,
 		hotel.Slug,
@@ -174,7 +217,20 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 		hotel.Email,
 		hotel.IsActive,
 		hotel.ID,
-	), &updated)
+	).Scan(
+		&updated.ID,
+		&updated.Name,
+		&updated.Slug,
+		&updated.Description,
+		&updated.LogoURL,
+		&updated.Address,
+		&updated.City,
+		&updated.PhoneNumber,
+		&updated.Email,
+		&updated.IsActive,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -190,9 +246,7 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 }
 
 func (r *hotelRepo) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM hotels WHERE id = $1`
-
-	result, err := r.DB.Exec(ctx, query, id)
+	result, err := r.DB.Exec(ctx, `DELETE FROM hotels WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}

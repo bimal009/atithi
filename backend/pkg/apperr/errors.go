@@ -35,7 +35,7 @@ var (
 	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "please wait before requesting another otp")
 	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "session not found")
 	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "session expired, please log in again")
-	ErrHotelNotFound        = New(http.StatusTooManyRequests, "not_found", "hotel not found")
+	ErrHotelNotFound        = New(http.StatusNotFound, "not_found", "hotel not found")
 
 	ErrRoleNotFound        = New(http.StatusNotFound, "not_found", "role not found")
 	ErrRoleSlugExists      = New(http.StatusConflict, "conflict", "a role with this slug already exists")

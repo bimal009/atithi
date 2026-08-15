@@ -36,6 +36,10 @@ func init() {
 	if err := registerNepaliPhone(); err != nil {
 		panic(err)
 	}
+
+	if err := registerAlphaNumDash(); err != nil {
+		panic(err)
+	}
 }
 
 var nepaliPhone = regexp.MustCompile(`^9[78]\d{8}$`)
@@ -54,6 +58,29 @@ func registerNepaliPhone() error {
 		},
 		func(ut ut.Translator, fe validator.FieldError) string {
 			msg, _ := ut.T("nepaliphone", fe.Field())
+			return msg
+		},
+	)
+}
+
+// alphaNumDash matches a slug: alphanumeric segments joined by single dashes,
+// so "hotel-everest" passes but "-everest", "hotel--everest" and "hotel_x" do not.
+var alphaNumDash = regexp.MustCompile(`^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$`)
+
+func registerAlphaNumDash() error {
+	err := validate.RegisterValidation("alphanumdash", func(fl validator.FieldLevel) bool {
+		return alphaNumDash.MatchString(fl.Field().String())
+	})
+	if err != nil {
+		return err
+	}
+
+	return validate.RegisterTranslation("alphanumdash", trans,
+		func(ut ut.Translator) error {
+			return ut.Add("alphanumdash", "{0} may only contain letters, numbers and single dashes between them", true)
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			msg, _ := ut.T("alphanumdash", fe.Field())
 			return msg
 		},
 	)

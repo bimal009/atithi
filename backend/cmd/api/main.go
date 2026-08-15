@@ -12,6 +12,7 @@ import (
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/hotel"
 	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
@@ -55,11 +56,15 @@ func main() {
 	userRepo := user.NewUserRepo(pool)
 	accountRepo := account.NewAccountRepo(pool)
 	sessionRepo := session.NewSessionRepo(pool)
+	hotelRepo := hotel.NewHotelRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
 	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionService, pool)
 	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
+
+	hotelService := hotel.NewHotelService(slog, hotelRepo)
+	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
 	requireAuth := middleware.RequireAuth(sessionService, cfg.Session.CookieName, slog)
 
@@ -82,6 +87,7 @@ func main() {
 
 	routes.Register(r, &routes.Handlers{
 		Auth:        authHandler,
+		Hotel:       hotelHandler,
 		RequireAuth: requireAuth,
 	})
 
