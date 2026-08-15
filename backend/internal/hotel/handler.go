@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/responses"
 	"github.com/bimal009/atithi/pkg/validator"
@@ -35,7 +36,7 @@ func (h *HotelHandler) Create(c *gin.Context) {
 		return
 	}
 
-	hotel, err := h.service.Create(c.Request.Context(), &req)
+	hotel, err := h.service.Create(c.Request.Context(), middleware.UserID(c), &req)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -47,7 +48,7 @@ func (h *HotelHandler) Create(c *gin.Context) {
 func (h *HotelHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 
-	hotel, err := h.service.Get(c.Request.Context(), id)
+	hotel, err := h.service.Get(c.Request.Context(), id, middleware.UserID(c))
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -59,7 +60,7 @@ func (h *HotelHandler) Get(c *gin.Context) {
 func (h *HotelHandler) GetBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 
-	hotel, err := h.service.GetBySlug(c.Request.Context(), slug)
+	hotel, err := h.service.GetBySlug(c.Request.Context(), slug, middleware.UserID(c))
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -69,7 +70,7 @@ func (h *HotelHandler) GetBySlug(c *gin.Context) {
 }
 
 func (h *HotelHandler) GetAll(c *gin.Context) {
-	hotels, err := h.service.GetAll(c.Request.Context())
+	hotels, err := h.service.GetAll(c.Request.Context(), middleware.UserID(c))
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -93,7 +94,7 @@ func (h *HotelHandler) Update(c *gin.Context) {
 		return
 	}
 
-	hotel, err := h.service.Update(c.Request.Context(), id, &req)
+	hotel, err := h.service.Update(c.Request.Context(), id, middleware.UserID(c), &req)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -105,7 +106,7 @@ func (h *HotelHandler) Update(c *gin.Context) {
 func (h *HotelHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
+	if err := h.service.Delete(c.Request.Context(), id, middleware.UserID(c)); err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
 	}

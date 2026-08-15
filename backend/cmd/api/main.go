@@ -14,7 +14,9 @@ import (
 	"github.com/bimal009/atithi/internal/auth"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
+	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/middleware"
+	"github.com/bimal009/atithi/internal/role"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
@@ -58,13 +60,15 @@ func main() {
 	accountRepo := account.NewAccountRepo(pool)
 	sessionRepo := session.NewSessionRepo(pool)
 	hotelRepo := hotel.NewHotelRepo(pool)
+	memberRepo := member.NewMemberRepo(pool)
+	roleRepo := role.NewRoleRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
 	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionService, pool)
 	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
 
-	hotelService := hotel.NewHotelService(slog, hotelRepo)
+	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
 	imageHandler := handlers.NewImageHandler(cfg)

@@ -10,6 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Slugs of the global roles seeded by migration 000004.
+const (
+	SlugOwner = "owner"
+	SlugAdmin = "admin"
+)
+
 type RoleRepo interface {
 	Create(ctx context.Context, role *model.HotelRole, permissionIDs []string, tx pgx.Tx) (model.HotelRole, error)
 	Get(ctx context.Context, id string) (model.HotelRole, error)
