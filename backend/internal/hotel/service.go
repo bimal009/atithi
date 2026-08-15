@@ -2,47 +2,79 @@ package hotel
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/bimal009/atithi/internal/member"
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/role"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type HotelService interface {
-	Create(ctx context.Context, req *CreateHotelRequest) (model.Hotel, error)
-	Get(ctx context.Context, id string) (model.Hotel, error)
-	GetBySlug(ctx context.Context, slug string) (model.Hotel, error)
-	GetAll(ctx context.Context) ([]model.Hotel, error)
-	Update(ctx context.Context, id string, req *UpdateHotelRequest) (model.Hotel, error)
-	Delete(ctx context.Context, id string) error
+	Create(ctx context.Context, userID string, req *CreateHotelRequest) (model.Hotel, error)
+	Get(ctx context.Context, id, userID string) (model.Hotel, error)
+	GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error)
+	GetAll(ctx context.Context, userID string) ([]model.Hotel, error)
+	Update(ctx context.Context, id, userID string, req *UpdateHotelRequest) (model.Hotel, error)
+	Delete(ctx context.Context, id, userID string) error
 }
 
 type hotelService struct {
-	slog *slog.Logger
-	repo HotelRepo
+	slog    *slog.Logger
+	repo    HotelRepo
+	members member.MemberRepo
+	roles   role.RoleRepo
+	DB      *pgxpool.Pool
 }
 
-func NewHotelService(slog *slog.Logger, repo HotelRepo) HotelService {
+func NewHotelService(
+	slog *slog.Logger,
+	repo HotelRepo,
+	members member.MemberRepo,
+	roles role.RoleRepo,
+	db *pgxpool.Pool,
+) HotelService {
 	return &hotelService{
-		slog: slog,
-		repo: repo,
+		slog:    slog,
+		repo:    repo,
+		members: members,
+		roles:   roles,
+		DB:      db,
 	}
 }
 
-func (s *hotelService) Create(ctx context.Context, req *CreateHotelRequest) (model.Hotel, error) {
+// Create writes the hotel and the creator's owner membership together. A hotel
+// with no members would be invisible to everyone, including the person who
+// just made it, so the two must commit as one.
+func (s *hotelService) Create(ctx context.Context, userID string, req *CreateHotelRequest) (model.Hotel, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return model.Hotel{}, err
 	}
 
-	if _, err := s.repo.GetBySlug(ctx, req.Slug); err == nil {
-		return model.Hotel{}, apperr.ErrHotelSlugExists
-	} else if !errors.Is(err, apperr.ErrHotelNotFound) {
+	exists, err := s.repo.SlugExists(ctx, req.Slug)
+	if err != nil {
 		return model.Hotel{}, err
 	}
+	if exists {
+		return model.Hotel{}, apperr.ErrHotelSlugExists
+	}
+
+	ownerRole, err := s.roles.GetBySlug(ctx, nil, role.SlugOwner)
+	if err != nil {
+		s.slog.Error("owner role missing", "error", err)
+		return model.Hotel{}, fmt.Errorf("failed to resolve owner role: %w", err)
+	}
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return model.Hotel{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
 	newHotel := &model.Hotel{
 		ID:          uuid.NewString(),
@@ -57,44 +89,62 @@ func (s *hotelService) Create(ctx context.Context, req *CreateHotelRequest) (mod
 		IsActive:    true,
 	}
 
-	createdHotel, err := s.repo.Create(ctx, newHotel)
+	createdHotel, err := s.repo.Create(ctx, tx, newHotel)
 	if err != nil {
 		s.slog.Error("failed to create hotel", "slug", req.Slug, "error", err)
-		return model.Hotel{}, fmt.Errorf("failed to create hotel: %w", err)
+		return model.Hotel{}, err
 	}
 
-	s.slog.Info("hotel created", "hotel_id", createdHotel.ID, "slug", createdHotel.Slug)
+	now := time.Now()
+	if _, err := s.members.Create(ctx, &model.Member{
+		HotelID:  createdHotel.ID,
+		UserID:   userID,
+		RoleID:   ownerRole.ID,
+		Status:   model.MemberStatusActive,
+		JoinedAt: &now,
+	}, tx); err != nil {
+		s.slog.Error("failed to create owner membership", "hotel_id", createdHotel.ID, "error", err)
+		return model.Hotel{}, fmt.Errorf("failed to create owner membership: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.Hotel{}, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	s.slog.Info("hotel created", "hotel_id", createdHotel.ID, "slug", createdHotel.Slug, "owner", userID)
 
 	return createdHotel, nil
 }
 
-func (s *hotelService) Get(ctx context.Context, id string) (model.Hotel, error) {
-	return s.repo.Get(ctx, id)
+func (s *hotelService) Get(ctx context.Context, id, userID string) (model.Hotel, error) {
+	return s.repo.Get(ctx, id, userID)
 }
 
-func (s *hotelService) GetBySlug(ctx context.Context, slug string) (model.Hotel, error) {
-	return s.repo.GetBySlug(ctx, slug)
+func (s *hotelService) GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error) {
+	return s.repo.GetBySlug(ctx, slug, userID)
 }
 
-func (s *hotelService) GetAll(ctx context.Context) ([]model.Hotel, error) {
-	return s.repo.GetAll(ctx)
+func (s *hotelService) GetAll(ctx context.Context, userID string) ([]model.Hotel, error) {
+	return s.repo.ListForUser(ctx, userID)
 }
 
-func (s *hotelService) Update(ctx context.Context, id string, req *UpdateHotelRequest) (model.Hotel, error) {
+func (s *hotelService) Update(ctx context.Context, id, userID string, req *UpdateHotelRequest) (model.Hotel, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return model.Hotel{}, err
 	}
 
-	existingHotel, err := s.repo.Get(ctx, id)
+	existingHotel, err := s.repo.Get(ctx, id, userID)
 	if err != nil {
 		return model.Hotel{}, err
 	}
 
 	if req.Slug != nil && *req.Slug != existingHotel.Slug {
-		if other, err := s.repo.GetBySlug(ctx, *req.Slug); err == nil && other.ID != id {
-			return model.Hotel{}, apperr.ErrHotelSlugExists
-		} else if err != nil && !errors.Is(err, apperr.ErrHotelNotFound) {
+		exists, err := s.repo.SlugExists(ctx, *req.Slug)
+		if err != nil {
 			return model.Hotel{}, err
+		}
+		if exists {
+			return model.Hotel{}, apperr.ErrHotelSlugExists
 		}
 		existingHotel.Slug = *req.Slug
 	}
@@ -114,7 +164,6 @@ func (s *hotelService) Update(ctx context.Context, id string, req *UpdateHotelRe
 	if req.City != nil {
 		existingHotel.City = req.City
 	}
-
 	if req.PhoneNumber != nil {
 		existingHotel.PhoneNumber = *req.PhoneNumber
 	}
@@ -125,10 +174,10 @@ func (s *hotelService) Update(ctx context.Context, id string, req *UpdateHotelRe
 		existingHotel.IsActive = *req.IsActive
 	}
 
-	updatedHotel, err := s.repo.Update(ctx, &existingHotel)
+	updatedHotel, err := s.repo.Update(ctx, &existingHotel, userID)
 	if err != nil {
 		s.slog.Error("failed to update hotel", "hotel_id", id, "error", err)
-		return model.Hotel{}, fmt.Errorf("failed to update hotel: %w", err)
+		return model.Hotel{}, err
 	}
 
 	s.slog.Info("hotel updated", "hotel_id", updatedHotel.ID)
@@ -136,8 +185,8 @@ func (s *hotelService) Update(ctx context.Context, id string, req *UpdateHotelRe
 	return updatedHotel, nil
 }
 
-func (s *hotelService) Delete(ctx context.Context, id string) error {
-	if err := s.repo.Delete(ctx, id); err != nil {
+func (s *hotelService) Delete(ctx context.Context, id, userID string) error {
+	if err := s.repo.Delete(ctx, id, userID); err != nil {
 		s.slog.Error("failed to delete hotel", "hotel_id", id, "error", err)
 		return err
 	}

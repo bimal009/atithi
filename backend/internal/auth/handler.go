@@ -134,6 +134,24 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("current user", user))
 }
 
+// Onboard sits behind RequireAuth, so a user can only ever onboard themselves.
+func (h *AuthHandler) Onboard(c *gin.Context) {
+	var req OnboardingRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
+		return
+	}
+
+	user, err := h.service.Onboard(c.Request.Context(), middleware.UserID(c), &req)
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("onboarding complete", user))
+}
+
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token := h.sessionToken(c)
 

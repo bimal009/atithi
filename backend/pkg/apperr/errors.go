@@ -33,6 +33,7 @@ var (
 	ErrAccountNotFound      = New(http.StatusNotFound, "not_found", "account not found")
 	ErrInvalidOtp           = New(http.StatusBadRequest, "invalid_otp", "invalid or expired otp")
 	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "please wait before requesting another otp")
+	ErrTooManyOtpAttempts   = New(http.StatusTooManyRequests, "too_many_attempts", "too many incorrect codes, request a new one")
 	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "session not found")
 	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "session expired, please log in again")
 	ErrHotelNotFound        = New(http.StatusNotFound, "not_found", "hotel not found")
@@ -44,6 +45,8 @@ var (
 
 	ErrPermissionNotFound = New(http.StatusNotFound, "not_found", "permission not found")
 	ErrPermissionExists   = New(http.StatusConflict, "conflict", "permission already exists")
+
+	ErrEmailTaken = New(http.StatusConflict, "conflict", "that email is already in use")
 
 	ErrMemberNotFound = New(http.StatusNotFound, "not_found", "member not found")
 	ErrMemberExists   = New(http.StatusConflict, "conflict", "user is already a member of this hotel")

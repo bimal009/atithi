@@ -13,6 +13,7 @@ import (
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
 	"github.com/bimal009/atithi/internal/hotel"
+	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
@@ -66,6 +67,8 @@ func main() {
 	hotelService := hotel.NewHotelService(slog, hotelRepo)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
+	imageHandler := handlers.NewImageHandler(cfg)
+
 	requireAuth := middleware.RequireAuth(sessionService, cfg.Session.CookieName, slog)
 
 	r := gin.Default()
@@ -88,6 +91,7 @@ func main() {
 	routes.Register(r, &routes.Handlers{
 		Auth:        authHandler,
 		Hotel:       hotelHandler,
+		Image:       imageHandler,
 		RequireAuth: requireAuth,
 	})
 

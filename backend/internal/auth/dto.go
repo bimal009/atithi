@@ -46,6 +46,12 @@ type ValidateOtpRequest struct {
 	Otp         string `json:"otp" validate:"required,len=6,number"`
 }
 
+type OnboardingRequest struct {
+	Name  string  `json:"name" validate:"required,min=2,max=100"`
+	Email string  `json:"email" validate:"required,email"`
+	Image *string `json:"image,omitempty" validate:"omitempty,url"`
+}
+
 type SessionMeta struct {
 	IPAddress string
 	UserAgent string

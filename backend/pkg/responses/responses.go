@@ -4,7 +4,9 @@ type Response[T any] struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Error   string `json:"error,omitempty"`
-	Data    T      `json:"data,omitempty"`
+	// No omitempty: an empty list must serialise as [] rather than vanish,
+	// otherwise every client has to guard against a missing field.
+	Data T `json:"data"`
 }
 
 func Success[T any](message string, data T) *Response[T] {

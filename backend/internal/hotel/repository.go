@@ -10,13 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Every read and write is scoped to the caller's membership. Authentication
+// only proves who someone is; membership decides which hotels they may touch,
+// so it belongs in the query rather than in a check a caller can forget.
 type HotelRepo interface {
-	Create(ctx context.Context, hotel *model.Hotel) (model.Hotel, error)
-	Get(ctx context.Context, id string) (model.Hotel, error)
-	GetBySlug(ctx context.Context, slug string) (model.Hotel, error)
-	GetAll(ctx context.Context) ([]model.Hotel, error)
-	Update(ctx context.Context, hotel *model.Hotel) (model.Hotel, error)
-	Delete(ctx context.Context, id string) error
+	Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error)
+	Get(ctx context.Context, id, userID string) (model.Hotel, error)
+	GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error)
+	// SlugExists is deliberately unscoped: slugs are globally unique, so the
+	// check has to see hotels the caller cannot otherwise read.
+	SlugExists(ctx context.Context, slug string) (bool, error)
+	ListForUser(ctx context.Context, userID string) ([]model.Hotel, error)
+	Update(ctx context.Context, hotel *model.Hotel, userID string) (model.Hotel, error)
+	Delete(ctx context.Context, id, userID string) error
 }
 
 type hotelRepo struct {
@@ -29,7 +35,7 @@ func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
 	}
 }
 
-func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel, error) {
+func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
 		INSERT INTO hotels (id, name, slug, description, logo_url, address, city, phone_number, email)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -38,7 +44,7 @@ func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel
 
 	var created model.Hotel
 
-	err := r.DB.QueryRow(
+	err := tx.QueryRow(
 		ctx, query,
 		hotel.ID,
 		hotel.Name,
@@ -74,16 +80,20 @@ func (r *hotelRepo) Create(ctx context.Context, hotel *model.Hotel) (model.Hotel
 	return created, nil
 }
 
-func (r *hotelRepo) Get(ctx context.Context, id string) (model.Hotel, error) {
+func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, error) {
 	query := `
 		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
 		FROM hotels
-		WHERE id = $1
+		WHERE id = $1::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = hotels.id AND m.user_id = $2::uuid AND m.status = 'active'
+		  )
 	`
 
 	var hotel model.Hotel
 
-	err := r.DB.QueryRow(ctx, query, id).Scan(
+	err := r.DB.QueryRow(ctx, query, id, userID).Scan(
 		&hotel.ID,
 		&hotel.Name,
 		&hotel.Slug,
@@ -108,16 +118,20 @@ func (r *hotelRepo) Get(ctx context.Context, id string) (model.Hotel, error) {
 	return hotel, nil
 }
 
-func (r *hotelRepo) GetBySlug(ctx context.Context, slug string) (model.Hotel, error) {
+func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error) {
 	query := `
 		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
 		FROM hotels
 		WHERE slug = $1
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = hotels.id AND m.user_id = $2::uuid AND m.status = 'active'
+		  )
 	`
 
 	var hotel model.Hotel
 
-	err := r.DB.QueryRow(ctx, query, slug).Scan(
+	err := r.DB.QueryRow(ctx, query, slug, userID).Scan(
 		&hotel.ID,
 		&hotel.Name,
 		&hotel.Slug,
@@ -142,14 +156,30 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug string) (model.Hotel, er
 	return hotel, nil
 }
 
-func (r *hotelRepo) GetAll(ctx context.Context) ([]model.Hotel, error) {
+func (r *hotelRepo) SlugExists(ctx context.Context, slug string) (bool, error) {
+	var exists bool
+
+	err := r.DB.QueryRow(
+		ctx,
+		`SELECT EXISTS (SELECT 1 FROM hotels WHERE slug = $1)`,
+		slug,
+	).Scan(&exists)
+
+	return exists, err
+}
+
+func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hotel, error) {
 	query := `
 		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
 		FROM hotels
+		WHERE EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = hotels.id AND m.user_id = $1::uuid AND m.status = 'active'
+		)
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.DB.Query(ctx, query)
+	rows, err := r.DB.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +215,7 @@ func (r *hotelRepo) GetAll(ctx context.Context) ([]model.Hotel, error) {
 	return hotels, nil
 }
 
-func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel, error) {
+func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID string) (model.Hotel, error) {
 	query := `
 		UPDATE hotels
 		SET
@@ -199,7 +229,11 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 			email = $8,
 			is_active = $9,
 			updated_at = now()
-		WHERE id = $10
+		WHERE id = $10::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = hotels.id AND m.user_id = $11::uuid AND m.status = 'active'
+		  )
 		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
 	`
 
@@ -217,6 +251,7 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 		hotel.Email,
 		hotel.IsActive,
 		hotel.ID,
+		userID,
 	).Scan(
 		&updated.ID,
 		&updated.Name,
@@ -245,8 +280,17 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel) (model.Hotel
 	return updated, nil
 }
 
-func (r *hotelRepo) Delete(ctx context.Context, id string) error {
-	result, err := r.DB.Exec(ctx, `DELETE FROM hotels WHERE id = $1`, id)
+func (r *hotelRepo) Delete(ctx context.Context, id, userID string) error {
+	query := `
+		DELETE FROM hotels
+		WHERE id = $1::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = hotels.id AND m.user_id = $2::uuid AND m.status = 'active'
+		  )
+	`
+
+	result, err := r.DB.Exec(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}

@@ -25,18 +25,21 @@ const (
 	otpTTL                 = 5 * time.Minute
 	otpResendCooldown      = 60 * time.Second
 	placeholderEmailDomain = "atithi.com"
+	// A 6-digit code is only a million guesses. Without a ceiling on attempts
+	// any account can be taken over from its phone number alone.
+	otpMaxAttempts = 5
 )
 
 type AuthService interface {
 	Login(ctx context.Context, req *LoginRequest) (model.User, error)
 	ValidateOtp(ctx context.Context, phoneNumber, otp string, meta SessionMeta) (model.User, session.Issued, error)
 	Resend(ctx context.Context, phoneNumber string) error
-	// Refresh rotates the caller's session token and extends its idle
-	// deadline. It only works while the session is still alive.
+	// Refresh rotates the session token; it only works while the session is
+	// still alive.
 	Refresh(ctx context.Context, rawToken string) (session.Issued, error)
 	Logout(ctx context.Context, rawToken string) error
-	// Me resolves the authenticated user behind a session.
 	Me(ctx context.Context, userID string) (model.User, error)
+	Onboard(ctx context.Context, userID string, req *OnboardingRequest) (model.User, error)
 }
 
 func placeholderEmail(phoneNumber string) string {
@@ -83,6 +86,34 @@ func otpKey(phoneNumber string) string {
 
 func otpCooldownKey(phoneNumber string) string {
 	return "otp:cooldown:" + phoneNumber
+}
+
+func otpAttemptsKey(phoneNumber string) string {
+	return "otp:attempts:" + phoneNumber
+}
+
+// registerFailedAttempt counts a wrong guess and burns the code once the
+// ceiling is hit, so the attacker has to request a new one and wait out the
+// resend cooldown.
+func (s *authService) registerFailedAttempt(ctx context.Context, phoneNumber string) error {
+	attempts, err := s.redis.Incr(ctx, otpAttemptsKey(phoneNumber)).Result()
+	if err != nil {
+		return err
+	}
+
+	if attempts == 1 {
+		s.redis.Expire(ctx, otpAttemptsKey(phoneNumber), otpTTL)
+	}
+
+	if attempts >= otpMaxAttempts {
+		if err := s.deleteOTP(ctx, phoneNumber); err != nil {
+			s.slog.Error("failed to burn otp after too many attempts", "phone", phoneNumber, "error", err)
+		}
+		s.slog.Warn("otp burned after too many failed attempts", "phone", phoneNumber, "attempts", attempts)
+		return apperr.ErrTooManyOtpAttempts
+	}
+
+	return nil
 }
 
 func (s *authService) setOTP(ctx context.Context, phoneNumber, code string) error {
@@ -209,8 +240,13 @@ func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string, 
 	}
 
 	if storedOTP != otp {
+		if err := s.registerFailedAttempt(ctx, phoneNumber); err != nil {
+			return model.User{}, session.Issued{}, err
+		}
 		return model.User{}, session.Issued{}, apperr.ErrInvalidOtp
 	}
+
+	s.redis.Del(ctx, otpAttemptsKey(phoneNumber))
 
 	existingUser, err := s.userRepo.GetByPhone(ctx, phoneNumber)
 	if err != nil {
@@ -270,6 +306,42 @@ func (s *authService) Logout(ctx context.Context, rawToken string) error {
 
 func (s *authService) Me(ctx context.Context, userID string) (model.User, error) {
 	return s.userRepo.Get(ctx, userID)
+}
+
+func (s *authService) Onboard(ctx context.Context, userID string, req *OnboardingRequest) (model.User, error) {
+	if err := validator.ValidateStruct(req); err != nil {
+		return model.User{}, err
+	}
+
+	existingUser, err := s.userRepo.Get(ctx, userID)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	// A new address has not been proven to belong to them.
+	if req.Email != existingUser.Email {
+		existingUser.Email = req.Email
+		existingUser.EmailVerified = false
+	}
+
+	existingUser.Name = req.Name
+	if req.Image != nil {
+		existingUser.Image = req.Image
+	}
+	existingUser.IsOnboarded = true
+
+	updatedUser, err := s.userRepo.Update(ctx, &existingUser)
+	if err != nil {
+		if errors.Is(err, apperr.ErrUserAlreadyExists) {
+			return model.User{}, apperr.ErrEmailTaken
+		}
+		s.slog.Error("failed to onboard user", "user_id", userID, "error", err)
+		return model.User{}, fmt.Errorf("failed to onboard user: %w", err)
+	}
+
+	s.slog.Info("user onboarded", "user_id", updatedUser.ID)
+
+	return updatedUser, nil
 }
 
 func (s *authService) Resend(ctx context.Context, phoneNumber string) error {

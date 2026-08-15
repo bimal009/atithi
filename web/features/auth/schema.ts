@@ -30,5 +30,20 @@ export const otpSchema = z.object({
   otp: z.string().regex(OTP_REGEX, `Enter the ${OTP_LENGTH}-digit code`),
 });
 
+export const onboardingSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Enter your full name")
+    .max(100, "Keep it under 100 characters"),
+  email: z.email("Enter a valid email address"),
+  // Optional, and an empty string has to survive the resolver untouched so the
+  // field can be left blank.
+  image: z
+    .union([z.url("Enter a valid image URL"), z.literal("")])
+    .optional(),
+});
+
 export type LoginValues = z.infer<typeof loginSchema>;
 export type OtpValues = z.infer<typeof otpSchema>;
+export type OnboardingValues = z.infer<typeof onboardingSchema>;

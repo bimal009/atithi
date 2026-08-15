@@ -16,11 +16,7 @@ func ConnectDB(ctx context.Context, url string, logger *slog.Logger) (*pgxpool.P
 		return nil, fmt.Errorf("unable to parse pool config: %w", err)
 	}
 
-	// Neon's pooled endpoint hands out backend connections that outlive this
-	// process, so cached statement plans can survive a migration and then fail
-	// with "cached plan must not change result type". Describing each statement
-	// on use avoids relying on that cache.
-	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	cfg.ConnConfig.StatementCacheCapacity = 0
 	cfg.ConnConfig.DescriptionCacheCapacity = 0
 
