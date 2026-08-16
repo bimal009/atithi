@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
@@ -16,6 +17,7 @@ type Handlers struct {
 	RoomType       *roomtypes.RoomTypeHandler
 	Role           *role.RoleHandler
 	Member         *member.MemberHandler
+	Customer       *customer.CustomerHandler
 	Image          *handlers.ImageHandler
 	RequireAuth    gin.HandlerFunc
 	ValidateHotel  gin.HandlerFunc
@@ -96,6 +98,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				members.POST("", h.Member.Add)
 				members.PATCH("/:memberId", h.Member.Update)
 				members.DELETE("/:memberId", h.Member.Remove)
+			}
+
+			customers := scoped.Group("/customers")
+			{
+				customers.GET("", h.Customer.List)
+				customers.POST("", h.Customer.Create)
+				customers.GET("/:customerId", h.Customer.Get)
+				customers.PATCH("/:customerId", h.Customer.Update)
+				customers.DELETE("/:customerId", h.Customer.Delete)
 			}
 		}
 	}

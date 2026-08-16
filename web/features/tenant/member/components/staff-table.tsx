@@ -46,6 +46,9 @@ export function StaffTable({
   assignableRoles,
   roleFilter,
   onRoleFilterChange,
+  search,
+  onSearchChange,
+  loading,
 }: {
   tenant: string;
   members: Member[];
@@ -53,6 +56,9 @@ export function StaffTable({
   assignableRoles: RoleSummary[];
   roleFilter: string;
   onRoleFilterChange: (roleId: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  loading?: boolean;
 }) {
   const [editingMember, setEditingMember] = React.useState<Member | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Member | null>(null);
@@ -92,7 +98,7 @@ export function StaffTable({
       key: "phone",
       header: "Phone",
       cell: (m) => (
-        <span className="text-muted-foreground tabular-nums">+977 {m.userPhone}</span>
+        <span className="text-muted-foreground tabular-nums">{m.userPhone}</span>
       ),
     },
     {
@@ -180,9 +186,11 @@ export function StaffTable({
       <DataTable
         columns={columns}
         data={members}
+        loading={loading}
         getRowId={(m) => m.id}
-        searchPlaceholder="Search by name or email…"
-        searchFn={(m, q) => `${m.userName} ${m.userEmail}`.toLowerCase().includes(q)}
+        searchPlaceholder="Search by name, email or phone…"
+        searchValue={search}
+        onSearchChange={onSearchChange}
         toolbar={
           <Select
             items={roleFilterItems}

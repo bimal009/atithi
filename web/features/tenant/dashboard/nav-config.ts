@@ -81,7 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: LayoutGridIcon,
         items: [
           { title: "Rooms", href: "/rooms" },
-          { title: "Room Types", href: "/rooms/types" },
+          { title: "Types", href: "/rooms/types" },
           { title: "Tables", href: "/tables" },
         ],
       },

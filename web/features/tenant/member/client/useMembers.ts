@@ -16,15 +16,15 @@ import type { AddMemberInput, UpdateMemberInput } from "../types";
 
 export const memberKeys = {
   all: (tenant: string) => ["members", tenant] as const,
-  filtered: (tenant: string, roleId: string) =>
-    [...memberKeys.all(tenant), { roleId }] as const,
+  filtered: (tenant: string, roleId: string, search: string) =>
+    [...memberKeys.all(tenant), { roleId, search }] as const,
 };
 
-export const useMembersQuery = (tenant: string, roleId = "all") =>
+export const useMembersQuery = (tenant: string, roleId = "all", search = "") =>
   useQuery({
-    queryKey: memberKeys.filtered(tenant, roleId),
+    queryKey: memberKeys.filtered(tenant, roleId, search),
     queryFn: async () =>
-      (await listMembers(tenant, roleId === "all" ? undefined : roleId)).data,
+      (await listMembers(tenant, roleId === "all" ? undefined : roleId, search)).data,
     placeholderData: keepPreviousData,
   });
 

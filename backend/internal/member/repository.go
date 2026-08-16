@@ -141,8 +141,8 @@ func (r *memberRepo) ListByHotel(ctx context.Context, hotelID, roleID string, pa
 		JOIN users u ON u.id = m.user_id
 		JOIN roles r ON r.id = m.role_id
 		WHERE m.hotel_id = $1::uuid
-		  AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
-		  AND ($3 = '' OR m.role_id = $3::uuid)
+		  AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%' OR u.phone_number ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR m.role_id = NULLIF($3, '')::uuid)
 		ORDER BY m.created_at DESC
 		LIMIT $4 OFFSET $5
 	`

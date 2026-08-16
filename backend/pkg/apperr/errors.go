@@ -58,6 +58,10 @@ var (
 	ErrInvalidInput       = New(http.StatusBadRequest, "invalid_input", "invalid input")
 	ErrInvalidPagination  = New(http.StatusBadRequest, "invalid_pagination", "invalid page or limit value")
 	ErrLimitExceeded      = New(http.StatusBadRequest, "limit_exceeded", "limit exceeds maximum allowed value")
+
+	ErrCustomerNotFound    = New(http.StatusNotFound, "not_found", "customer not found")
+	ErrCustomerPhoneExists = New(http.StatusConflict, "conflict", "a customer with this phone number already exists")
+	ErrDocumentMismatch    = New(http.StatusBadRequest, "invalid_input", "document type and document number must both be provided or both be empty")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

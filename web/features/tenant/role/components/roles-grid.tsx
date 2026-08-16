@@ -8,6 +8,7 @@ import {
   ShieldIcon,
   ShieldUserIcon,
   Trash2Icon,
+  UtensilsIcon,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -55,69 +56,98 @@ function RoleCard({
     <Card>
       <CardHeader className="grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>{role.name}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>{role.name}</CardTitle>
+            {role.isSystem ? (
+              <Badge variant="outline" className="gap-1 font-normal">
+                <ShieldUserIcon aria-hidden />
+                System
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 font-normal">
+                <UtensilsIcon aria-hidden />
+                Hotel
+              </Badge>
+            )}
+          </div>
           {role.description && <CardDescription>{role.description}</CardDescription>}
         </div>
-        {role.isSystem ? (
-          <Badge variant="outline" className="gap-1 font-normal justify-self-end">
-            <ShieldUserIcon aria-hidden />
-            System
-          </Badge>
-        ) : (
-          <div className="flex items-center gap-1 justify-self-end">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="cursor-pointer"
-                    aria-label={`Edit ${role.name}`}
-                    onClick={() => onEdit?.(role)}
-                  >
-                    <PencilIcon aria-hidden />
-                  </Button>
-                }
-              />
-              <TooltipContent>Edit role</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="cursor-pointer text-destructive hover:text-destructive"
-                    aria-label={`Delete ${role.name}`}
-                    onClick={() => onDelete?.(role)}
-                  >
-                    <Trash2Icon aria-hidden />
-                  </Button>
-                }
-              />
-              <TooltipContent>Delete role</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
+        <div className="flex items-center gap-1 justify-self-end">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer"
+                  aria-label="View permissions"
+                  onClick={() => onView(role)}
+                >
+                  <EyeIcon aria-hidden />
+                </Button>
+              }
+            />
+            <TooltipContent>View permissions</TooltipContent>
+          </Tooltip>
+          {!role.isSystem && (
+            <>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="cursor-pointer"
+                      aria-label={`Edit ${role.name}`}
+                      onClick={() => onEdit?.(role)}
+                    >
+                      <PencilIcon aria-hidden />
+                    </Button>
+                  }
+                />
+                <TooltipContent>Edit role</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="cursor-pointer text-destructive hover:text-destructive"
+                      aria-label={`Delete ${role.name}`}
+                      onClick={() => onDelete?.(role)}
+                    >
+                      <Trash2Icon aria-hidden />
+                    </Button>
+                  }
+                />
+                <TooltipContent>Delete role</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </div>
       </CardHeader>
-      <CardContent>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="cursor-pointer"
-                aria-label="View permissions"
-                onClick={() => onView(role)}
-              >
-                <EyeIcon aria-hidden />
-              </Button>
-            }
-          />
-          <TooltipContent>View permissions</TooltipContent>
-        </Tooltip>
-      </CardContent>
+    </Card>
+  );
+}
+
+function RoleCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="grid-cols-[1fr_auto]">
+        <div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <Skeleton className="mt-2 h-4 w-40" />
+        </div>
+        <div className="flex items-center gap-1 justify-self-end">
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+        </div>
+      </CardHeader>
     </Card>
   );
 }
@@ -126,7 +156,7 @@ function RoleGridSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 3 }).map((_, index) => (
-        <Skeleton key={index} className="h-40 w-full" />
+        <RoleCardSkeleton key={index} />
       ))}
     </div>
   );

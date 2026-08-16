@@ -12,6 +12,7 @@ import (
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
@@ -66,6 +67,7 @@ func main() {
 	roleRepo := role.NewRoleRepo(pool)
 	permissionRepo := permission.NewPermissionRepo(pool)
 	roomTypeRepo := roomtypes.NewRoomTypeRepo(pool)
+	customerRepo := customer.NewCustomerRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
@@ -83,6 +85,9 @@ func main() {
 
 	memberService := member.NewMemberService(slog, memberRepo, roleRepo, userRepo, pool)
 	memberHandler := member.NewMemberHandler(slog, memberService)
+
+	customerService := customer.NewCustomerService(slog, customerRepo)
+	customerHandler := customer.NewCustomerHandler(slog, customerService)
 
 	imageHandler := handlers.NewImageHandler(cfg)
 
@@ -113,6 +118,7 @@ func main() {
 		RoomType:       roomTypeHandler,
 		Role:           roleHandler,
 		Member:         memberHandler,
+		Customer:       customerHandler,
 		Image:          imageHandler,
 		RequireAuth:    requireAuth,
 		ValidateHotel:  validateHotel,

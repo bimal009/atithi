@@ -30,11 +30,7 @@ export interface DataTableColumn<T> {
   cellClassName?: string
 }
 
-/**
- * One shared table shell for every entity list in the dashboard — same card,
- * search box, pagination footer, loading and empty states. Columns and data
- * are passed as props so each page only describes its own data.
- */
+
 export function DataTable<T>({
   columns,
   data,
@@ -46,6 +42,8 @@ export function DataTable<T>({
   emptyDescription,
   searchPlaceholder,
   searchFn,
+  searchValue,
+  onSearchChange,
   toolbar,
   pageSize = 8,
 }: {
@@ -59,15 +57,19 @@ export function DataTable<T>({
   emptyDescription?: string
   searchPlaceholder?: string
   searchFn?: (row: T, query: string) => boolean
+  searchValue?: string
+  onSearchChange?: (value: string) => void
   toolbar?: React.ReactNode
   pageSize?: number
 }) {
-  const [query, setQuery] = React.useState("")
+  const controlled = onSearchChange !== undefined
+  const [internalQuery, setInternalQuery] = React.useState("")
+  const query = controlled ? (searchValue ?? "") : internalQuery
+  const setQuery = onSearchChange ?? setInternalQuery
+  const showSearch = controlled || !!searchFn
+
   const [pageIndex, setPageIndex] = React.useState(0)
 
-  // Reset to page 1 whenever the search text changes — adjusted during
-  // render (React's documented pattern) rather than in an effect, so it
-  // takes effect before paint instead of causing an extra render pass.
   const [resetKey, setResetKey] = React.useState(query)
   if (resetKey !== query) {
     setResetKey(query)
@@ -75,9 +77,10 @@ export function DataTable<T>({
   }
 
   const filtered = React.useMemo(() => {
+    if (controlled) return data
     if (!searchFn || !query.trim()) return data
     return data.filter((row) => searchFn(row, query.trim().toLowerCase()))
-  }, [data, query, searchFn])
+  }, [controlled, data, query, searchFn])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePageIndex = Math.min(pageIndex, pageCount - 1)
@@ -88,9 +91,9 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-3">
-      {(searchFn || toolbar) && (
+      {(showSearch || toolbar) && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {searchFn && (
+          {showSearch && (
             <div className="relative flex-1 sm:max-w-xs">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

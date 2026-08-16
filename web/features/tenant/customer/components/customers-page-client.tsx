@@ -8,29 +8,25 @@ import { debounce, parseAsString, useQueryState } from "nuqs";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  useAssignableRolesQuery,
-  useRolesQuery,
-} from "@/features/tenant/role/client/useRoles";
 import { getErrorMessage } from "@/lib/axios";
 
-import { useMembersQuery } from "../client/useMembers";
-import { StaffTable } from "./staff-table";
+import { useCustomersQuery } from "../client/useCustomers";
+import { CustomersTable } from "./customers-table";
 
 const searchParser = parseAsString.withDefault("").withOptions({
   limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
-function StaffSkeleton() {
+function CustomersSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-7 w-32" />
           <Skeleton className="h-4 w-48" />
         </div>
-        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-36" />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
@@ -45,51 +41,36 @@ function StaffSkeleton() {
   );
 }
 
-export function StaffPageClient() {
+export function CustomersPageClient() {
   const { tenant } = useParams<{ tenant: string }>();
 
-  const [roleFilter, setRoleFilter] = React.useState("all");
   const [search, setSearch] = useQueryState("q", searchParser);
+  const customersQuery = useCustomersQuery(tenant, search);
 
-  const membersQuery = useMembersQuery(tenant, roleFilter, search);
-  const rolesQuery = useRolesQuery(tenant);
-  const assignableRolesQuery = useAssignableRolesQuery(tenant);
-
-  if (membersQuery.isPending || rolesQuery.isPending || assignableRolesQuery.isPending) {
-    return <StaffSkeleton />;
+  if (customersQuery.isPending) {
+    return <CustomersSkeleton />;
   }
 
-  if (membersQuery.isError || rolesQuery.isError || assignableRolesQuery.isError) {
+  if (customersQuery.isError) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Staff"
-          description="Your team, and who can do what."
-        />
+        <PageHeader title="Customers" description="Your guests, on record." />
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden />
-          <AlertTitle>Could not load staff</AlertTitle>
-          <AlertDescription>
-            {getErrorMessage(
-              membersQuery.error ?? rolesQuery.error ?? assignableRolesQuery.error,
-            )}
-          </AlertDescription>
+          <AlertTitle>Could not load customers</AlertTitle>
+          <AlertDescription>{getErrorMessage(customersQuery.error)}</AlertDescription>
         </Alert>
       </div>
     );
   }
 
   return (
-    <StaffTable
+    <CustomersTable
       tenant={tenant}
-      members={membersQuery.data.members}
-      roles={rolesQuery.data.roles}
-      assignableRoles={assignableRolesQuery.data.roles}
-      roleFilter={roleFilter}
-      onRoleFilterChange={setRoleFilter}
+      customers={customersQuery.data.customers}
       search={search}
       onSearchChange={setSearch}
-      loading={membersQuery.isFetching}
+      loading={customersQuery.isFetching}
     />
   );
 }
