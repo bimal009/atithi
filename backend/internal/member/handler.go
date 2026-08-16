@@ -61,3 +61,34 @@ func (h *MemberHandler) Add(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, responses.Success("member added", member))
 }
+
+func (h *MemberHandler) Update(c *gin.Context) {
+	var req UpdateMemberRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
+		return
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	member, err := h.service.Update(c.Request.Context(), c.Param("memberId"), middleware.HotelID(c), &req)
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("member updated", member))
+}
+
+func (h *MemberHandler) Remove(c *gin.Context) {
+	if err := h.service.Remove(c.Request.Context(), c.Param("memberId"), middleware.HotelID(c)); err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success[any]("member removed", nil))
+}

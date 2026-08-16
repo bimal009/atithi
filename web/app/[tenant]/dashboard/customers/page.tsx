@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { UsersRoundIcon } from "lucide-react"
 
 import { getGuests, type Guest } from "@/lib/mock-data"
@@ -8,11 +9,12 @@ import { DataTable, type DataTableColumn } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Badge } from "@/components/ui/badge"
+import { AddCustomerDialog } from "@/features/tenant/dashboard/customers/add-customer-dialog"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function CustomersPage() {
   usePageTitle("Customers")
-  const guests = getGuests()
+  const [guests, setGuests] = React.useState<Guest[]>(getGuests)
   const repeatGuests = guests.filter((g) => g.visits > 1)
   const totalSpend = guests.reduce((sum, g) => sum + g.totalSpend, 0)
 
@@ -57,6 +59,11 @@ export default function CustomersPage() {
       <PageHeader
         title="Customers"
         description={`${guests.length} guests on record`}
+        actions={
+          <AddCustomerDialog
+            onCreate={(guest) => setGuests((prev) => [guest, ...prev])}
+          />
+        }
       />
 
       <SectionCards

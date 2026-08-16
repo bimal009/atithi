@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { generateId } from "@/lib/utils"
 
 const SECTIONS = [
   { value: "indoor", label: "Indoor" },
@@ -67,7 +68,7 @@ export function AddTableDialog({
 
   const onSubmit = handleSubmit((values) => {
     onCreate({
-      id: `tb${Date.now()}`,
+      id: generateId("tb"),
       name: values.name.trim(),
       capacity: values.capacity,
       section: values.section,
@@ -122,6 +123,7 @@ export function AddTableDialog({
               <Field data-invalid={!!errors.section}>
                 <FieldLabel htmlFor="table-section">Section</FieldLabel>
                 <Select
+                  items={SECTIONS}
                   value={section}
                   onValueChange={(value) =>
                     setValue("section", (value ?? "indoor") as TableValues["section"], {

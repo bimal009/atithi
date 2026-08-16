@@ -13,3 +13,10 @@ export const addMemberSchema = z.object({
 });
 
 export type AddMemberValues = z.infer<typeof addMemberSchema>;
+
+export const updateMemberSchema = z.object({
+  roleId: z.string().min(1, "Select a role"),
+  status: z.enum(["active", "inactive"]),
+});
+
+export type UpdateMemberValues = z.infer<typeof updateMemberSchema>;

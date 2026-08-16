@@ -76,12 +76,25 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				roomTypes.DELETE("/:roomTypeId", h.RoomType.Delete)
 			}
 
-			scoped.GET("/roles", h.Role.ListRoles)
+			scoped.GET("/permissions", h.Role.ListPermissions)
+
+			roles := scoped.Group("/roles")
+			{
+				roles.GET("", h.Role.ListRoles)
+				roles.GET("/system", h.Role.ListSystemRoles)
+				roles.GET("/hotel", h.Role.ListHotelRoles)
+				roles.POST("", h.Role.Create)
+				roles.GET("/:roleId", h.Role.Get)
+				roles.PATCH("/:roleId", h.Role.Update)
+				roles.DELETE("/:roleId", h.Role.Delete)
+			}
 
 			members := scoped.Group("/members")
 			{
 				members.GET("", h.Member.List)
 				members.POST("", h.Member.Add)
+				members.PATCH("/:memberId", h.Member.Update)
+				members.DELETE("/:memberId", h.Member.Remove)
 			}
 		}
 	}

@@ -26,6 +26,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
+import { generateId } from "@/lib/utils"
 import type { SubMenu } from "@/types"
 
 const subMenuSchema = z.object({
@@ -52,7 +53,7 @@ function AddSubMenuDialog({ onCreate }: { onCreate: (subMenu: SubMenu) => void }
 
   const onSubmit = handleSubmit((values) => {
     onCreate({
-      id: `sm${Date.now()}`,
+      id: generateId("sm"),
       name: values.name,
       description: values.description || undefined,
     })

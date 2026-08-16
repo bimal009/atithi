@@ -7,6 +7,11 @@ type AddMemberRequest struct {
 	RoleID string `json:"roleId" validate:"required,uuid"`
 }
 
+type UpdateMemberRequest struct {
+	RoleID *string `json:"roleId,omitempty" validate:"omitempty,uuid"`
+	Status *string `json:"status,omitempty" validate:"omitempty,oneof=active inactive"`
+}
+
 type ListMembersResponse struct {
 	Members []model.MemberDetail `json:"members"`
 	Page    int                  `json:"page"`

@@ -13,6 +13,7 @@ type Hotel struct {
 	PhoneNumber string    `db:"phone_number" json:"phoneNumber"`
 	Email       *string   `db:"email" json:"email,omitempty"`
 	IsActive    bool      `db:"is_active" json:"isActive"`
+	CreatedBy   *string   `db:"created_by" json:"createdBy,omitempty"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
 }

@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { MultiImageUpload } from "@/features/tenant/dashboard/rooms/multi-image-upload"
+import { generateId } from "@/lib/utils"
 
 const roomSchema = z.object({
   number: z.string().trim().min(1, "Enter a room number").max(20),
@@ -84,9 +85,14 @@ export function AddRoomDialog({
 
   const type = watch("type")
 
+  const typeItems = React.useMemo(
+    () => Object.fromEntries(roomTypes.map((rt) => [rt.type, rt.label])),
+    [roomTypes],
+  )
+
   const onSubmit = handleSubmit((values) => {
     onCreate({
-      id: `r${Date.now()}`,
+      id: generateId("r"),
       number: values.number,
       floor: values.floor,
       type: values.type,
@@ -161,6 +167,7 @@ export function AddRoomDialog({
               <Field data-invalid={!!errors.type}>
                 <FieldLabel htmlFor="type">Room type</FieldLabel>
                 <Select
+                  items={typeItems}
                   value={type}
                   onValueChange={(value) =>
                     setValue("type", value ?? "", { shouldValidate: true })

@@ -816,6 +816,8 @@ export interface Guest {
   id: string
   name: string
   phone: string
+  email?: string
+  notes?: string
   visits: number
   lastStay: string
   totalSpend: number

@@ -22,6 +22,7 @@ type RoleRepo interface {
 	GetBySlug(ctx context.Context, hotelID *string, slug string) (model.HotelRole, error)
 	ListForHotel(ctx context.Context, hotelID string) ([]model.HotelRole, error)
 	ListGlobal(ctx context.Context) ([]model.HotelRole, error)
+	ListCustomForHotel(ctx context.Context, hotelID string) ([]model.HotelRole, error)
 	Update(ctx context.Context, role *model.HotelRole) (model.HotelRole, error)
 	Delete(ctx context.Context, id string) error
 	SetPermissions(ctx context.Context, roleID string, permissionIDs []string, tx pgx.Tx) error
@@ -192,6 +193,47 @@ func (r *roleRepo) ListGlobal(ctx context.Context) ([]model.HotelRole, error) {
 	`
 
 	rows, err := r.DB.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	roles := make([]model.HotelRole, 0)
+
+	for rows.Next() {
+		var role model.HotelRole
+		if err := rows.Scan(
+			&role.ID,
+			&role.HotelID,
+			&role.Name,
+			&role.Slug,
+			&role.Description,
+			&role.IsSystem,
+			&role.CreatedBy,
+			&role.CreatedAt,
+			&role.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
+
+func (r *roleRepo) ListCustomForHotel(ctx context.Context, hotelID string) ([]model.HotelRole, error) {
+	query := `
+		SELECT id, hotel_id, name, slug, description, is_system, created_by, created_at, updated_at
+		FROM roles
+		WHERE hotel_id = $1
+		ORDER BY name
+	`
+
+	rows, err := r.DB.Query(ctx, query, hotelID)
 	if err != nil {
 		return nil, err
 	}

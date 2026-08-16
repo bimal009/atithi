@@ -21,3 +21,19 @@ export type Role = {
 export type ListRolesResponse = {
   roles: Role[];
 };
+
+export type ListPermissionsResponse = {
+  permissions: Permission[];
+};
+
+export type CreateRoleInput = {
+  name: string;
+  description?: string;
+  permissionIds: string[];
+};
+
+export type UpdateRoleInput = {
+  name?: string;
+  description?: string;
+  permissionIds?: string[];
+};

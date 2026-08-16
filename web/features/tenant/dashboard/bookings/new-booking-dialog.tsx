@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { formatDate } from "@/lib/utils"
+import { formatDate, generateId } from "@/lib/utils"
 
 const bookingSchema = z.object({
   guestName: z.string().trim().min(2, "Enter the guest's name").max(100),
@@ -146,6 +146,18 @@ export function NewBookingDialog({
 
   const availableRooms = rooms.filter((room) => room.status === "available")
 
+  const channelItems = React.useMemo(
+    () => Object.fromEntries(BOOKING_CHANNELS.map((c) => [c.value, c.label])),
+    [],
+  )
+  const roomItems = React.useMemo(
+    () =>
+      Object.fromEntries(
+        availableRooms.map((room) => [room.id, `${room.number} · ${room.type}`]),
+      ),
+    [availableRooms],
+  )
+
   function resetAll() {
     reset(emptyValues)
     setCheckInDate(undefined)
@@ -173,7 +185,7 @@ export function NewBookingDialog({
     const nights = Math.max(1, Math.round((+checkOut - +checkIn) / 86_400_000))
 
     onCreate({
-      id: `bk${Date.now()}`,
+      id: generateId("bk"),
       guestName: values.guestName,
       guestPhone: values.guestPhone,
       roomId: room.id,
@@ -241,6 +253,7 @@ export function NewBookingDialog({
             <Field data-invalid={!!errors.channel}>
               <FieldLabel htmlFor="channel">Booking channel</FieldLabel>
               <Select
+                items={channelItems}
                 value={channel}
                 onValueChange={(value) =>
                   setValue("channel", (value ?? "whatsapp") as BookingValues["channel"], {
@@ -266,6 +279,7 @@ export function NewBookingDialog({
               <Field data-invalid={!!errors.roomId}>
                 <FieldLabel htmlFor="room">Room</FieldLabel>
                 <Select
+                  items={roomItems}
                   value={roomId}
                   onValueChange={(value) =>
                     setValue("roomId", value ?? "", { shouldValidate: true })

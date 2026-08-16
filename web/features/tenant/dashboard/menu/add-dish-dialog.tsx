@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { ADD_ONS, MENU_CATEGORIES, SUB_MENUS } from "@/lib/mock-data"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, generateId } from "@/lib/utils"
 import type { MenuItem } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -112,7 +112,7 @@ export function AddDishDialog({
 
   const onSubmit = handleSubmit((values) => {
     onCreate({
-      id: `m${Date.now()}`,
+      id: generateId("m"),
       name: values.name,
       subMenu: values.subMenu,
       category: values.category,
@@ -155,6 +155,7 @@ export function AddDishDialog({
               <Field data-invalid={!!errors.isVeg}>
                 <FieldLabel htmlFor="dish-type">Type</FieldLabel>
                 <Select
+                  items={{ veg: "Veg", "non-veg": "Non-veg" }}
                   value={isVeg}
                   onValueChange={(v) =>
                     setValue("isVeg", (v ?? "veg") as DishValues["isVeg"], {

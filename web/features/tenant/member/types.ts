@@ -29,3 +29,8 @@ export type AddMemberInput = {
   phone: string;
   roleId: string;
 };
+
+export type UpdateMemberInput = {
+  roleId?: string;
+  status?: MemberStatus;
+};

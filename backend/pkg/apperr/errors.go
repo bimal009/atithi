@@ -50,6 +50,7 @@ var (
 
 	ErrMemberNotFound = New(http.StatusNotFound, "not_found", "member not found")
 	ErrMemberExists   = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
+	ErrLastOwner      = New(http.StatusConflict, "conflict", "this hotel needs at least one active owner")
 
 	ErrRoomTypeNotFound   = New(http.StatusNotFound, "not_found", "room type not found")
 	ErrRoomTypeNameExists = New(http.StatusConflict, "conflict", "a room type with this name already exists")

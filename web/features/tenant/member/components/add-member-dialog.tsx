@@ -63,6 +63,11 @@ export function AddMemberDialog({
   const phoneField = register("phone");
   const roleId = watch("roleId");
 
+  const roleItems = React.useMemo(
+    () => Object.fromEntries(roles.map((role) => [role.id, role.name])),
+    [roles],
+  );
+
   const onSubmit = handleSubmit(async (values) => {
     await add.mutateAsync(values);
     setOpen(false);
@@ -123,6 +128,7 @@ export function AddMemberDialog({
             <Field data-invalid={!!errors.roleId}>
               <FieldLabel htmlFor="member-role">Role</FieldLabel>
               <Select
+                items={roleItems}
                 value={roleId}
                 onValueChange={(value) =>
                   setValue("roleId", value ?? "", { shouldValidate: true })

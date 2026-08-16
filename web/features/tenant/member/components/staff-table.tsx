@@ -1,13 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { UsersIcon } from "lucide-react";
+import { MoreHorizontalIcon, PencilIcon, Trash2Icon, UsersIcon } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { StatusBadge } from "@/components/shared/status-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -17,8 +34,10 @@ import {
 } from "@/components/ui/select";
 import type { Role } from "@/features/tenant/role/types";
 
-import { AddMemberDialog } from "./add-member-dialog";
+import { useRemoveMember } from "../client/useMembers";
 import type { Member } from "../types";
+import { AddMemberDialog } from "./add-member-dialog";
+import { EditMemberDialog } from "./edit-member-dialog";
 
 export function StaffTable({
   tenant,
@@ -30,9 +49,20 @@ export function StaffTable({
   roles: Role[];
 }) {
   const [roleFilter, setRoleFilter] = React.useState("all");
+  const [editingMember, setEditingMember] = React.useState<Member | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<Member | null>(null);
+  const remove = useRemoveMember(tenant);
 
   const filtered = members.filter(
     (m) => roleFilter === "all" || m.roleId === roleFilter,
+  );
+
+  const roleFilterItems = React.useMemo(
+    () => ({
+      all: "All roles",
+      ...Object.fromEntries(roles.map((role) => [role.id, role.name])),
+    }),
+    [roles],
   );
 
   const columns: DataTableColumn<Member>[] = [
@@ -81,9 +111,46 @@ export function StaffTable({
     {
       key: "status",
       header: "",
+      cell: (m) => <StatusBadge status={m.status} />,
+    },
+    {
+      key: "actions",
+      header: "",
       headerClassName: "pr-5",
       cellClassName: "pr-5 text-right",
-      cell: (m) => <StatusBadge status={m.status} />,
+      cell: (m) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 cursor-pointer justify-self-end"
+                aria-label={`Actions for ${m.userName}`}
+              >
+                <MoreHorizontalIcon aria-hidden />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => setEditingMember(m)}
+            >
+              <PencilIcon aria-hidden />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={() => setPendingDelete(m)}
+            >
+              <Trash2Icon aria-hidden />
+              Remove
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
     },
   ];
 
@@ -116,6 +183,7 @@ export function StaffTable({
         searchFn={(m, q) => `${m.userName} ${m.userEmail}`.toLowerCase().includes(q)}
         toolbar={
           <Select
+            items={roleFilterItems}
             value={roleFilter}
             onValueChange={(value) => setRoleFilter(value ?? "all")}
           >
@@ -136,6 +204,44 @@ export function StaffTable({
         emptyTitle="No staff found"
         emptyDescription="Try a different search term or role filter."
       />
+
+      <EditMemberDialog
+        tenant={tenant}
+        member={editingMember}
+        roles={roles}
+        open={editingMember !== null}
+        onOpenChange={(open) => !open && setEditingMember(null)}
+      />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {pendingDelete?.userName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;ll lose access to this hotel&apos;s dashboard immediately.
+              This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              disabled={remove.isPending}
+              onClick={async () => {
+                if (!pendingDelete) return;
+                await remove.mutateAsync(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              {remove.isPending ? "Removing" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

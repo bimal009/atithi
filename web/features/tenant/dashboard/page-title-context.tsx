@@ -36,8 +36,3 @@ export function useSiteTitle() {
   }
   return ctx.title
 }
-
-export function PageTitle({ title }: { title: string }) {
-  usePageTitle(title)
-  return null
-}
