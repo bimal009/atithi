@@ -19,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AddRoomDialog } from "@/features/tenant/dashboard/rooms/add-room-dialog"
 import { RoomStatusDialog } from "@/features/tenant/dashboard/rooms/room-status-dialog"
 import { RoomStatusGrid } from "@/features/tenant/dashboard/rooms/room-status-grid"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const LEGEND: Array<{ status: RoomStatus; label: string; className: string }> = [
   { status: "available", label: "Available", className: "bg-primary/10 border border-primary/30" },
@@ -34,7 +33,6 @@ const TYPE_FILTERS: Array<{ value: "all" | RoomType; label: string }> = [
 ]
 
 export default function RoomsPage() {
-  usePageTitle("Rooms")
   const loading = useMockLoading()
   const [rooms, setRooms] = React.useState(ROOMS)
   const [selected, setSelected] = React.useState<Room | null>(null)

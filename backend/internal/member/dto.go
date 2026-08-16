@@ -12,6 +12,10 @@ type UpdateMemberRequest struct {
 	Status *string `json:"status,omitempty" validate:"omitempty,oneof=active inactive"`
 }
 
+type ListMembersQuery struct {
+	RoleID string `form:"roleId" validate:"omitempty,uuid"`
+}
+
 type ListMembersResponse struct {
 	Members []model.MemberDetail `json:"members"`
 	Page    int                  `json:"page"`

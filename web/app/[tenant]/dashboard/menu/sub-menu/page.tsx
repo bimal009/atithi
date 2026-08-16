@@ -25,7 +25,6 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 import { generateId } from "@/lib/utils"
 import type { SubMenu } from "@/types"
 
@@ -116,7 +115,6 @@ function AddSubMenuDialog({ onCreate }: { onCreate: (subMenu: SubMenu) => void }
 }
 
 export default function SubMenuPage() {
-  usePageTitle("Sub Menu")
   const [subMenus, setSubMenus] = React.useState(SUB_MENUS)
 
   return (

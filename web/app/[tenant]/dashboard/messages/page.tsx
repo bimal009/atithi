@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CHANNEL_META } from "@/features/tenant/dashboard/bookings/channel-badge"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 function initialsOf(name: string) {
   return name
@@ -30,7 +29,6 @@ const CHANNEL_FILTERS: Array<{ value: "all" | BookingChannel; label: string }> =
 ]
 
 export default function MessagesPage() {
-  usePageTitle("Messages")
   const [conversations, setConversations] = React.useState(CONVERSATIONS)
   const [channel, setChannel] = React.useState<"all" | BookingChannel>("all")
   const [query, setQuery] = React.useState("")

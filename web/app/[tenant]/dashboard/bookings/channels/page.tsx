@@ -8,10 +8,8 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CHANNEL_META } from "@/features/tenant/dashboard/bookings/channel-badge"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function BookingChannelsPage() {
-  usePageTitle("Channels")
   const channels = getBookingsByChannel()
 
   const totalBookings = channels.reduce((sum, c) => sum + c.bookingCount, 0)

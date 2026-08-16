@@ -17,7 +17,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const settingsSchema = z.object({
   hotelName: z.string().trim().min(2, "Enter the hotel name").max(255),
@@ -28,7 +27,6 @@ const settingsSchema = z.object({
 type SettingsValues = z.infer<typeof settingsSchema>
 
 export default function SettingsPage() {
-  usePageTitle("Settings")
 
   const {
     register,

@@ -19,10 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AddDishDialog } from "@/features/tenant/dashboard/menu/add-dish-dialog"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function MenuDishesPage() {
-  usePageTitle("Dishes")
   const [items, setItems] = React.useState(MENU_ITEMS)
   const [category, setCategory] = React.useState<"all" | string>("all")
 

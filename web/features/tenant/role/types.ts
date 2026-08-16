@@ -5,21 +5,23 @@ export type Permission = {
   description?: string;
 };
 
-export type Role = {
+export type RoleSummary = {
   id: string;
   hotelId: string;
   name: string;
   slug: string;
   description?: string;
   isSystem: boolean;
-  memberCount: number;
-  permissions: Permission[];
   createdAt: string;
   updatedAt: string;
 };
 
+export type Role = RoleSummary & {
+  permissions: Permission[];
+};
+
 export type ListRolesResponse = {
-  roles: Role[];
+  roles: RoleSummary[];
 };
 
 export type ListPermissionsResponse = {
@@ -37,3 +39,5 @@ export type UpdateRoleInput = {
   description?: string;
   permissionIds?: string[];
 };
+
+export type RoleTab = "system" | "custom";

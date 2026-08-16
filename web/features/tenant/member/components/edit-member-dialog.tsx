@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import type { Role } from "@/features/tenant/role/types";
+import type { RoleSummary } from "@/features/tenant/role/types";
 
 import { useUpdateMember } from "../client/useMembers";
 import { updateMemberSchema, type UpdateMemberValues } from "../schema";
@@ -39,7 +39,7 @@ export function EditMemberDialog({
 }: {
   tenant: string;
   member: Member | null;
-  roles: Role[];
+  roles: RoleSummary[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {

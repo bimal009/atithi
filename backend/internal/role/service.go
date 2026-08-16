@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bimal009/atithi/internal/member"
 	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/pkg/apperr"
@@ -27,6 +26,7 @@ type RoleService interface {
 	ListRoles(ctx context.Context, hotelID string) (ListRolesResponse, error)
 	ListSystemRoles(ctx context.Context, hotelID string) (ListRolesResponse, error)
 	ListHotelRoles(ctx context.Context, hotelID string) (ListRolesResponse, error)
+	ListAssignableRoles(ctx context.Context, hotelID string) (ListRolesResponse, error)
 	Get(ctx context.Context, id, hotelID string) (RoleResponse, error)
 	Create(ctx context.Context, hotelID, userID string, req *CreateRoleRequest) (RoleResponse, error)
 	Update(ctx context.Context, id, hotelID string, req *UpdateRoleRequest) (RoleResponse, error)
@@ -37,7 +37,6 @@ type roleService struct {
 	slog        *slog.Logger
 	repo        RoleRepo
 	permissions permission.PermissionRepo
-	members     member.MemberRepo
 	DB          *pgxpool.Pool
 }
 
@@ -45,14 +44,12 @@ func NewRoleService(
 	slog *slog.Logger,
 	repo RoleRepo,
 	permissions permission.PermissionRepo,
-	members member.MemberRepo,
 	db *pgxpool.Pool,
 ) RoleService {
 	return &roleService{
 		slog:        slog,
 		repo:        repo,
 		permissions: permissions,
-		members:     members,
 		DB:          db,
 	}
 }
@@ -77,7 +74,7 @@ func (s *roleService) ListRoles(ctx context.Context, hotelID string) (ListRolesR
 		return ListRolesResponse{}, err
 	}
 
-	return s.buildRolesResponse(ctx, roles, hotelID)
+	return s.buildRolesResponse(roles), nil
 }
 
 func (s *roleService) ListSystemRoles(ctx context.Context, hotelID string) (ListRolesResponse, error) {
@@ -86,7 +83,7 @@ func (s *roleService) ListSystemRoles(ctx context.Context, hotelID string) (List
 		return ListRolesResponse{}, err
 	}
 
-	return s.buildRolesResponse(ctx, roles, hotelID)
+	return s.buildRolesResponse(roles), nil
 }
 
 func (s *roleService) ListHotelRoles(ctx context.Context, hotelID string) (ListRolesResponse, error) {
@@ -95,25 +92,25 @@ func (s *roleService) ListHotelRoles(ctx context.Context, hotelID string) (ListR
 		return ListRolesResponse{}, err
 	}
 
-	return s.buildRolesResponse(ctx, roles, hotelID)
+	return s.buildRolesResponse(roles), nil
 }
 
-func (s *roleService) buildRolesResponse(ctx context.Context, roles []model.HotelRole, hotelID string) (ListRolesResponse, error) {
-	counts, err := s.members.CountByRole(ctx, hotelID)
+func (s *roleService) ListAssignableRoles(ctx context.Context, hotelID string) (ListRolesResponse, error) {
+	roles, err := s.repo.ListAssignableForHotel(ctx, hotelID)
 	if err != nil {
 		return ListRolesResponse{}, err
 	}
 
-	out := make([]RoleResponse, len(roles))
+	return s.buildRolesResponse(roles), nil
+}
+
+func (s *roleService) buildRolesResponse(roles []model.HotelRole) ListRolesResponse {
+	out := make([]RoleSummaryResponse, len(roles))
 	for i, r := range roles {
-		perms, err := s.permissions.ListByRole(ctx, r.ID)
-		if err != nil {
-			return ListRolesResponse{}, err
-		}
-		out[i] = toRoleResponse(r, perms, counts[r.ID])
+		out[i] = toRoleSummaryResponse(r)
 	}
 
-	return ListRolesResponse{Roles: out}, nil
+	return ListRolesResponse{Roles: out}
 }
 
 func (s *roleService) Get(ctx context.Context, id, hotelID string) (RoleResponse, error) {
@@ -130,17 +127,17 @@ func (s *roleService) Get(ctx context.Context, id, hotelID string) (RoleResponse
 		return RoleResponse{}, err
 	}
 
-	counts, err := s.members.CountByRole(ctx, hotelID)
-	if err != nil {
-		return RoleResponse{}, err
-	}
-
-	return toRoleResponse(r, perms, counts[r.ID]), nil
+	return toRoleResponse(r, perms), nil
 }
 
 func (s *roleService) Create(ctx context.Context, hotelID, userID string, req *CreateRoleRequest) (RoleResponse, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return RoleResponse{}, err
+	}
+
+	slug := slugify(req.Name)
+	if slug == SlugOwner {
+		return RoleResponse{}, apperr.ErrOwnerRoleReserved
 	}
 
 	tx, err := s.DB.Begin(ctx)
@@ -152,7 +149,7 @@ func (s *roleService) Create(ctx context.Context, hotelID, userID string, req *C
 	newRole := &model.HotelRole{
 		HotelID:     &hotelID,
 		Name:        req.Name,
-		Slug:        slugify(req.Name),
+		Slug:        slug,
 		Description: req.Description,
 		IsSystem:    false,
 		CreatedBy:   &userID,
@@ -175,7 +172,7 @@ func (s *roleService) Create(ctx context.Context, hotelID, userID string, req *C
 
 	s.slog.Info("role created", "role_id", created.ID, "hotel_id", hotelID)
 
-	return toRoleResponse(created, perms, 0), nil
+	return toRoleResponse(created, perms), nil
 }
 
 func (s *roleService) Update(ctx context.Context, id, hotelID string, req *UpdateRoleRequest) (RoleResponse, error) {
@@ -195,8 +192,12 @@ func (s *roleService) Update(ctx context.Context, id, hotelID string, req *Updat
 	}
 
 	if req.Name != nil {
+		slug := slugify(*req.Name)
+		if slug == SlugOwner {
+			return RoleResponse{}, apperr.ErrOwnerRoleReserved
+		}
 		existing.Name = *req.Name
-		existing.Slug = slugify(*req.Name)
+		existing.Slug = slug
 	}
 	if req.Description != nil {
 		existing.Description = req.Description
@@ -229,14 +230,9 @@ func (s *roleService) Update(ctx context.Context, id, hotelID string, req *Updat
 		return RoleResponse{}, err
 	}
 
-	counts, err := s.members.CountByRole(ctx, hotelID)
-	if err != nil {
-		return RoleResponse{}, err
-	}
-
 	s.slog.Info("role updated", "role_id", id)
 
-	return toRoleResponse(updated, perms, counts[id]), nil
+	return toRoleResponse(updated, perms), nil
 }
 
 func (s *roleService) Delete(ctx context.Context, id, hotelID string) error {
@@ -270,7 +266,7 @@ func toPermissionResponse(p model.Permission) PermissionResponse {
 	}
 }
 
-func toRoleResponse(r model.HotelRole, perms []model.Permission, memberCount int) RoleResponse {
+func toRoleResponse(r model.HotelRole, perms []model.Permission) RoleResponse {
 	permResponses := make([]PermissionResponse, len(perms))
 	for i, p := range perms {
 		permResponses[i] = toPermissionResponse(p)
@@ -288,8 +284,25 @@ func toRoleResponse(r model.HotelRole, perms []model.Permission, memberCount int
 		Slug:        r.Slug,
 		Description: r.Description,
 		IsSystem:    r.IsSystem,
-		MemberCount: memberCount,
 		Permissions: permResponses,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
+	}
+}
+
+func toRoleSummaryResponse(r model.HotelRole) RoleSummaryResponse {
+	var hotelID string
+	if r.HotelID != nil {
+		hotelID = *r.HotelID
+	}
+
+	return RoleSummaryResponse{
+		ID:          r.ID,
+		HotelID:     hotelID,
+		Name:        r.Name,
+		Slug:        r.Slug,
+		Description: r.Description,
+		IsSystem:    r.IsSystem,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 	}

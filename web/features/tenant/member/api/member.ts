@@ -10,9 +10,11 @@ import {
 
 export const listMembers = async (
   tenant: string,
+  roleId?: string,
 ): Promise<ApiResponse<ListMembersResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListMembersResponse>>(
     `/hotels/slug/${tenant}/members`,
+    { params: roleId ? { roleId } : undefined },
   );
   return data;
 };

@@ -86,6 +86,7 @@ func (s *hotelService) Create(ctx context.Context, userID string, req *CreateHot
 		PhoneNumber: req.PhoneNumber,
 		Email:       req.Email,
 		IsActive:    true,
+		CreatedBy:   &userID,
 	}
 
 	createdHotel, err := s.repo.Create(ctx, tx, newHotel)

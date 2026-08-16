@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 interface FeedEvent extends ActivityItem {
   time: string
@@ -71,7 +70,6 @@ function GroupedFeed({ events }: { events: FeedEvent[] }) {
 }
 
 export default function NotificationsPage() {
-  usePageTitle("Notifications")
 
   const bookingEvents: FeedEvent[] = BOOKINGS.map((b) => ({
     id: `booking-${b.id}`,

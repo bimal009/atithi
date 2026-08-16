@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Skeleton } from "@/components/ui/skeleton"
 import { KotBoard } from "@/features/tenant/dashboard/kot/kot-board"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: "preparing",
@@ -22,7 +21,6 @@ function minutesSince(iso: string) {
 }
 
 export default function KitchenQueuePage() {
-  usePageTitle("Kitchen")
   const loading = useMockLoading()
   const [orders, setOrders] = React.useState(KOT_ORDERS)
 

@@ -33,8 +33,8 @@ func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
 
 func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
-		INSERT INTO hotels (id, name, slug, description, logo_url, address, city, phone_number, email)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO hotels (id, name, slug, description, logo_url, address, city, phone_number, email, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 	`
 
@@ -51,6 +51,7 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 		hotel.City,
 		hotel.PhoneNumber,
 		hotel.Email,
+		hotel.CreatedBy,
 	).Scan(
 		&created.ID,
 		&created.Name,
@@ -62,6 +63,7 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 		&created.PhoneNumber,
 		&created.Email,
 		&created.IsActive,
+		&created.CreatedBy,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 	)
@@ -100,6 +102,7 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 		&hotel.PhoneNumber,
 		&hotel.Email,
 		&hotel.IsActive,
+		&hotel.CreatedBy,
 		&hotel.CreatedAt,
 		&hotel.UpdatedAt,
 	)
@@ -138,6 +141,7 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.H
 		&hotel.PhoneNumber,
 		&hotel.Email,
 		&hotel.IsActive,
+		&hotel.CreatedBy,
 		&hotel.CreatedAt,
 		&hotel.UpdatedAt,
 	)
@@ -172,6 +176,7 @@ func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, e
 		&hotel.PhoneNumber,
 		&hotel.Email,
 		&hotel.IsActive,
+		&hotel.CreatedBy,
 		&hotel.CreatedAt,
 		&hotel.UpdatedAt,
 	)
@@ -230,6 +235,7 @@ func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hot
 			&hotel.PhoneNumber,
 			&hotel.Email,
 			&hotel.IsActive,
+			&hotel.CreatedBy,
 			&hotel.CreatedAt,
 			&hotel.UpdatedAt,
 		); err != nil {
@@ -293,6 +299,7 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		&updated.PhoneNumber,
 		&updated.Email,
 		&updated.IsActive,
+		&updated.CreatedBy,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import {
-  MoreHorizontalIcon,
+  EyeIcon,
   PencilIcon,
   PlusIcon,
   ShieldIcon,
@@ -31,29 +31,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useDeleteRole } from "../client/useRoles";
-import type { Permission, Role } from "../types";
+import type { Permission, RoleSummary, RoleTab } from "../types";
 import { RoleFormDialog } from "./role-form-dialog";
+import { RolePermissionsDialog } from "./role-permissions-dialog";
 
 function RoleCard({
   role,
+  onView,
   onEdit,
   onDelete,
 }: {
-  role: Role;
-  onEdit?: (role: Role) => void;
-  onDelete?: (role: Role) => void;
+  role: RoleSummary;
+  onView: (role: RoleSummary) => void;
+  onEdit?: (role: RoleSummary) => void;
+  onDelete?: (role: RoleSummary) => void;
 }) {
-  const resources = Array.from(new Set(role.permissions.map((p) => p.resource))).sort();
-
   return (
     <Card>
       <CardHeader className="grid-cols-[1fr_auto]">
@@ -62,71 +59,91 @@ function RoleCard({
           {role.description && <CardDescription>{role.description}</CardDescription>}
         </div>
         {role.isSystem ? (
-          <Badge variant="outline" className="gap-1 font-normal">
+          <Badge variant="outline" className="gap-1 font-normal justify-self-end">
             <ShieldUserIcon aria-hidden />
             System
           </Badge>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 cursor-pointer justify-self-end"
-                  aria-label={`Actions for ${role.name}`}
-                >
-                  <MoreHorizontalIcon aria-hidden />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit?.(role)}>
-                <PencilIcon aria-hidden />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                className="cursor-pointer"
-                onClick={() => onDelete?.(role)}
-              >
-                <Trash2Icon aria-hidden />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1 justify-self-end">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="cursor-pointer"
+                    aria-label={`Edit ${role.name}`}
+                    onClick={() => onEdit?.(role)}
+                  >
+                    <PencilIcon aria-hidden />
+                  </Button>
+                }
+              />
+              <TooltipContent>Edit role</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="cursor-pointer text-destructive hover:text-destructive"
+                    aria-label={`Delete ${role.name}`}
+                    onClick={() => onDelete?.(role)}
+                  >
+                    <Trash2Icon aria-hidden />
+                  </Button>
+                }
+              />
+              <TooltipContent>Delete role</TooltipContent>
+            </Tooltip>
+          </div>
         )}
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-wrap gap-1.5">
-          {resources.map((resource) => (
-            <Badge key={resource} variant="secondary" className="font-normal capitalize">
-              {resource}
-            </Badge>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
-          <span>{role.permissions.length} permissions</span>
-          <span>
-            {role.memberCount} {role.memberCount === 1 ? "member" : "members"}
-          </span>
-        </div>
+      <CardContent>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="cursor-pointer"
+                aria-label="View permissions"
+                onClick={() => onView(role)}
+              >
+                <EyeIcon aria-hidden />
+              </Button>
+            }
+          />
+          <TooltipContent>View permissions</TooltipContent>
+        </Tooltip>
       </CardContent>
     </Card>
+  );
+}
+
+function RoleGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <Skeleton key={index} className="h-40 w-full" />
+      ))}
+    </div>
   );
 }
 
 function RoleGrid({
   roles,
   emptyLabel,
+  onView,
   onEdit,
   onDelete,
 }: {
-  roles: Role[];
+  roles: RoleSummary[];
   emptyLabel: string;
-  onEdit?: (role: Role) => void;
-  onDelete?: (role: Role) => void;
+  onView: (role: RoleSummary) => void;
+  onEdit?: (role: RoleSummary) => void;
+  onDelete?: (role: RoleSummary) => void;
 }) {
   if (roles.length === 0) {
     return (
@@ -144,7 +161,7 @@ function RoleGrid({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {roles.map((role) => (
-        <RoleCard key={role.id} role={role} onEdit={onEdit} onDelete={onDelete} />
+        <RoleCard key={role.id} role={role} onView={onView} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );
@@ -152,25 +169,44 @@ function RoleGrid({
 
 export function RolesGrid({
   tenant,
-  systemRoles,
-  hotelRoles,
+  activeTab,
+  onTabChange,
+  roles: initialRoles,
   permissions,
 }: {
   tenant: string;
-  systemRoles: Role[];
-  hotelRoles: Role[];
+  activeTab: RoleTab;
+  onTabChange: (tab: RoleTab) => void;
+  roles: RoleSummary[];
   permissions: Permission[];
 }) {
+  const [roles, setRoles] = React.useState(initialRoles);
+  const [syncedRoles, setSyncedRoles] = React.useState(initialRoles);
+  if (syncedRoles !== initialRoles) {
+    setSyncedRoles(initialRoles);
+    setRoles(initialRoles);
+  }
+
+  const [selectedTab, setSelectedTab] = React.useState(activeTab);
+  const [syncedTab, setSyncedTab] = React.useState(activeTab);
+  if (syncedTab !== activeTab) {
+    setSyncedTab(activeTab);
+    setSelectedTab(activeTab);
+  }
+  const switching = selectedTab !== activeTab;
+
+  function handleTabChange(tab: RoleTab) {
+    setSelectedTab(tab);
+    onTabChange(tab);
+  }
+
   const [creating, setCreating] = React.useState(false);
-  const [editingRole, setEditingRole] = React.useState<Role | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<Role | null>(null);
+  const [viewingRole, setViewingRole] = React.useState<RoleSummary | null>(null);
+  const [editingRole, setEditingRole] = React.useState<RoleSummary | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<RoleSummary | null>(null);
   const remove = useDeleteRole(tenant);
 
-  const allRoles = [...systemRoles, ...hotelRoles];
-  const totalMembers = allRoles.reduce((sum, r) => sum + r.memberCount, 0);
-  const totalPermissions = new Set(
-    allRoles.flatMap((r) => r.permissions.map((p) => p.id)),
-  ).size;
+  const totalPermissions = permissions.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -186,36 +222,66 @@ export function RolesGrid({
       />
 
       <SectionCards
+        loading={switching}
         stats={[
-          { label: "Roles", value: String(allRoles.length) },
-          { label: "Staff assigned", value: String(totalMembers) },
-          { label: "Distinct permissions", value: String(totalPermissions) },
+          { label: "Roles", value: String(roles.length) },
+          { label: "Total permissions", value: String(totalPermissions) },
         ]}
       />
 
-      <Tabs defaultValue="system">
+      <Tabs
+        value={selectedTab}
+        onValueChange={(value) => value && handleTabChange(value as RoleTab)}
+      >
         <TabsList>
-          <TabsTrigger value="system">System roles ({systemRoles.length})</TabsTrigger>
-          <TabsTrigger value="custom">Custom roles ({hotelRoles.length})</TabsTrigger>
+          <TabsTrigger value="system">System roles</TabsTrigger>
+          <TabsTrigger value="custom">Custom roles</TabsTrigger>
         </TabsList>
         <TabsContent value="system" className="mt-4">
-          <RoleGrid roles={systemRoles} emptyLabel="No system roles found." />
+          {selectedTab === "system" &&
+            (switching ? (
+              <RoleGridSkeleton />
+            ) : (
+              <RoleGrid
+                roles={roles}
+                emptyLabel="No system roles found."
+                onView={setViewingRole}
+              />
+            ))}
         </TabsContent>
         <TabsContent value="custom" className="mt-4">
-          <RoleGrid
-            roles={hotelRoles}
-            emptyLabel="No custom roles yet. add one for this hotel."
-            onEdit={setEditingRole}
-            onDelete={setPendingDelete}
-          />
+          {selectedTab === "custom" &&
+            (switching ? (
+              <RoleGridSkeleton />
+            ) : (
+              <RoleGrid
+                roles={roles}
+                emptyLabel="No custom roles yet. add one for this hotel."
+                onView={setViewingRole}
+                onEdit={setEditingRole}
+                onDelete={setPendingDelete}
+              />
+            ))}
         </TabsContent>
       </Tabs>
+
+      <RolePermissionsDialog
+        tenant={tenant}
+        role={viewingRole}
+        open={viewingRole !== null}
+        onOpenChange={(open) => !open && setViewingRole(null)}
+      />
 
       <RoleFormDialog
         tenant={tenant}
         permissions={permissions}
         open={creating}
         onOpenChange={setCreating}
+        onSaved={(created) => {
+          if (selectedTab === "custom") {
+            setRoles((prev) => [...prev, created]);
+          }
+        }}
       />
 
       <RoleFormDialog
@@ -224,6 +290,9 @@ export function RolesGrid({
         role={editingRole ?? undefined}
         open={editingRole !== null}
         onOpenChange={(open) => !open && setEditingRole(null)}
+        onSaved={(updated) => {
+          setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+        }}
       />
 
       <AlertDialog
@@ -234,9 +303,8 @@ export function RolesGrid({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {pendingDelete?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete && pendingDelete.memberCount > 0
-                ? `${pendingDelete.memberCount} staff ${pendingDelete.memberCount === 1 ? "member holds" : "members hold"} this role — reassign them first.`
-                : "This can't be undone."}
+              This can&apos;t be undone. Roles still assigned to staff can&apos;t be
+              deleted — reassign them first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -244,10 +312,11 @@ export function RolesGrid({
             <AlertDialogAction
               variant="destructive"
               className="cursor-pointer"
-              disabled={remove.isPending || (pendingDelete?.memberCount ?? 0) > 0}
+              disabled={remove.isPending}
               onClick={async () => {
                 if (!pendingDelete) return;
                 await remove.mutateAsync(pendingDelete.id);
+                setRoles((prev) => prev.filter((r) => r.id !== pendingDelete.id));
                 setPendingDelete(null);
               }}
             >

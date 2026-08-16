@@ -11,10 +11,8 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { AddAddOnSheet } from "@/features/tenant/dashboard/menu/add-addon-sheet"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function AddOnsPage() {
-  usePageTitle("Ad-Ons & Extras")
   const [addOns, setAddOns] = React.useState(ADD_ONS)
 
   const columns: DataTableColumn<AddOn>[] = [

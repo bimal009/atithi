@@ -83,6 +83,7 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				roles.GET("", h.Role.ListRoles)
 				roles.GET("/system", h.Role.ListSystemRoles)
 				roles.GET("/hotel", h.Role.ListHotelRoles)
+				roles.GET("/assignable", h.Role.ListAssignableRoles)
 				roles.POST("", h.Role.Create)
 				roles.GET("/:roleId", h.Role.Get)
 				roles.PATCH("/:roleId", h.Role.Update)

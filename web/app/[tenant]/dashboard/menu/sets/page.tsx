@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { AddMenuSetSheet } from "@/features/tenant/dashboard/menu/add-menu-set-sheet"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 import type { MenuSet } from "@/types"
 
 function itemNames(itemIds: string[]) {
@@ -25,7 +24,6 @@ function itemNames(itemIds: string[]) {
 }
 
 export default function MenuSetsPage() {
-  usePageTitle("Menu Set")
   const [sets, setSets] = React.useState(MENU_SETS)
 
   const columns: DataTableColumn<MenuSet>[] = [

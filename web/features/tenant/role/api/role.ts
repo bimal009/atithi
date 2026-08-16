@@ -45,6 +45,25 @@ export const listHotelRoles = async (
   return data;
 };
 
+export const listAssignableRoles = async (
+  tenant: string,
+): Promise<ApiResponse<ListRolesResponse>> => {
+  const { data } = await axiosInstance.get<ApiResponse<ListRolesResponse>>(
+    `/hotels/slug/${tenant}/roles/assignable`,
+  );
+  return data;
+};
+
+export const getRole = async (
+  tenant: string,
+  roleId: string,
+): Promise<ApiResponse<Role>> => {
+  const { data } = await axiosInstance.get<ApiResponse<Role>>(
+    `/hotels/slug/${tenant}/roles/${roleId}`,
+  );
+  return data;
+};
+
 export const createRole = async (
   tenant: string,
   input: CreateRoleInput,

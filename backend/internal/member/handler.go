@@ -31,7 +31,17 @@ func (h *MemberHandler) List(c *gin.Context) {
 		return
 	}
 
-	members, err := h.service.List(c.Request.Context(), middleware.HotelID(c), pagination)
+	var query ListMembersQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid query parameters"))
+		return
+	}
+	if err := validator.ValidateStruct(&query); err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	members, err := h.service.List(c.Request.Context(), middleware.HotelID(c), query.RoleID, pagination)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return

@@ -78,7 +78,7 @@ func main() {
 	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
 	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
 
-	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, memberRepo, pool)
+	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, pool)
 	roleHandler := role.NewRoleHandler(slog, roleService)
 
 	memberService := member.NewMemberService(slog, memberRepo, roleRepo, userRepo, pool)

@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { roleKeys } from "@/features/tenant/role/client/useRoles";
@@ -11,12 +16,16 @@ import type { AddMemberInput, UpdateMemberInput } from "../types";
 
 export const memberKeys = {
   all: (tenant: string) => ["members", tenant] as const,
+  filtered: (tenant: string, roleId: string) =>
+    [...memberKeys.all(tenant), { roleId }] as const,
 };
 
-export const useMembersQuery = (tenant: string) =>
+export const useMembersQuery = (tenant: string, roleId = "all") =>
   useQuery({
-    queryKey: memberKeys.all(tenant),
-    queryFn: async () => (await listMembers(tenant)).data,
+    queryKey: memberKeys.filtered(tenant, roleId),
+    queryFn: async () =>
+      (await listMembers(tenant, roleId === "all" ? undefined : roleId)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useAddMember = (tenant: string) => {

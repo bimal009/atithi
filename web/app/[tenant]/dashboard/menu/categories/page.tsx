@@ -32,7 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const categorySchema = z.object({
   name: z.string().trim().min(2, "Enter a category name").max(100),
@@ -146,7 +145,6 @@ function AddCategoryDialog({ onCreate }: { onCreate: (form: CategoryValues) => v
 }
 
 export default function MenuCategoriesPage() {
-  usePageTitle("Categories")
   const [categories, setCategories] = React.useState(
     Array.from(new Set(MENU_ITEMS.map((m) => m.category)))
   )

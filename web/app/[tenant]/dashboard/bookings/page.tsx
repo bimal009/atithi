@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/select"
 import { ChannelBadge } from "@/features/tenant/dashboard/bookings/channel-badge"
 import { NewBookingDialog } from "@/features/tenant/dashboard/bookings/new-booking-dialog"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const STATUS_FILTERS: Array<{ value: "all" | BookingStatus; label: string }> = [
   { value: "all", label: "All statuses" },
@@ -36,7 +35,6 @@ const CHANNEL_FILTERS: Array<{ value: "all" | BookingChannel; label: string }> =
 ]
 
 export default function BookingsPage() {
-  usePageTitle("Bookings")
   const [bookings, setBookings] = React.useState(BOOKINGS)
   const [status, setStatus] = React.useState<"all" | BookingStatus>("all")
   const [channel, setChannel] = React.useState<"all" | BookingChannel>("all")

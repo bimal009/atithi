@@ -48,9 +48,10 @@ var (
 
 	ErrEmailTaken = New(http.StatusConflict, "conflict", "that email is already in use")
 
-	ErrMemberNotFound = New(http.StatusNotFound, "not_found", "member not found")
-	ErrMemberExists   = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
-	ErrLastOwner      = New(http.StatusConflict, "conflict", "this hotel needs at least one active owner")
+	ErrMemberNotFound    = New(http.StatusNotFound, "not_found", "member not found")
+	ErrMemberExists      = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
+	ErrOwnerRoleReserved = New(http.StatusForbidden, "forbidden", "the owner role is reserved and cannot be assigned or created")
+	ErrOwnerImmutable    = New(http.StatusForbidden, "forbidden", "the hotel owner cannot be edited or removed")
 
 	ErrRoomTypeNotFound   = New(http.StatusNotFound, "not_found", "room type not found")
 	ErrRoomTypeNameExists = New(http.StatusConflict, "conflict", "a room type with this name already exists")

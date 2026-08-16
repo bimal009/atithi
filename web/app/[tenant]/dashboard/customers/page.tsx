@@ -10,10 +10,8 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Badge } from "@/components/ui/badge"
 import { AddCustomerDialog } from "@/features/tenant/dashboard/customers/add-customer-dialog"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function CustomersPage() {
-  usePageTitle("Customers")
   const [guests, setGuests] = React.useState<Guest[]>(getGuests)
   const repeatGuests = guests.filter((g) => g.visits > 1)
   const totalSpend = guests.reduce((sum, g) => sum + g.totalSpend, 0)

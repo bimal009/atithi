@@ -20,10 +20,8 @@ import { SectionCards } from "@/components/shared/section-cards"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BookingsTrendChart } from "@/features/tenant/dashboard/overview/bookings-trend-chart"
 import { RoomStatusChart } from "@/features/tenant/dashboard/overview/room-status-chart"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function OverviewPage() {
-  usePageTitle("Overview")
   const loading = useMockLoading()
   const params = useParams<{ tenant: string }>()
   const base = `/${params.tenant}/dashboard`

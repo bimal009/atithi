@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const STATUS_FILTERS: Array<{ value: "all" | OrderStatus; label: string }> = [
   { value: "all", label: "All statuses" },
@@ -32,7 +31,6 @@ const STATUS_FILTERS: Array<{ value: "all" | OrderStatus; label: string }> = [
 ]
 
 export default function OrdersPage() {
-  usePageTitle("Orders")
   const params = useParams<{ tenant: string }>()
   const orders = KOT_ORDERS
   const [status, setStatus] = React.useState<"all" | OrderStatus>("all")

@@ -5,7 +5,6 @@ import { useParams } from "next/navigation"
 import { BellIcon } from "lucide-react"
 
 import { CURRENT_USER, KOT_ORDERS } from "@/lib/mock-data"
-import { useSiteTitle } from "@/features/tenant/dashboard/page-title-context"
 import { NavUser } from "@/features/tenant/dashboard/nav-user"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,7 +12,6 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function SiteHeader() {
-  const title = useSiteTitle()
   const params = useParams<{ tenant: string }>()
   const basePath = `/${params.tenant}/dashboard`
   const unreadCount = KOT_ORDERS.filter((o) => o.status === "pending").length
@@ -23,7 +21,6 @@ export function SiteHeader() {
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 h-4 data-vertical:self-auto" />
-        <h1 className="text-base font-medium">{title}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="ghost"

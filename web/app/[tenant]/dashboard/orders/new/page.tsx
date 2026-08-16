@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const TABLE_OPTIONS = Array.from({ length: 8 }, (_, i) => `Table ${i + 1}`)
 const ROOM_OPTIONS = ROOMS.filter((r) => r.status === "occupied").map(
@@ -35,7 +34,6 @@ function addOnsFor(item: MenuItem): AddOn[] {
 }
 
 export default function NewOrderPage() {
-  usePageTitle("New Order")
   const router = useRouter()
   const params = useParams<{ tenant: string }>()
   const base = `/${params.tenant}/dashboard`

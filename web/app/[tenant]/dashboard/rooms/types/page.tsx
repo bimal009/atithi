@@ -17,10 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { AddRoomTypeDialog } from "@/features/tenant/dashboard/rooms/add-room-type-dialog"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 export default function RoomTypesPage() {
-  usePageTitle("Room Types")
   const [configs, setConfigs] = React.useState<RoomTypeConfig[]>(ROOM_TYPE_CONFIGS)
   const roomTypes = getRoomTypeStats(configs)
 

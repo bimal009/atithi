@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Role } from "@/features/tenant/role/types";
+import type { RoleSummary } from "@/features/tenant/role/types";
 
 import { useRemoveMember } from "../client/useMembers";
 import type { Member } from "../types";
@@ -43,19 +43,20 @@ export function StaffTable({
   tenant,
   members,
   roles,
+  assignableRoles,
+  roleFilter,
+  onRoleFilterChange,
 }: {
   tenant: string;
   members: Member[];
-  roles: Role[];
+  roles: RoleSummary[];
+  assignableRoles: RoleSummary[];
+  roleFilter: string;
+  onRoleFilterChange: (roleId: string) => void;
 }) {
-  const [roleFilter, setRoleFilter] = React.useState("all");
   const [editingMember, setEditingMember] = React.useState<Member | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Member | null>(null);
   const remove = useRemoveMember(tenant);
-
-  const filtered = members.filter(
-    (m) => roleFilter === "all" || m.roleId === roleFilter,
-  );
 
   const roleFilterItems = React.useMemo(
     () => ({
@@ -118,39 +119,40 @@ export function StaffTable({
       header: "",
       headerClassName: "pr-5",
       cellClassName: "pr-5 text-right",
-      cell: (m) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 cursor-pointer justify-self-end"
-                aria-label={`Actions for ${m.userName}`}
+      cell: (m) =>
+        m.roleSlug === "owner" ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 cursor-pointer justify-self-end"
+                  aria-label={`Actions for ${m.userName}`}
+                >
+                  <MoreHorizontalIcon aria-hidden />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => setEditingMember(m)}
               >
-                <MoreHorizontalIcon aria-hidden />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => setEditingMember(m)}
-            >
-              <PencilIcon aria-hidden />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              className="cursor-pointer"
-              onClick={() => setPendingDelete(m)}
-            >
-              <Trash2Icon aria-hidden />
-              Remove
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+                <PencilIcon aria-hidden />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={() => setPendingDelete(m)}
+              >
+                <Trash2Icon aria-hidden />
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
     },
   ];
 
@@ -161,7 +163,7 @@ export function StaffTable({
       <PageHeader
         title="Staff"
         description={`${members.length} team members`}
-        actions={<AddMemberDialog tenant={tenant} roles={roles} />}
+        actions={<AddMemberDialog tenant={tenant} roles={assignableRoles} />}
       />
 
       <SectionCards
@@ -177,7 +179,7 @@ export function StaffTable({
 
       <DataTable
         columns={columns}
-        data={filtered}
+        data={members}
         getRowId={(m) => m.id}
         searchPlaceholder="Search by name or email…"
         searchFn={(m, q) => `${m.userName} ${m.userEmail}`.toLowerCase().includes(q)}
@@ -185,7 +187,7 @@ export function StaffTable({
           <Select
             items={roleFilterItems}
             value={roleFilter}
-            onValueChange={(value) => setRoleFilter(value ?? "all")}
+            onValueChange={(value) => onRoleFilterChange(value ?? "all")}
           >
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
@@ -208,7 +210,7 @@ export function StaffTable({
       <EditMemberDialog
         tenant={tenant}
         member={editingMember}
-        roles={roles}
+        roles={assignableRoles}
         open={editingMember !== null}
         onOpenChange={(open) => !open && setEditingMember(null)}
       />

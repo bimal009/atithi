@@ -31,7 +31,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { NepalFlag } from "@/components/shared/nepal-flag";
 import { NEPAL_DIAL_CODE, normalizePhoneNumber } from "@/features/auth/schema";
-import type { Role } from "@/features/tenant/role/types";
+import type { RoleSummary } from "@/features/tenant/role/types";
 
 import { useAddMember } from "../client/useMembers";
 import { addMemberSchema, type AddMemberValues } from "../schema";
@@ -43,7 +43,7 @@ export function AddMemberDialog({
   roles,
 }: {
   tenant: string;
-  roles: Role[];
+  roles: RoleSummary[];
 }) {
   const [open, setOpen] = React.useState(false);
   const add = useAddMember(tenant);

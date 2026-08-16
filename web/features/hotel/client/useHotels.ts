@@ -1,12 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
 
-import { checkSlugAvailability, createHotel, deleteHotel, updateHotel } from "../api/hotel";
+import {
+  checkSlugAvailability,
+  createHotel,
+  deleteHotel,
+  listHotels,
+  updateHotel,
+} from "../api/hotel";
 import { SLUG_REGEX } from "../schema";
 import { CreateHotelInput, UpdateHotelInput } from "../types";
 
@@ -16,9 +21,12 @@ export const hotelKeys = {
   slugAvailability: (slug: string) => ["hotels", "slug-availability", slug] as const,
 };
 
-// `slug` is expected to already be debounced by the caller (the create-hotel
-// dialog derives it from nuqs's own debounced URL sync) — this hook only
-// owns the availability request itself.
+export const useHotelsQuery = () =>
+  useQuery({
+    queryKey: hotelKeys.all,
+    queryFn: async () => (await listHotels()).data,
+  });
+
 export const useSlugAvailability = (slug: string, options?: { ignore?: string }) => {
   const trimmed = slug.trim();
   const isCheckable =
@@ -39,7 +47,6 @@ export const useSlugAvailability = (slug: string, options?: { ignore?: string })
 };
 
 export const useCreateHotel = () => {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -47,7 +54,6 @@ export const useCreateHotel = () => {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: hotelKeys.all });
       toast.success(`${response.data.name} added`);
-      router.refresh();
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not create the hotel"));
@@ -56,7 +62,6 @@ export const useCreateHotel = () => {
 };
 
 export const useUpdateHotel = () => {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -65,7 +70,6 @@ export const useUpdateHotel = () => {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: hotelKeys.all });
       toast.success(`${response.data.name} updated`);
-      router.refresh();
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the hotel"));
@@ -74,7 +78,6 @@ export const useUpdateHotel = () => {
 };
 
 export const useDeleteHotel = () => {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -82,7 +85,6 @@ export const useDeleteHotel = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: hotelKeys.all });
       toast.success("Hotel removed");
-      router.refresh();
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the hotel"));

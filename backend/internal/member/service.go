@@ -16,9 +16,6 @@ type RoleValidator interface {
 	Get(ctx context.Context, id string) (model.HotelRole, error)
 }
 
-// ownerRoleSlug is the seeded owner role's slug (see role.SlugOwner). Kept
-// as a local literal rather than importing the role package, since role
-// already imports member for MemberRepo.CountByRole.
 const ownerRoleSlug = "owner"
 
 type UserFinder interface {
@@ -26,7 +23,7 @@ type UserFinder interface {
 }
 
 type MemberService interface {
-	List(ctx context.Context, hotelID string, pagination model.Pagination) (ListMembersResponse, error)
+	List(ctx context.Context, hotelID, roleID string, pagination model.Pagination) (ListMembersResponse, error)
 	Add(ctx context.Context, hotelID, invitedBy string, req *AddMemberRequest) (model.MemberDetail, error)
 	Update(ctx context.Context, id, hotelID string, req *UpdateMemberRequest) (model.Member, error)
 	Remove(ctx context.Context, id, hotelID string) error
@@ -55,12 +52,12 @@ func NewMemberService(
 		DB:    db,
 	}
 }
-func (s *memberService) List(ctx context.Context, hotelID string, pagination model.Pagination) (ListMembersResponse, error) {
+func (s *memberService) List(ctx context.Context, hotelID, roleID string, pagination model.Pagination) (ListMembersResponse, error) {
 	if err := pagination.Validate(); err != nil {
 		return ListMembersResponse{}, err
 	}
 
-	members, total, err := s.repo.ListByHotel(ctx, hotelID, pagination)
+	members, total, err := s.repo.ListByHotel(ctx, hotelID, roleID, pagination)
 	if err != nil {
 		return ListMembersResponse{}, err
 	}
@@ -89,6 +86,9 @@ func (s *memberService) Add(ctx context.Context, hotelID, invitedBy string, req 
 	}
 	if role.HotelID != nil && *role.HotelID != hotelID {
 		return model.MemberDetail{}, apperr.ErrRoleNotFound
+	}
+	if role.Slug == ownerRoleSlug {
+		return model.MemberDetail{}, apperr.ErrOwnerRoleReserved
 	}
 
 	tx, err := s.DB.Begin(ctx)
@@ -145,19 +145,8 @@ func (s *memberService) Update(ctx context.Context, id, hotelID string, req *Upd
 	if err != nil {
 		return model.Member{}, err
 	}
-
-	losingOwnerRole := currentRole.Slug == ownerRoleSlug &&
-		((req.RoleID != nil && *req.RoleID != existing.RoleID) ||
-			(req.Status != nil && *req.Status != string(model.MemberStatusActive)))
-
-	if losingOwnerRole {
-		isLast, err := s.isLastActiveOwner(ctx, hotelID, existing.RoleID)
-		if err != nil {
-			return model.Member{}, err
-		}
-		if isLast {
-			return model.Member{}, apperr.ErrLastOwner
-		}
+	if currentRole.Slug == ownerRoleSlug {
+		return model.Member{}, apperr.ErrOwnerImmutable
 	}
 
 	if req.RoleID != nil {
@@ -167,6 +156,9 @@ func (s *memberService) Update(ctx context.Context, id, hotelID string, req *Upd
 		}
 		if role.HotelID != nil && *role.HotelID != hotelID {
 			return model.Member{}, apperr.ErrRoleNotFound
+		}
+		if role.Slug == ownerRoleSlug {
+			return model.Member{}, apperr.ErrOwnerRoleReserved
 		}
 		existing.RoleID = role.ID
 	}
@@ -200,13 +192,7 @@ func (s *memberService) Remove(ctx context.Context, id, hotelID string) error {
 		return err
 	}
 	if currentRole.Slug == ownerRoleSlug {
-		isLast, err := s.isLastActiveOwner(ctx, hotelID, existing.RoleID)
-		if err != nil {
-			return err
-		}
-		if isLast {
-			return apperr.ErrLastOwner
-		}
+		return apperr.ErrOwnerImmutable
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -217,13 +203,4 @@ func (s *memberService) Remove(ctx context.Context, id, hotelID string) error {
 	s.slog.Info("member removed", "member_id", id, "hotel_id", hotelID)
 
 	return nil
-}
-
-func (s *memberService) isLastActiveOwner(ctx context.Context, hotelID, roleID string) (bool, error) {
-	counts, err := s.repo.CountByRole(ctx, hotelID)
-	if err != nil {
-		return false, err
-	}
-
-	return counts[roleID] <= 1, nil
 }

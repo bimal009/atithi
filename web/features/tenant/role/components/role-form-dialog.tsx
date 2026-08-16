@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 
-import { useCreateRole, useUpdateRole } from "../client/useRoles";
+import { useCreateRole, useRoleQuery, useUpdateRole } from "../client/useRoles";
 import { roleSchema, type RoleValues } from "../schema";
-import type { Permission, Role } from "../types";
+import type { Permission, Role, RoleSummary } from "../types";
 
 const emptyValues: RoleValues = { name: "", description: "", permissionIds: [] };
 
@@ -50,17 +51,21 @@ export function RoleFormDialog({
   role,
   open,
   onOpenChange,
+  onSaved,
 }: {
   tenant: string;
   permissions: Permission[];
-  role?: Role;
+  role?: RoleSummary;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: (role: Role) => void;
 }) {
   const isEdit = !!role;
   const create = useCreateRole(tenant);
   const update = useUpdateRole(tenant);
+  const roleDetail = useRoleQuery(tenant, role?.id, open && isEdit);
   const pending = isEdit ? update.isPending : create.isPending;
+  const loadingDetail = isEdit && roleDetail.isPending;
 
   const {
     register,
@@ -76,8 +81,9 @@ export function RoleFormDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    reset(valuesOf(role));
-  }, [open, role, reset]);
+    if (isEdit && !roleDetail.data) return;
+    reset(valuesOf(roleDetail.data));
+  }, [open, isEdit, roleDetail.data, reset]);
 
   const permissionIds = watch("permissionIds");
   const groups = React.useMemo(() => groupByResource(permissions), [permissions]);
@@ -104,12 +110,11 @@ export function RoleFormDialog({
       permissionIds: values.permissionIds,
     };
 
-    if (role) {
-      await update.mutateAsync({ id: role.id, input: payload });
-    } else {
-      await create.mutateAsync(payload);
-    }
+    const response = role
+      ? await update.mutateAsync({ id: role.id, input: payload })
+      : await create.mutateAsync(payload);
 
+    onSaved?.(response.data);
     onOpenChange(false);
   });
 
@@ -126,72 +131,80 @@ export function RoleFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
-            <Field data-invalid={!!errors.name}>
-              <FieldLabel htmlFor="role-name">Role name</FieldLabel>
-              <Input
-                id="role-name"
-                autoFocus
-                aria-invalid={!!errors.name}
-                {...register("name")}
-                placeholder="Night Manager"
-              />
-              <FieldError errors={[errors.name]} />
-            </Field>
+          {loadingDetail ? (
+            <div className="flex flex-col gap-5 py-4">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          ) : (
+            <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+              <Field data-invalid={!!errors.name}>
+                <FieldLabel htmlFor="role-name">Role name</FieldLabel>
+                <Input
+                  id="role-name"
+                  autoFocus
+                  aria-invalid={!!errors.name}
+                  {...register("name")}
+                  placeholder="Night Manager"
+                />
+                <FieldError errors={[errors.name]} />
+              </Field>
 
-            <Field data-invalid={!!errors.description}>
-              <FieldLabel htmlFor="role-description">
-                Description <span className="text-muted-foreground">(optional)</span>
-              </FieldLabel>
-              <Textarea
-                id="role-description"
-                aria-invalid={!!errors.description}
-                {...register("description")}
-                placeholder="What this role is responsible for."
-              />
-              <FieldError errors={[errors.description]} />
-            </Field>
+              <Field data-invalid={!!errors.description}>
+                <FieldLabel htmlFor="role-description">
+                  Description <span className="text-muted-foreground">(optional)</span>
+                </FieldLabel>
+                <Textarea
+                  id="role-description"
+                  aria-invalid={!!errors.description}
+                  {...register("description")}
+                  placeholder="What this role is responsible for."
+                />
+                <FieldError errors={[errors.description]} />
+              </Field>
 
-            <Field data-invalid={!!errors.permissionIds}>
-              <FieldLabel>Permissions</FieldLabel>
-              <div className="flex max-h-64 flex-col gap-3 overflow-y-auto scrollbar-none rounded-lg border p-3">
-                {groups.map(([resource, group]) => {
-                  const groupIds = group.map((p) => p.id);
-                  const allChecked = groupIds.every((id) =>
-                    permissionIds.includes(id),
-                  );
-                  return (
-                    <div key={resource} className="flex flex-col gap-1">
-                      <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm font-medium capitalize hover:bg-muted">
-                        <Checkbox
-                          checked={allChecked}
-                          onCheckedChange={(checked) =>
-                            toggleGroup(group, checked === true)
-                          }
-                        />
-                        {resource}
-                      </label>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 pl-7">
-                        {group.map((permission) => (
-                          <label
-                            key={permission.id}
-                            className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground"
-                          >
-                            <Checkbox
-                              checked={permissionIds.includes(permission.id)}
-                              onCheckedChange={() => togglePermission(permission.id)}
-                            />
-                            {permission.action}
-                          </label>
-                        ))}
+              <Field data-invalid={!!errors.permissionIds}>
+                <FieldLabel>Permissions</FieldLabel>
+                <div className="flex max-h-64 flex-col gap-3 overflow-y-auto scrollbar-none rounded-lg border p-3">
+                  {groups.map(([resource, group]) => {
+                    const groupIds = group.map((p) => p.id);
+                    const allChecked = groupIds.every((id) =>
+                      permissionIds.includes(id),
+                    );
+                    return (
+                      <div key={resource} className="flex flex-col gap-1">
+                        <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm font-medium capitalize hover:bg-muted">
+                          <Checkbox
+                            checked={allChecked}
+                            onCheckedChange={(checked) =>
+                              toggleGroup(group, checked === true)
+                            }
+                          />
+                          {resource}
+                        </label>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 pl-7">
+                          {group.map((permission) => (
+                            <label
+                              key={permission.id}
+                              className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                            >
+                              <Checkbox
+                                checked={permissionIds.includes(permission.id)}
+                                onCheckedChange={() => togglePermission(permission.id)}
+                              />
+                              {permission.action}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <FieldError errors={[errors.permissionIds]} />
-            </Field>
-          </FieldGroup>
+                    );
+                  })}
+                </div>
+                <FieldError errors={[errors.permissionIds]} />
+              </Field>
+            </FieldGroup>
+          )}
 
           <DialogFooter>
             <Button
@@ -205,7 +218,7 @@ export function RoleFormDialog({
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={pending}
+              disabled={pending || loadingDetail}
               data-icon={pending ? "inline-start" : undefined}
             >
               {pending && <Spinner />}

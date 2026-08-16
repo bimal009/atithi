@@ -1,13 +1,16 @@
 "use client";
 
+import * as React from "react";
 import { useParams } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context";
-import { useRolesQuery } from "@/features/tenant/role/client/useRoles";
+import {
+  useAssignableRolesQuery,
+  useRolesQuery,
+} from "@/features/tenant/role/client/useRoles";
 import { getErrorMessage } from "@/lib/axios";
 
 import { useMembersQuery } from "../client/useMembers";
@@ -37,25 +40,32 @@ function StaffSkeleton() {
 }
 
 export function StaffPageClient() {
-  usePageTitle("Staff");
   const { tenant } = useParams<{ tenant: string }>();
 
-  const membersQuery = useMembersQuery(tenant);
-  const rolesQuery = useRolesQuery(tenant);
+  const [roleFilter, setRoleFilter] = React.useState("all");
 
-  if (membersQuery.isPending || rolesQuery.isPending) {
+  const membersQuery = useMembersQuery(tenant, roleFilter);
+  const rolesQuery = useRolesQuery(tenant);
+  const assignableRolesQuery = useAssignableRolesQuery(tenant);
+
+  if (membersQuery.isPending || rolesQuery.isPending || assignableRolesQuery.isPending) {
     return <StaffSkeleton />;
   }
 
-  if (membersQuery.isError || rolesQuery.isError) {
+  if (membersQuery.isError || rolesQuery.isError || assignableRolesQuery.isError) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Staff" description="Your team, and who can do what." />
+        <PageHeader
+          title="Staff"
+          description="Your team, and who can do what."
+        />
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden />
           <AlertTitle>Could not load staff</AlertTitle>
           <AlertDescription>
-            {getErrorMessage(membersQuery.error ?? rolesQuery.error)}
+            {getErrorMessage(
+              membersQuery.error ?? rolesQuery.error ?? assignableRolesQuery.error,
+            )}
           </AlertDescription>
         </Alert>
       </div>
@@ -67,6 +77,9 @@ export function StaffPageClient() {
       tenant={tenant}
       members={membersQuery.data.members}
       roles={rolesQuery.data.roles}
+      assignableRoles={assignableRolesQuery.data.roles}
+      roleFilter={roleFilter}
+      onRoleFilterChange={setRoleFilter}
     />
   );
 }

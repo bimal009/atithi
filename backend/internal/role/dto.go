@@ -32,19 +32,25 @@ type RoleResponse struct {
 	Slug        string               `json:"slug"`
 	Description *string              `json:"description,omitempty"`
 	IsSystem    bool                 `json:"isSystem"`
-	MemberCount int                  `json:"memberCount"`
 	Permissions []PermissionResponse `json:"permissions"`
 	CreatedAt   time.Time            `json:"createdAt"`
 	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
+// RoleSummaryResponse is the lightweight shape returned by the list
+// endpoints — no embedded permissions. Fetch a role by id (RoleResponse) to
+// see its actual permissions.
 type RoleSummaryResponse struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Slug     string `json:"slug"`
-	IsSystem bool   `json:"isSystem"`
+	ID          string    `json:"id"`
+	HotelID     string    `json:"hotelId"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description *string   `json:"description,omitempty"`
+	IsSystem    bool      `json:"isSystem"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type ListRolesResponse struct {
-	Roles []RoleResponse `json:"roles"`
+	Roles []RoleSummaryResponse `json:"roles"`
 }

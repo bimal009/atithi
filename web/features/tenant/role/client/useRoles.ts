@@ -8,19 +8,18 @@ import { getErrorMessage } from "@/lib/axios";
 import {
   createRole,
   deleteRole,
-  listHotelRoles,
-  listPermissions,
+  getRole,
+  listAssignableRoles,
   listRoles,
-  listSystemRoles,
   updateRole,
 } from "../api/role";
 import type { CreateRoleInput, UpdateRoleInput } from "../types";
 
 export const roleKeys = {
   all: (tenant: string) => ["roles", tenant] as const,
-  system: (tenant: string) => ["roles", tenant, "system"] as const,
-  hotel: (tenant: string) => ["roles", tenant, "hotel"] as const,
-  permissions: (tenant: string) => ["permissions", tenant] as const,
+  assignable: (tenant: string) => [...roleKeys.all(tenant), "assignable"] as const,
+  detail: (tenant: string, roleId: string) =>
+    [...roleKeys.all(tenant), "detail", roleId] as const,
 };
 
 export const useRolesQuery = (tenant: string) =>
@@ -29,22 +28,17 @@ export const useRolesQuery = (tenant: string) =>
     queryFn: async () => (await listRoles(tenant)).data,
   });
 
-export const useSystemRolesQuery = (tenant: string) =>
+export const useAssignableRolesQuery = (tenant: string) =>
   useQuery({
-    queryKey: roleKeys.system(tenant),
-    queryFn: async () => (await listSystemRoles(tenant)).data,
+    queryKey: roleKeys.assignable(tenant),
+    queryFn: async () => (await listAssignableRoles(tenant)).data,
   });
 
-export const useHotelRolesQuery = (tenant: string) =>
+export const useRoleQuery = (tenant: string, roleId: string | undefined, enabled: boolean) =>
   useQuery({
-    queryKey: roleKeys.hotel(tenant),
-    queryFn: async () => (await listHotelRoles(tenant)).data,
-  });
-
-export const usePermissionsQuery = (tenant: string) =>
-  useQuery({
-    queryKey: roleKeys.permissions(tenant),
-    queryFn: async () => (await listPermissions(tenant)).data,
+    queryKey: roleKeys.detail(tenant, roleId ?? ""),
+    queryFn: async () => (await getRole(tenant, roleId!)).data,
+    enabled: enabled && !!roleId,
   });
 
 export const useCreateRole = (tenant: string) => {

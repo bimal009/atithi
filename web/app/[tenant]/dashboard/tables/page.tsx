@@ -11,7 +11,6 @@ import { SectionCards } from "@/components/shared/section-cards"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { AddTableDialog } from "@/features/tenant/dashboard/tables/add-table-dialog"
-import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
 const SECTION_LABELS: Record<Table["section"], string> = {
   indoor: "Indoor",
@@ -20,7 +19,6 @@ const SECTION_LABELS: Record<Table["section"], string> = {
 }
 
 export default function TablesPage() {
-  usePageTitle("Tables")
   const [tables, setTables] = React.useState(TABLES)
 
   const occupiedTables = tables.filter((table) =>

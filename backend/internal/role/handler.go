@@ -63,6 +63,16 @@ func (h *RoleHandler) ListHotelRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("hotel roles fetched", roles))
 }
 
+func (h *RoleHandler) ListAssignableRoles(c *gin.Context) {
+	roles, err := h.service.ListAssignableRoles(c.Request.Context(), middleware.HotelID(c))
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("assignable roles fetched", roles))
+}
+
 func (h *RoleHandler) Get(c *gin.Context) {
 	role, err := h.service.Get(c.Request.Context(), c.Param("roleId"), middleware.HotelID(c))
 	if err != nil {
