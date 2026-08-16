@@ -1,13 +1,14 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { API_BASE, LOGIN_ROUTE } from "@/features/auth/constants";
+import { API_BASE, LOGIN_ROUTE, SESSION_COOKIE } from "@/features/auth/constants";
+
+const isServer = typeof window === "undefined";
 
 export const axiosInstance = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
 });
 
-/** A 401 from these is the answer, not a stale token. */
 const NO_REFRESH_PATHS = [
   "/auth/refresh",
   "/auth/login",
@@ -18,17 +19,32 @@ const NO_REFRESH_PATHS = [
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };
 
-/**
- * One shared refresh for all callers. Refreshing rotates the token, so five
- * concurrent refreshes would rotate it out from under each other and log the
- * user out.
- */
-let refreshPromise: Promise<void> | null = null;
+axiosInstance.interceptors.request.use(async (config) => {
+  if (!isServer) return config;
 
-function refreshOnce(): Promise<void> {
+  const { cookies } = await import("next/headers");
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (token) {
+    config.headers.set("Cookie", `${SESSION_COOKIE}=${token}`);
+  }
+  return config;
+});
+
+function extractSessionToken(setCookie: string[] | undefined): string | undefined {
+  const header = setCookie?.find((entry) => entry.startsWith(`${SESSION_COOKIE}=`));
+  return header?.split(";", 1)[0]?.split("=", 2)[1];
+}
+
+let refreshPromise: Promise<string | undefined> | null = null;
+
+function refreshOnce(): Promise<string | undefined> {
   refreshPromise ??= axiosInstance
     .post("/auth/refresh")
-    .then(() => undefined)
+    .then((response) =>
+      isServer
+        ? extractSessionToken(response.headers["set-cookie"])
+        : undefined,
+    )
     .finally(() => {
       refreshPromise = null;
     });
@@ -56,12 +72,13 @@ axiosInstance.interceptors.response.use(
     config._retried = true;
 
     try {
-      await refreshOnce();
+      const freshToken = await refreshOnce();
+      if (isServer && freshToken) {
+        config.headers.set("Cookie", `${SESSION_COOKIE}=${freshToken}`);
+      }
       return await axiosInstance(config);
     } catch {
-      // Full navigation, not a router push — it clears client caches that
-      // would otherwise keep holding the previous user's data.
-      if (typeof window !== "undefined") {
+      if (!isServer) {
         window.location.href = LOGIN_ROUTE;
       }
       return Promise.reject(error);

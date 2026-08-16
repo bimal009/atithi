@@ -50,6 +50,12 @@ var (
 
 	ErrMemberNotFound = New(http.StatusNotFound, "not_found", "member not found")
 	ErrMemberExists   = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
+
+	ErrRoomTypeNotFound   = New(http.StatusNotFound, "not_found", "room type not found")
+	ErrRoomTypeNameExists = New(http.StatusConflict, "conflict", "a room type with this name already exists")
+	ErrInvalidInput       = New(http.StatusBadRequest, "invalid_input", "invalid input")
+	ErrInvalidPagination  = New(http.StatusBadRequest, "invalid_pagination", "invalid page or limit value")
+	ErrLimitExceeded      = New(http.StatusBadRequest, "limit_exceeded", "limit exceeds maximum allowed value")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

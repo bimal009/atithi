@@ -4,28 +4,32 @@ import (
 	"github.com/bimal009/atithi/internal/auth"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
+	"github.com/bimal009/atithi/internal/member"
+	"github.com/bimal009/atithi/internal/role"
+	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
 	"github.com/gin-gonic/gin"
 )
 
 type Handlers struct {
-	Auth  *auth.AuthHandler
-	Hotel *hotel.HotelHandler
-	Image *handlers.ImageHandler
-	// RequireAuth is the session middleware. Routes that need a logged-in
-	// user go behind it.
-	RequireAuth gin.HandlerFunc
+	Auth           *auth.AuthHandler
+	Hotel          *hotel.HotelHandler
+	RoomType       *roomtypes.RoomTypeHandler
+	Role           *role.RoleHandler
+	Member         *member.MemberHandler
+	Image          *handlers.ImageHandler
+	RequireAuth    gin.HandlerFunc
+	ValidateHotel  gin.HandlerFunc
+	ValidateMember gin.HandlerFunc
 }
 
 func Register(r *gin.Engine, h *Handlers) {
 	api := r.Group("/api/v1")
 
 	registerAuthRoutes(api, h.Auth, h.RequireAuth)
-	registerHotelRoutes(api, h.Hotel, h.RequireAuth)
+	registerHotelRoutes(api, h)
 	registerUploadRoutes(api, h.Image, h.RequireAuth)
 }
 
-// The token authorises an upload to our ImageKit account, so it is only ever
-// handed to a signed-in user.
 func registerUploadRoutes(
 	rg *gin.RouterGroup,
 	h *handlers.ImageHandler,
@@ -43,10 +47,6 @@ func registerAuthRoutes(rg *gin.RouterGroup, h *auth.AuthHandler, requireAuth gi
 		authGroup.POST("/login", h.Login)
 		authGroup.POST("/validate-otp", h.ValidateOtp)
 		authGroup.POST("/resend-otp", h.Resend)
-
-		// Refresh and logout stay open: both take the token off the request
-		// themselves, and a caller whose session just died still needs logout
-		// to clear the cookie and refresh to tell them to log in again.
 		authGroup.POST("/refresh", h.Refresh)
 		authGroup.POST("/logout", h.Logout)
 
@@ -55,15 +55,34 @@ func registerAuthRoutes(rg *gin.RouterGroup, h *auth.AuthHandler, requireAuth gi
 	}
 }
 
-func registerHotelRoutes(rg *gin.RouterGroup, h *hotel.HotelHandler, requireAuth gin.HandlerFunc) {
-	hotels := rg.Group("/hotels", requireAuth)
+func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
+	hotels := rg.Group("/hotels", h.RequireAuth)
 	{
-		hotels.POST("", h.Create)
-		hotels.GET("", h.GetAll)
-		hotels.GET("/check-slug", h.CheckSlug)
-		hotels.GET("/:id", h.Get)
-		hotels.GET("/slug/:slug", h.GetBySlug)
-		hotels.PATCH("/:id", h.Update)
-		hotels.DELETE("/:id", h.Delete)
+		hotels.POST("", h.Hotel.Create)
+		hotels.GET("", h.Hotel.GetAll)
+		hotels.GET("/check-slug", h.Hotel.CheckSlug)
+		hotels.GET("/:id", h.Hotel.Get)
+		hotels.GET("/slug/:slug", h.Hotel.GetBySlug)
+		hotels.PATCH("/:id", h.Hotel.Update)
+		hotels.DELETE("/:id", h.Hotel.Delete)
+		scoped := hotels.Group("/slug/:slug", h.ValidateHotel, h.ValidateMember)
+		{
+			roomTypes := scoped.Group("/room-types")
+			{
+				roomTypes.POST("", h.RoomType.Create)
+				roomTypes.GET("", h.RoomType.GetAll)
+				roomTypes.GET("/:roomTypeId", h.RoomType.Get)
+				roomTypes.PATCH("/:roomTypeId", h.RoomType.Update)
+				roomTypes.DELETE("/:roomTypeId", h.RoomType.Delete)
+			}
+
+			scoped.GET("/roles", h.Role.ListRoles)
+
+			members := scoped.Group("/members")
+			{
+				members.GET("", h.Member.List)
+				members.POST("", h.Member.Add)
+			}
+		}
 	}
 }

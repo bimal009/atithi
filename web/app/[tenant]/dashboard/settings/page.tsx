@@ -1,28 +1,51 @@
 "use client"
 
-import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { z } from "zod"
 
 import { TENANT } from "@/lib/mock-data"
 import { PageHeader } from "@/components/shared/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 
+const settingsSchema = z.object({
+  hotelName: z.string().trim().min(2, "Enter the hotel name").max(255),
+  city: z.string().trim().min(2, "Enter the city").max(100),
+  ownerName: z.string().trim().min(2, "Enter the owner's name").max(100),
+})
+
+type SettingsValues = z.infer<typeof settingsSchema>
+
 export default function SettingsPage() {
   usePageTitle("Settings")
-  const [form, setForm] = React.useState({
-    hotelName: TENANT.hotelName,
-    city: TENANT.city,
-    ownerName: TENANT.ownerName,
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SettingsValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      hotelName: TENANT.hotelName,
+      city: TENANT.city,
+      ownerName: TENANT.ownerName,
+    },
   })
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const onSubmit = handleSubmit(() => {
     toast.success("Settings saved")
-  }
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,35 +53,30 @@ export default function SettingsPage() {
 
       <Card className="max-w-xl">
         <CardContent>
-          <form id="settings-form" onSubmit={handleSubmit}>
+          <form id="settings-form" onSubmit={onSubmit} noValidate>
             <FieldGroup>
-              <Field>
+              <Field data-invalid={!!errors.hotelName}>
                 <FieldLabel htmlFor="hotel-name">Hotel name</FieldLabel>
                 <Input
                   id="hotel-name"
-                  value={form.hotelName}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, hotelName: e.target.value }))
-                  }
+                  aria-invalid={!!errors.hotelName}
+                  {...register("hotelName")}
                 />
+                <FieldError errors={[errors.hotelName]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.city}>
                 <FieldLabel htmlFor="city">City</FieldLabel>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                />
+                <Input id="city" aria-invalid={!!errors.city} {...register("city")} />
+                <FieldError errors={[errors.city]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.ownerName}>
                 <FieldLabel htmlFor="owner-name">Owner name</FieldLabel>
                 <Input
                   id="owner-name"
-                  value={form.ownerName}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, ownerName: e.target.value }))
-                  }
+                  aria-invalid={!!errors.ownerName}
+                  {...register("ownerName")}
                 />
+                <FieldError errors={[errors.ownerName]} />
                 <FieldDescription>
                   Shown across the dashboard and on guest-facing documents.
                 </FieldDescription>

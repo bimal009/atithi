@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { ImagePlusIcon, PlusIcon } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 import { ADD_ONS, MENU_CATEGORIES, SUB_MENUS } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
@@ -17,7 +20,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -29,18 +38,31 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
-function emptyForm() {
-  return {
-    name: "",
-    subMenu: SUB_MENUS[0].name,
-    category: MENU_CATEGORIES[0],
-    isVeg: "veg",
-    price: "",
-    discount: "",
-    description: "",
-    ingredients: "",
-    available: true,
-  }
+const dishSchema = z.object({
+  isVeg: z.enum(["veg", "non-veg"]),
+  name: z.string().trim().min(2, "Enter a dish name").max(150),
+  subMenu: z.string().min(1, "Select a sub-menu"),
+  category: z.string().min(1, "Select a category"),
+  price: z.coerce.number().min(0, "Enter a valid price"),
+  discount: z.string().trim().optional(),
+  description: z.string().trim().max(1000).optional(),
+  ingredients: z.string().trim().max(1000).optional(),
+  available: z.boolean(),
+})
+
+type DishInput = z.input<typeof dishSchema>
+type DishValues = z.output<typeof dishSchema>
+
+const emptyValues: DishInput = {
+  name: "",
+  subMenu: SUB_MENUS[0].name,
+  category: MENU_CATEGORIES[0],
+  isVeg: "veg",
+  price: 0,
+  discount: "",
+  description: "",
+  ingredients: "",
+  available: true,
 }
 
 export function AddDishDialog({
@@ -49,10 +71,26 @@ export function AddDishDialog({
   onCreate: (item: MenuItem) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState(emptyForm())
   const [photoUrl, setPhotoUrl] = React.useState<string | undefined>()
   const [addOnIds, setAddOnIds] = React.useState<string[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<DishInput, unknown, DishValues>({
+    resolver: zodResolver(dishSchema),
+    defaultValues: emptyValues,
+  })
+
+  const isVeg = watch("isVeg")
+  const subMenu = watch("subMenu")
+  const category = watch("category")
+  const available = watch("available")
 
   function toggleAddOn(id: string) {
     setAddOnIds((prev) =>
@@ -60,8 +98,8 @@ export function AddDishDialog({
     )
   }
 
-  function reset() {
-    setForm(emptyForm())
+  function resetAll() {
+    reset(emptyValues)
     setPhotoUrl(undefined)
     setAddOnIds([])
   }
@@ -72,32 +110,31 @@ export function AddDishDialog({
     setPhotoUrl(URL.createObjectURL(file))
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const onSubmit = handleSubmit((values) => {
     onCreate({
       id: `m${Date.now()}`,
-      name: form.name,
-      subMenu: form.subMenu,
-      category: form.category,
-      price: Number(form.price) || 0,
-      discount: form.discount ? Number(form.discount) : undefined,
-      isVeg: form.isVeg === "veg",
-      available: form.available,
-      description: form.description || undefined,
-      ingredients: form.ingredients || undefined,
+      name: values.name,
+      subMenu: values.subMenu,
+      category: values.category,
+      price: values.price,
+      discount: values.discount ? Number(values.discount) : undefined,
+      isVeg: values.isVeg === "veg",
+      available: values.available,
+      description: values.description || undefined,
+      ingredients: values.ingredients || undefined,
       photoUrl,
       addOnIds: addOnIds.length ? addOnIds : undefined,
     })
     setOpen(false)
-    reset()
-  }
+    resetAll()
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) reset()
+        if (!next) resetAll()
       }}
     >
       <DialogTrigger render={<Button />}>
@@ -105,7 +142,7 @@ export function AddDishDialog({
         Add Dish
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Create dish</DialogTitle>
             <DialogDescription>
@@ -115,12 +152,14 @@ export function AddDishDialog({
 
           <FieldGroup className="max-h-[65vh] overflow-y-auto scrollbar-none py-4">
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.isVeg}>
                 <FieldLabel htmlFor="dish-type">Type</FieldLabel>
                 <Select
-                  value={form.isVeg}
+                  value={isVeg}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, isVeg: v ?? f.isVeg }))
+                    setValue("isVeg", (v ?? "veg") as DishValues["isVeg"], {
+                      shouldValidate: true,
+                    })
                   }
                 >
                   <SelectTrigger id="dish-type" className="w-full">
@@ -131,18 +170,17 @@ export function AddDishDialog({
                     <SelectItem value="non-veg">Non-veg</SelectItem>
                   </SelectContent>
                 </Select>
+                <FieldError errors={[errors.isVeg]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.name}>
                 <FieldLabel htmlFor="dish-name">Dish name</FieldLabel>
                 <Input
                   id="dish-name"
-                  required
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
+                  aria-invalid={!!errors.name}
+                  {...register("name")}
                   placeholder="Chicken Sekuwa"
                 />
+                <FieldError errors={[errors.name]} />
               </Field>
             </Field>
 
@@ -177,12 +215,12 @@ export function AddDishDialog({
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.subMenu}>
                 <FieldLabel htmlFor="dish-submenu">Sub-menu</FieldLabel>
                 <Select
-                  value={form.subMenu}
+                  value={subMenu}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, subMenu: v ?? f.subMenu }))
+                    setValue("subMenu", v ?? "", { shouldValidate: true })
                   }
                 >
                   <SelectTrigger id="dish-submenu" className="w-full">
@@ -196,85 +234,82 @@ export function AddDishDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError errors={[errors.subMenu]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.category}>
                 <FieldLabel htmlFor="dish-category">Category</FieldLabel>
                 <Select
-                  value={form.category}
+                  value={category}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, category: v ?? f.category }))
+                    setValue("category", v ?? "", { shouldValidate: true })
                   }
                 >
                   <SelectTrigger id="dish-category" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MENU_CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                    {MENU_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError errors={[errors.category]} />
               </Field>
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.price}>
                 <FieldLabel htmlFor="dish-price">Actual price (Rs)</FieldLabel>
                 <Input
                   id="dish-price"
                   type="number"
                   min={0}
-                  required
-                  value={form.price}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, price: e.target.value }))
-                  }
+                  aria-invalid={!!errors.price}
+                  {...register("price")}
                   placeholder="280"
                 />
+                <FieldError errors={[errors.price]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.discount}>
                 <FieldLabel htmlFor="dish-discount">Discount (Rs, optional)</FieldLabel>
                 <Input
                   id="dish-discount"
                   type="number"
                   min={0}
-                  value={form.discount}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, discount: e.target.value }))
-                  }
+                  aria-invalid={!!errors.discount}
+                  {...register("discount")}
                   placeholder="0"
                 />
+                <FieldError errors={[errors.discount]} />
               </Field>
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.description}>
               <FieldLabel htmlFor="dish-description">
                 Description (optional)
               </FieldLabel>
               <Textarea
                 id="dish-description"
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
+                aria-invalid={!!errors.description}
+                {...register("description")}
                 placeholder="Shown to guests on the ordering screen."
               />
+              <FieldError errors={[errors.description]} />
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.ingredients}>
               <FieldLabel htmlFor="dish-ingredients">
                 Ingredients (optional)
               </FieldLabel>
               <Textarea
                 id="dish-ingredients"
-                value={form.ingredients}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, ingredients: e.target.value }))
-                }
+                aria-invalid={!!errors.ingredients}
+                {...register("ingredients")}
                 placeholder="Chicken, yogurt, ginger-garlic paste, spices"
               />
+              <FieldError errors={[errors.ingredients]} />
             </Field>
 
             <Field>
@@ -312,9 +347,9 @@ export function AddDishDialog({
               </div>
               <Switch
                 id="dish-available"
-                checked={form.available}
+                checked={available}
                 onCheckedChange={(checked) =>
-                  setForm((f) => ({ ...f, available: checked }))
+                  setValue("available", checked, { shouldValidate: true })
                 }
               />
             </Field>

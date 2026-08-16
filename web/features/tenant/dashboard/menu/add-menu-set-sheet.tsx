@@ -1,10 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { PlusIcon } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 import { MENU_ITEMS } from "@/lib/mock-data"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, generateId } from "@/lib/utils"
 import type { MenuSet } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -17,13 +20,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-function emptyForm() {
-  return { name: "", description: "", price: "" }
-}
+const menuSetSchema = z.object({
+  name: z.string().trim().min(2, "Enter a set name").max(150),
+  description: z.string().trim().max(500).optional(),
+  price: z.coerce.number().min(0, "Enter a valid price"),
+})
+
+type MenuSetInput = z.input<typeof menuSetSchema>
+type MenuSetValues = z.output<typeof menuSetSchema>
+
+const emptyValues: MenuSetInput = { name: "", description: "", price: 0 }
 
 export function AddMenuSetSheet({
   onCreate,
@@ -31,8 +41,17 @@ export function AddMenuSetSheet({
   onCreate: (menuSet: MenuSet) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState(emptyForm())
   const [itemIds, setItemIds] = React.useState<string[]>([])
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<MenuSetInput, unknown, MenuSetValues>({
+    resolver: zodResolver(menuSetSchema),
+    defaultValues: emptyValues,
+  })
 
   function toggleItem(id: string) {
     setItemIds((prev) =>
@@ -40,30 +59,39 @@ export function AddMenuSetSheet({
     )
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name.trim() || itemIds.length === 0) return
+  const onSubmit = handleSubmit((values) => {
+    if (itemIds.length === 0) return
+
     onCreate({
-      id: `ms${Date.now()}`,
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
+      id: generateId("ms"),
+      name: values.name.trim(),
+      description: values.description?.trim() || undefined,
       itemIds,
-      price: Number(form.price) || 0,
+      price: values.price,
       available: true,
     })
     setOpen(false)
-    setForm(emptyForm())
+    reset(emptyValues)
     setItemIds([])
-  }
+  })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) {
+          reset(emptyValues)
+          setItemIds([])
+        }
+      }}
+    >
       <DialogTrigger render={<Button />}>
         <PlusIcon data-icon="inline-start" />
         Add Menu Set
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Add a menu set</DialogTitle>
             <DialogDescription>
@@ -71,44 +99,41 @@ export function AddMenuSetSheet({
             </DialogDescription>
           </DialogHeader>
           <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
-            <Field>
+            <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="set-name">Set name</FieldLabel>
               <Input
                 id="set-name"
-                required
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                aria-invalid={!!errors.name}
+                {...register("name")}
                 placeholder="Momo Combo"
               />
+              <FieldError errors={[errors.name]} />
             </Field>
-            <Field>
+            <Field data-invalid={!!errors.description}>
               <FieldLabel htmlFor="set-description">
                 Description (optional)
               </FieldLabel>
               <Textarea
                 id="set-description"
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
+                aria-invalid={!!errors.description}
+                {...register("description")}
                 placeholder="What's included, in one line."
               />
+              <FieldError errors={[errors.description]} />
             </Field>
-            <Field>
+            <Field data-invalid={!!errors.price}>
               <FieldLabel htmlFor="set-price">Set price (Rs)</FieldLabel>
               <Input
                 id="set-price"
                 type="number"
                 min={0}
-                required
-                value={form.price}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, price: e.target.value }))
-                }
+                aria-invalid={!!errors.price}
+                {...register("price")}
                 placeholder="250"
               />
+              <FieldError errors={[errors.price]} />
             </Field>
-            <Field>
+            <Field data-invalid={itemIds.length === 0}>
               <FieldLabel>Included dishes</FieldLabel>
               <div className="flex max-h-52 flex-col gap-0.5 overflow-y-auto scrollbar-none rounded-lg border p-1">
                 {MENU_ITEMS.map((item) => (
@@ -127,6 +152,9 @@ export function AddMenuSetSheet({
                   </label>
                 ))}
               </div>
+              {itemIds.length === 0 && (
+                <p className="text-sm text-destructive">Select at least one dish.</p>
+              )}
             </Field>
           </FieldGroup>
           <DialogFooter>

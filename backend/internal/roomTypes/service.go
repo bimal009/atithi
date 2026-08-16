@@ -1,0 +1,117 @@
+package roomtypes
+
+import (
+	"context"
+	"log/slog"
+
+	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/pkg/validator"
+	"github.com/google/uuid"
+)
+
+type RoomTypeService interface {
+	Create(ctx context.Context, hotelID, userID string, req *CreateRoomTypeRequest) (model.RoomType, error)
+	Get(ctx context.Context, id, hotelID, userID string) (model.RoomType, error)
+	GetAll(ctx context.Context, hotelID, userID string) ([]model.RoomType, error)
+	Update(ctx context.Context, id, hotelID, userID string, req *UpdateRoomTypeRequest) (model.RoomType, error)
+	Delete(ctx context.Context, id, hotelID, userID string) error
+}
+
+type roomTypeService struct {
+	slog *slog.Logger
+	repo RoomTypeRepo
+}
+
+func NewRoomTypeService(slog *slog.Logger, repo RoomTypeRepo) RoomTypeService {
+	return &roomTypeService{
+		slog: slog,
+		repo: repo,
+	}
+}
+
+func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, req *CreateRoomTypeRequest) (model.RoomType, error) {
+	if err := validator.ValidateStruct(req); err != nil {
+		return model.RoomType{}, err
+	}
+
+	amenities := req.Amenities
+	if amenities == nil {
+		amenities = []string{}
+	}
+
+	newRoomType := &model.RoomType{
+		ID:          uuid.NewString(),
+		HotelID:     hotelID,
+		Name:        req.Name,
+		BasePrice:   req.BasePrice,
+		Capacity:    req.Capacity,
+		Description: req.Description,
+		Amenities:   amenities,
+	}
+
+	created, err := s.repo.Create(ctx, newRoomType, userID)
+	if err != nil {
+		s.slog.Error("failed to create room type", "hotel_id", hotelID, "error", err)
+		return model.RoomType{}, err
+	}
+
+	s.slog.Info("room type created", "room_type_id", created.ID, "hotel_id", hotelID)
+
+	return created, nil
+}
+
+func (s *roomTypeService) Get(ctx context.Context, id, hotelID, userID string) (model.RoomType, error) {
+	return s.repo.Get(ctx, id, hotelID, userID)
+}
+
+func (s *roomTypeService) GetAll(ctx context.Context, hotelID, userID string) ([]model.RoomType, error) {
+	return s.repo.ListForHotel(ctx, hotelID, userID)
+}
+
+func (s *roomTypeService) Update(ctx context.Context, id, hotelID, userID string, req *UpdateRoomTypeRequest) (model.RoomType, error) {
+	if err := validator.ValidateStruct(req); err != nil {
+		return model.RoomType{}, err
+	}
+
+	existing, err := s.repo.Get(ctx, id, hotelID, userID)
+	if err != nil {
+		return model.RoomType{}, err
+	}
+
+	if req.Name != nil {
+		existing.Name = *req.Name
+	}
+	if req.BasePrice != nil {
+		existing.BasePrice = *req.BasePrice
+	}
+	if req.Capacity != nil {
+		existing.Capacity = *req.Capacity
+	}
+	if req.Description != nil {
+		existing.Description = req.Description
+	}
+	if req.Amenities != nil {
+		existing.Amenities = req.Amenities
+	}
+
+	updated, err := s.repo.Update(ctx, &existing, userID)
+	if err != nil {
+		s.slog.Error("failed to update room type", "room_type_id", id, "error", err)
+		return model.RoomType{}, err
+	}
+
+	s.slog.Info("room type updated", "room_type_id", updated.ID)
+
+	return updated, nil
+}
+
+func (s *roomTypeService) Delete(ctx context.Context, id, hotelID, userID string) error {
+	if err := s.repo.Delete(ctx, id, hotelID, userID); err != nil {
+		s.slog.Error("failed to delete room type", "room_type_id", id, "error", err)
+		return err
+	}
+
+	s.slog.Info("room type deleted", "room_type_id", id)
+
+	return nil
+}

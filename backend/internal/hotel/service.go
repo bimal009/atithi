@@ -19,6 +19,7 @@ type HotelService interface {
 	Create(ctx context.Context, userID string, req *CreateHotelRequest) (model.Hotel, error)
 	Get(ctx context.Context, id, userID string) (model.Hotel, error)
 	GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error)
+	FindBySlug(ctx context.Context, slug string) (model.Hotel, error)
 	GetAll(ctx context.Context, userID string) ([]model.Hotel, error)
 	Update(ctx context.Context, id, userID string, req *UpdateHotelRequest) (model.Hotel, error)
 	Delete(ctx context.Context, id, userID string) error
@@ -49,9 +50,6 @@ func NewHotelService(
 	}
 }
 
-// Create writes the hotel and the creator's owner membership together. A hotel
-// with no members would be invisible to everyone, including the person who
-// just made it, so the two must commit as one.
 func (s *hotelService) Create(ctx context.Context, userID string, req *CreateHotelRequest) (model.Hotel, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return model.Hotel{}, err
@@ -125,6 +123,10 @@ func (s *hotelService) GetBySlug(ctx context.Context, slug, userID string) (mode
 	return s.repo.GetBySlug(ctx, slug, userID)
 }
 
+func (s *hotelService) FindBySlug(ctx context.Context, slug string) (model.Hotel, error) {
+	return s.repo.FindBySlug(ctx, slug)
+}
+
 func (s *hotelService) GetAll(ctx context.Context, userID string) ([]model.Hotel, error) {
 	return s.repo.ListForUser(ctx, userID)
 }
@@ -186,9 +188,6 @@ func (s *hotelService) Update(ctx context.Context, id, userID string, req *Updat
 	return updatedHotel, nil
 }
 
-// SlugAvailable is unauthenticated by nature of the check itself: slugs are
-// globally unique, so availability cannot depend on which hotels the caller
-// can see.
 func (s *hotelService) SlugAvailable(ctx context.Context, slug string) (bool, error) {
 	if !SlugFormat.MatchString(slug) {
 		return false, nil

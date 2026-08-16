@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { LayersIcon, PlusIcon } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 import { MENU_ITEMS, SUB_MENUS } from "@/lib/mock-data"
 import { PageHeader } from "@/components/shared/page-header"
@@ -19,34 +22,58 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { usePageTitle } from "@/features/tenant/dashboard/page-title-context"
 import type { SubMenu } from "@/types"
 
+const subMenuSchema = z.object({
+  name: z.string().trim().min(2, "Enter a sub-menu name").max(100),
+  description: z.string().trim().max(500).optional(),
+})
+
+type SubMenuValues = z.infer<typeof subMenuSchema>
+
+const emptyValues: SubMenuValues = { name: "", description: "" }
+
 function AddSubMenuDialog({ onCreate }: { onCreate: (subMenu: SubMenu) => void }) {
   const [open, setOpen] = React.useState(false)
-  const [name, setName] = React.useState("")
-  const [description, setDescription] = React.useState("")
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) return
-    onCreate({ id: `sm${Date.now()}`, name: name.trim(), description: description.trim() || undefined })
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SubMenuValues>({
+    resolver: zodResolver(subMenuSchema),
+    defaultValues: emptyValues,
+  })
+
+  const onSubmit = handleSubmit((values) => {
+    onCreate({
+      id: `sm${Date.now()}`,
+      name: values.name,
+      description: values.description || undefined,
+    })
     setOpen(false)
-    setName("")
-    setDescription("")
-  }
+    reset(emptyValues)
+  })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) reset(emptyValues)
+      }}
+    >
       <DialogTrigger render={<Button />}>
         <PlusIcon data-icon="inline-start" />
         Add Sub-Menu
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Add a sub-menu</DialogTitle>
             <DialogDescription>
@@ -55,26 +82,27 @@ function AddSubMenuDialog({ onCreate }: { onCreate: (subMenu: SubMenu) => void }
             </DialogDescription>
           </DialogHeader>
           <FieldGroup className="py-4">
-            <Field>
+            <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="submenu-name">Sub-menu name</FieldLabel>
               <Input
                 id="submenu-name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                aria-invalid={!!errors.name}
+                {...register("name")}
                 placeholder="Breakfast Menu"
               />
+              <FieldError errors={[errors.name]} />
             </Field>
-            <Field>
+            <Field data-invalid={!!errors.description}>
               <FieldLabel htmlFor="submenu-description">
                 Description (optional)
               </FieldLabel>
               <Textarea
                 id="submenu-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                aria-invalid={!!errors.description}
+                {...register("description")}
                 placeholder="Served 7 AM – 10 AM."
               />
+              <FieldError errors={[errors.description]} />
             </Field>
           </FieldGroup>
           <DialogFooter>

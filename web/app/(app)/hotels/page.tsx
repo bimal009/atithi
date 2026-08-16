@@ -3,17 +3,27 @@ import { AlertCircleIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { listHotels } from "@/features/hotel/api/hotel";
 import { CreateHotelDialog } from "@/features/hotel/components/create-hotel-dialog";
 import { HotelsGrid } from "@/features/hotel/components/hotels-grid";
 import type { Hotel } from "@/features/hotel/types";
-import { serverFetch } from "@/lib/server-api";
+import { getErrorMessage } from "@/lib/axios";
 
 export const metadata: Metadata = {
   title: "Hotels · Atithi",
 };
 
+async function loadHotels() {
+  try {
+    const { data } = await listHotels();
+    return { ok: true as const, hotels: data };
+  } catch (error) {
+    return { ok: false as const, message: getErrorMessage(error) };
+  }
+}
+
 export default async function HotelsPage() {
-  const result = await serverFetch<Hotel[]>("/hotels");
+  const result = await loadHotels();
 
   if (!result.ok) {
     return (
@@ -32,7 +42,7 @@ export default async function HotelsPage() {
     );
   }
 
-  const hotels = result.data ?? [];
+  const hotels: Hotel[] = result.hotels;
 
   return (
     <div className="flex flex-col gap-6">

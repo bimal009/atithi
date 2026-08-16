@@ -10,16 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Every read and write is scoped to the caller's membership. Authentication
-// only proves who someone is; membership decides which hotels they may touch,
-// so it belongs in the query rather than in a check a caller can forget.
 type HotelRepo interface {
 	Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error)
 	Get(ctx context.Context, id, userID string) (model.Hotel, error)
 	GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error)
-	// SlugExists is deliberately unscoped: slugs are globally unique, so the
-	// check has to see hotels the caller cannot otherwise read.
 	SlugExists(ctx context.Context, slug string) (bool, error)
+	FindBySlug(ctx context.Context, slug string) (model.Hotel, error)
 	ListForUser(ctx context.Context, userID string) ([]model.Hotel, error)
 	Update(ctx context.Context, hotel *model.Hotel, userID string) (model.Hotel, error)
 	Delete(ctx context.Context, id, userID string) error
@@ -132,6 +128,40 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.H
 	var hotel model.Hotel
 
 	err := r.DB.QueryRow(ctx, query, slug, userID).Scan(
+		&hotel.ID,
+		&hotel.Name,
+		&hotel.Slug,
+		&hotel.Description,
+		&hotel.LogoURL,
+		&hotel.Address,
+		&hotel.City,
+		&hotel.PhoneNumber,
+		&hotel.Email,
+		&hotel.IsActive,
+		&hotel.CreatedAt,
+		&hotel.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Hotel{}, apperr.ErrHotelNotFound
+		}
+		return model.Hotel{}, err
+	}
+
+	return hotel, nil
+}
+
+func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, error) {
+	query := `
+		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_at, updated_at
+		FROM hotels
+		WHERE slug = $1
+	`
+
+	var hotel model.Hotel
+
+	err := r.DB.QueryRow(ctx, query, slug).Scan(
 		&hotel.ID,
 		&hotel.Name,
 		&hotel.Slug,

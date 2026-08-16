@@ -1,9 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { PlusIcon } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
-import type { Room, RoomType, RoomTypeConfig } from "@/types"
+import type { Room, RoomTypeConfig } from "@/types"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -26,13 +35,26 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { MultiImageUpload } from "@/features/tenant/dashboard/rooms/multi-image-upload"
 
-function emptyForm(defaultType: RoomType) {
+const roomSchema = z.object({
+  number: z.string().trim().min(1, "Enter a room number").max(20),
+  floor: z.coerce.number().int().min(0, "Floor must be 0 or higher"),
+  type: z.string().min(1, "Select a room type"),
+  price: z.coerce.number().min(0, "Enter a valid price"),
+  capacity: z.coerce.number().int().min(1, "Capacity must be at least 1"),
+  amenities: z.string().trim().optional(),
+  notes: z.string().trim().max(1000).optional(),
+})
+
+type RoomInput = z.input<typeof roomSchema>
+type RoomValues = z.output<typeof roomSchema>
+
+function emptyValues(defaultType: string): RoomInput {
   return {
     number: "",
-    floor: "1",
+    floor: 1,
     type: defaultType,
-    price: "",
-    capacity: "2",
+    price: 0,
+    capacity: 2,
     amenities: "",
     notes: "",
   }
@@ -46,34 +68,55 @@ export function AddRoomDialog({
   onCreate: (room: Room) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState(emptyForm(roomTypes[0]?.type ?? ""))
   const [images, setImages] = React.useState<string[]>([])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<RoomInput, unknown, RoomValues>({
+    resolver: zodResolver(roomSchema),
+    defaultValues: emptyValues(roomTypes[0]?.type ?? ""),
+  })
+
+  const type = watch("type")
+
+  const onSubmit = handleSubmit((values) => {
     onCreate({
       id: `r${Date.now()}`,
-      number: form.number,
-      floor: Number(form.floor) || 1,
-      type: form.type,
+      number: values.number,
+      floor: values.floor,
+      type: values.type,
       status: "available",
-      price: Number(form.price) || 0,
-      capacity: Number(form.capacity) || 1,
+      price: values.price,
+      capacity: values.capacity,
       images: images.length ? images : undefined,
     })
     setOpen(false)
-    setForm(emptyForm(roomTypes[0]?.type ?? ""))
+    reset(emptyValues(roomTypes[0]?.type ?? ""))
     setImages([])
-  }
+  })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) {
+          reset(emptyValues(roomTypes[0]?.type ?? ""))
+          setImages([])
+        }
+      }}
+    >
       <DialogTrigger render={<Button />}>
         <PlusIcon data-icon="inline-start" />
         Add Room
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Add a room</DialogTitle>
             <DialogDescription>
@@ -91,39 +134,36 @@ export function AddRoomDialog({
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.number}>
                 <FieldLabel htmlFor="room-number">Room number</FieldLabel>
                 <Input
                   id="room-number"
-                  required
-                  value={form.number}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, number: e.target.value }))
-                  }
+                  aria-invalid={!!errors.number}
+                  {...register("number")}
                   placeholder="305"
                 />
+                <FieldError errors={[errors.number]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.floor}>
                 <FieldLabel htmlFor="floor">Floor</FieldLabel>
                 <Input
                   id="floor"
                   type="number"
                   min={0}
-                  value={form.floor}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, floor: e.target.value }))
-                  }
+                  aria-invalid={!!errors.floor}
+                  {...register("floor")}
                 />
+                <FieldError errors={[errors.floor]} />
               </Field>
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.type}>
                 <FieldLabel htmlFor="type">Room type</FieldLabel>
                 <Select
-                  value={form.type}
+                  value={type}
                   onValueChange={(value) =>
-                    setForm((f) => ({ ...f, type: (value as RoomType) ?? f.type }))
+                    setValue("type", value ?? "", { shouldValidate: true })
                   }
                 >
                   <SelectTrigger id="type" className="w-full">
@@ -137,59 +177,55 @@ export function AddRoomDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError errors={[errors.type]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.capacity}>
                 <FieldLabel htmlFor="capacity">Capacity</FieldLabel>
                 <Input
                   id="capacity"
                   type="number"
                   min={1}
-                  value={form.capacity}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, capacity: e.target.value }))
-                  }
+                  aria-invalid={!!errors.capacity}
+                  {...register("capacity")}
                 />
+                <FieldError errors={[errors.capacity]} />
               </Field>
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.price}>
               <FieldLabel htmlFor="price">Price per night (Rs)</FieldLabel>
               <Input
                 id="price"
                 type="number"
                 min={0}
-                required
-                value={form.price}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, price: e.target.value }))
-                }
+                aria-invalid={!!errors.price}
+                {...register("price")}
                 placeholder="2200"
               />
+              <FieldError errors={[errors.price]} />
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.amenities}>
               <FieldLabel htmlFor="amenities">Amenities</FieldLabel>
               <Input
                 id="amenities"
-                value={form.amenities}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, amenities: e.target.value }))
-                }
+                aria-invalid={!!errors.amenities}
+                {...register("amenities")}
                 placeholder="Wi-Fi, AC, mountain view"
               />
               <FieldDescription>Comma-separated, shown to front desk.</FieldDescription>
+              <FieldError errors={[errors.amenities]} />
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.notes}>
               <FieldLabel htmlFor="room-notes">Notes (optional)</FieldLabel>
               <Textarea
                 id="room-notes"
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, notes: e.target.value }))
-                }
+                aria-invalid={!!errors.notes}
+                {...register("notes")}
                 placeholder="Anything housekeeping or front desk should know."
               />
+              <FieldError errors={[errors.notes]} />
             </Field>
           </FieldGroup>
 

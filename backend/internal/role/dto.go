@@ -14,15 +14,15 @@ type ListPermissionsResponse struct {
 }
 
 type CreateRoleRequest struct {
-	Name          string   `json:"name" binding:"required,min=2,max=100"`
-	Description   *string  `json:"description,omitempty" binding:"omitempty,max=500"`
-	PermissionIDs []string `json:"permissionIds" binding:"required,min=1,dive,uuid"`
+	Name          string   `json:"name" validate:"required,min=2,max=100"`
+	Description   *string  `json:"description,omitempty" validate:"omitempty,max=500"`
+	PermissionIDs []string `json:"permissionIds" validate:"required,min=1,dive,uuid"`
 }
 
 type UpdateRoleRequest struct {
-	Name          *string  `json:"name,omitempty" binding:"omitempty,min=2,max=100"`
-	Description   *string  `json:"description,omitempty" binding:"omitempty,max=500"`
-	PermissionIDs []string `json:"permissionIds,omitempty" binding:"omitempty,min=1,dive,uuid"`
+	Name          *string  `json:"name,omitempty" validate:"omitempty,min=2,max=100"`
+	Description   *string  `json:"description,omitempty" validate:"omitempty,max=500"`
+	PermissionIDs []string `json:"permissionIds,omitempty" validate:"omitempty,min=1,dive,uuid"`
 }
 
 type RoleResponse struct {

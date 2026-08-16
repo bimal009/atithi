@@ -16,7 +16,9 @@ import (
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/middleware"
+	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/internal/role"
+	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
@@ -62,6 +64,8 @@ func main() {
 	hotelRepo := hotel.NewHotelRepo(pool)
 	memberRepo := member.NewMemberRepo(pool)
 	roleRepo := role.NewRoleRepo(pool)
+	permissionRepo := permission.NewPermissionRepo(pool)
+	roomTypeRepo := roomtypes.NewRoomTypeRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
@@ -71,9 +75,20 @@ func main() {
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
+	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
+	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
+
+	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, memberRepo)
+	roleHandler := role.NewRoleHandler(slog, roleService)
+
+	memberService := member.NewMemberService(slog, memberRepo, roleRepo, userRepo, pool)
+	memberHandler := member.NewMemberHandler(slog, memberService)
+
 	imageHandler := handlers.NewImageHandler(cfg)
 
 	requireAuth := middleware.RequireAuth(sessionService, cfg.Session.CookieName, slog)
+	validateHotel := middleware.ValidateHotel(hotelService, slog)
+	validateMember := middleware.ValidateMember(memberRepo, slog)
 
 	r := gin.Default()
 
@@ -93,10 +108,15 @@ func main() {
 	})
 
 	routes.Register(r, &routes.Handlers{
-		Auth:        authHandler,
-		Hotel:       hotelHandler,
-		Image:       imageHandler,
-		RequireAuth: requireAuth,
+		Auth:           authHandler,
+		Hotel:          hotelHandler,
+		RoomType:       roomTypeHandler,
+		Role:           roleHandler,
+		Member:         memberHandler,
+		Image:          imageHandler,
+		RequireAuth:    requireAuth,
+		ValidateHotel:  validateHotel,
+		ValidateMember: validateMember,
 	})
 
 	srv := &http.Server{

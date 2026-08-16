@@ -14,8 +14,9 @@ type MemberRepo interface {
 	Create(ctx context.Context, member *model.Member, tx pgx.Tx) (model.Member, error)
 	Get(ctx context.Context, id string) (model.Member, error)
 	GetByHotelAndUser(ctx context.Context, hotelID, userID string) (model.Member, error)
-	ListByHotel(ctx context.Context, hotelID string) ([]model.Member, error)
+	ListByHotel(ctx context.Context, hotelID string, pagination model.Pagination) ([]model.MemberDetail, int, error)
 	ListByUser(ctx context.Context, userID string) ([]model.Member, error)
+	CountByRole(ctx context.Context, hotelID string) (map[string]int, error)
 	Update(ctx context.Context, member *model.Member) (model.Member, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -131,24 +132,32 @@ func (r *memberRepo) GetByHotelAndUser(ctx context.Context, hotelID, userID stri
 	return member, nil
 }
 
-func (r *memberRepo) ListByHotel(ctx context.Context, hotelID string) ([]model.Member, error) {
+func (r *memberRepo) ListByHotel(ctx context.Context, hotelID string, pagination model.Pagination) ([]model.MemberDetail, int, error) {
 	query := `
-		SELECT id, hotel_id, user_id, role_id, status, invited_by, joined_at, created_at, updated_at
-		FROM members
-		WHERE hotel_id = $1
-		ORDER BY created_at DESC
+		SELECT m.id, m.hotel_id, m.user_id, m.role_id, m.status, m.invited_by, m.joined_at, m.created_at, m.updated_at,
+		       u.name, u.email, u.phone_number, u.image,
+		       r.name, r.slug,
+		       COUNT(*) OVER() AS total
+		FROM members m
+		JOIN users u ON u.id = m.user_id
+		JOIN roles r ON r.id = m.role_id
+		WHERE m.hotel_id = $1::uuid
+		  AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
+		ORDER BY m.created_at DESC
+		LIMIT $3 OFFSET $4
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, pagination.Limit, pagination.Offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	members := make([]model.Member, 0)
+	members := make([]model.MemberDetail, 0)
+	var total int
 
 	for rows.Next() {
-		var member model.Member
+		var member model.MemberDetail
 		if err := rows.Scan(
 			&member.ID,
 			&member.HotelID,
@@ -159,17 +168,24 @@ func (r *memberRepo) ListByHotel(ctx context.Context, hotelID string) ([]model.M
 			&member.JoinedAt,
 			&member.CreatedAt,
 			&member.UpdatedAt,
+			&member.UserName,
+			&member.UserEmail,
+			&member.UserPhone,
+			&member.UserImage,
+			&member.RoleName,
+			&member.RoleSlug,
+			&total,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		members = append(members, member)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return members, nil
+	return members, total, nil
 }
 
 func (r *memberRepo) ListByUser(ctx context.Context, userID string) ([]model.Member, error) {
@@ -211,6 +227,38 @@ func (r *memberRepo) ListByUser(ctx context.Context, userID string) ([]model.Mem
 	}
 
 	return members, nil
+}
+
+func (r *memberRepo) CountByRole(ctx context.Context, hotelID string) (map[string]int, error) {
+	query := `
+		SELECT role_id, COUNT(*)
+		FROM members
+		WHERE hotel_id = $1::uuid AND status = 'active'
+		GROUP BY role_id
+	`
+
+	rows, err := r.DB.Query(ctx, query, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+
+	for rows.Next() {
+		var roleID string
+		var count int
+		if err := rows.Scan(&roleID, &count); err != nil {
+			return nil, err
+		}
+		counts[roleID] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
 }
 
 func (r *memberRepo) Update(ctx context.Context, member *model.Member) (model.Member, error) {

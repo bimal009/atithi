@@ -1,10 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { CalendarIcon, PlusIcon } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 import { BOOKING_CHANNELS } from "@/lib/mock-data"
-import type { Booking, BookingChannel, Room } from "@/types"
+import type { Booking, Room } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -16,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -29,15 +32,25 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { formatDate } from "@/lib/utils"
 
-function emptyForm() {
-  return {
-    guestName: "",
-    guestPhone: "",
-    roomId: "",
-    channel: "whatsapp" as BookingChannel,
-    guests: "1",
-    notes: "",
-  }
+const bookingSchema = z.object({
+  guestName: z.string().trim().min(2, "Enter the guest's name").max(100),
+  guestPhone: z.string().trim().min(7, "Enter a phone number").max(20),
+  roomId: z.string().min(1, "Select a room"),
+  channel: z.enum(["whatsapp", "instagram", "facebook"]),
+  guests: z.coerce.number().int().min(1, "At least 1 guest"),
+  notes: z.string().trim().max(1000).optional(),
+})
+
+type BookingInput = z.input<typeof bookingSchema>
+type BookingValues = z.output<typeof bookingSchema>
+
+const emptyValues: BookingInput = {
+  guestName: "",
+  guestPhone: "",
+  roomId: "",
+  channel: "whatsapp",
+  guests: 1,
+  notes: "",
 }
 
 function combineDateAndTime(date: Date, time: string): Date {
@@ -110,62 +123,81 @@ export function NewBookingDialog({
   onCreate: (booking: Booking) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState(emptyForm())
   const [checkInDate, setCheckInDate] = React.useState<Date | undefined>()
   const [checkInTime, setCheckInTime] = React.useState("13:00")
   const [checkOutDate, setCheckOutDate] = React.useState<Date | undefined>()
   const [checkOutTime, setCheckOutTime] = React.useState("11:00")
+  const [dateError, setDateError] = React.useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<BookingInput, unknown, BookingValues>({
+    resolver: zodResolver(bookingSchema),
+    defaultValues: emptyValues,
+  })
+
+  const channel = watch("channel")
+  const roomId = watch("roomId")
 
   const availableRooms = rooms.filter((room) => room.status === "available")
 
-  function reset() {
-    setForm(emptyForm())
+  function resetAll() {
+    reset(emptyValues)
     setCheckInDate(undefined)
     setCheckInTime("13:00")
     setCheckOutDate(undefined)
     setCheckOutTime("11:00")
+    setDateError(null)
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const room = rooms.find((r) => r.id === form.roomId)
-    if (!room || !checkInDate || !checkOutDate) return
+  const onSubmit = handleSubmit((values) => {
+    const room = rooms.find((r) => r.id === values.roomId)
+    if (!room || !checkInDate || !checkOutDate) {
+      setDateError("Select both a check-in and check-out date.")
+      return
+    }
 
     const checkIn = combineDateAndTime(checkInDate, checkInTime)
     const checkOut = combineDateAndTime(checkOutDate, checkOutTime)
-    if (checkOut <= checkIn) return
+    if (checkOut <= checkIn) {
+      setDateError("Check-out must be after check-in.")
+      return
+    }
+    setDateError(null)
 
-    const nights = Math.max(
-      1,
-      Math.round((+checkOut - +checkIn) / 86_400_000)
-    )
+    const nights = Math.max(1, Math.round((+checkOut - +checkIn) / 86_400_000))
 
     onCreate({
       id: `bk${Date.now()}`,
-      guestName: form.guestName,
-      guestPhone: form.guestPhone,
+      guestName: values.guestName,
+      guestPhone: values.guestPhone,
       roomId: room.id,
       roomNumber: room.number,
-      channel: form.channel,
+      channel: values.channel,
       checkIn: checkIn.toISOString(),
       checkOut: checkOut.toISOString(),
       status: "confirmed",
-      guests: Number(form.guests) || 1,
+      guests: values.guests,
       totalAmount: room.price * nights,
       createdAt: new Date().toISOString(),
-      notes: form.notes || undefined,
+      notes: values.notes || undefined,
     })
 
     setOpen(false)
-    reset()
-  }
+    resetAll()
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) reset()
+        if (!next) resetAll()
       }}
     >
       <DialogTrigger render={<Button />}>
@@ -173,7 +205,7 @@ export function NewBookingDialog({
         New Booking
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>New booking</DialogTitle>
             <DialogDescription>
@@ -184,63 +216,59 @@ export function NewBookingDialog({
 
           <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.guestName}>
                 <FieldLabel htmlFor="guest-name">Guest name</FieldLabel>
                 <Input
                   id="guest-name"
-                  required
-                  value={form.guestName}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, guestName: e.target.value }))
-                  }
+                  aria-invalid={!!errors.guestName}
+                  {...register("guestName")}
                   placeholder="Sujata Shrestha"
                 />
+                <FieldError errors={[errors.guestName]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.guestPhone}>
                 <FieldLabel htmlFor="guest-phone">Phone</FieldLabel>
                 <Input
                   id="guest-phone"
-                  required
-                  value={form.guestPhone}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, guestPhone: e.target.value }))
-                  }
+                  aria-invalid={!!errors.guestPhone}
+                  {...register("guestPhone")}
                   placeholder="98X-XXXXXXX"
                 />
+                <FieldError errors={[errors.guestPhone]} />
               </Field>
             </Field>
 
-            <Field>
+            <Field data-invalid={!!errors.channel}>
               <FieldLabel htmlFor="channel">Booking channel</FieldLabel>
               <Select
-                value={form.channel}
+                value={channel}
                 onValueChange={(value) =>
-                  setForm((f) => ({
-                    ...f,
-                    channel: (value as BookingChannel) ?? f.channel,
-                  }))
+                  setValue("channel", (value ?? "whatsapp") as BookingValues["channel"], {
+                    shouldValidate: true,
+                  })
                 }
               >
                 <SelectTrigger id="channel" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {BOOKING_CHANNELS.map((channel) => (
-                    <SelectItem key={channel.value} value={channel.value}>
-                      {channel.label}
+                  {BOOKING_CHANNELS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError errors={[errors.channel]} />
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field>
+              <Field data-invalid={!!errors.roomId}>
                 <FieldLabel htmlFor="room">Room</FieldLabel>
                 <Select
-                  value={form.roomId}
+                  value={roomId}
                   onValueChange={(value) =>
-                    setForm((f) => ({ ...f, roomId: value ?? f.roomId }))
+                    setValue("roomId", value ?? "", { shouldValidate: true })
                   }
                 >
                   <SelectTrigger id="room" className="w-full">
@@ -254,18 +282,18 @@ export function NewBookingDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError errors={[errors.roomId]} />
               </Field>
-              <Field>
+              <Field data-invalid={!!errors.guests}>
                 <FieldLabel htmlFor="guests">Guests</FieldLabel>
                 <Input
                   id="guests"
                   type="number"
                   min={1}
-                  value={form.guests}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, guests: e.target.value }))
-                  }
+                  aria-invalid={!!errors.guests}
+                  {...register("guests")}
                 />
+                <FieldError errors={[errors.guests]} />
               </Field>
             </Field>
 
@@ -289,16 +317,17 @@ export function NewBookingDialog({
               disabledBefore={checkInDate ?? new Date()}
             />
 
-            <Field>
+            {dateError && <p className="text-sm text-destructive">{dateError}</p>}
+
+            <Field data-invalid={!!errors.notes}>
               <FieldLabel htmlFor="notes">Notes (optional)</FieldLabel>
               <Textarea
                 id="notes"
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, notes: e.target.value }))
-                }
+                aria-invalid={!!errors.notes}
+                {...register("notes")}
                 placeholder="Airport pickup, late arrival, etc."
               />
+              <FieldError errors={[errors.notes]} />
             </Field>
           </FieldGroup>
 

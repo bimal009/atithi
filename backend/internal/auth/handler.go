@@ -61,6 +61,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	if err := validator.ValidateStruct(&req); err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
 	user, err := h.service.Login(c.Request.Context(), &req)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
@@ -122,8 +127,6 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("session refreshed", NewSessionResponse(issued.Session)))
 }
 
-// Me returns the user behind the current session. It sits behind RequireAuth,
-// so the context already holds a verified user id.
 func (h *AuthHandler) Me(c *gin.Context) {
 	user, err := h.service.Me(c.Request.Context(), middleware.UserID(c))
 	if err != nil {
@@ -134,12 +137,16 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("current user", user))
 }
 
-// Onboard sits behind RequireAuth, so a user can only ever onboard themselves.
 func (h *AuthHandler) Onboard(c *gin.Context) {
 	var req OnboardingRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
+		return
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		apperr.HandleError(c, h.slog, err)
 		return
 	}
 

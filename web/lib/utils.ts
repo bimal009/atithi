@@ -16,6 +16,10 @@ export function orderTotal(items: OrderItem[]) {
   return items.reduce((sum, item) => sum + orderItemTotal(item), 0)
 }
 
+export function generateId(prefix: string) {
+  return `${prefix}${Date.now()}`
+}
+
 export function formatCurrency(amount: number) {
   return `Rs ${amount.toLocaleString("en-US")}`
 }

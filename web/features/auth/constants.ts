@@ -1,4 +1,3 @@
-/** Must match COOKIE_NAME on the Go API. */
 export const SESSION_COOKIE =
   process.env.NEXT_PUBLIC_SESSION_COOKIE ?? "_hiatithi_secure_token";
 

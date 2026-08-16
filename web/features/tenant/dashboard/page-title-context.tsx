@@ -19,7 +19,6 @@ export function PageTitleProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Each page calls this with its own name — the top bar reflects it. */
 export function usePageTitle(title: string) {
   const ctx = React.useContext(PageTitleContext)
   if (!ctx) {
@@ -36,4 +35,9 @@ export function useSiteTitle() {
     throw new Error("useSiteTitle must be used within a PageTitleProvider")
   }
   return ctx.title
+}
+
+export function PageTitle({ title }: { title: string }) {
+  usePageTitle(title)
+  return null
 }
