@@ -1,0 +1,235 @@
+"use client";
+
+import * as React from "react";
+import { AlertCircleIcon, BedIcon, PlusIcon } from "lucide-react";
+import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/shared/page-header";
+import { SectionCards } from "@/components/shared/section-cards";
+import { getErrorMessage } from "@/lib/axios";
+import { formatCurrency } from "@/lib/utils";
+import type { RoomStatus } from "@/types";
+
+import { useRoomTypesQuery } from "../../roomType/client/useRoomTypes";
+import { useRemoveRoom, useRoomsQuery, useUpdateRoomStatus } from "../client/useRooms";
+import type { Room } from "../types";
+import { RoomCard } from "./room-card";
+import { RoomFormDialog } from "./room-form-dialog";
+
+const STATUS_FILTERS: Array<{ value: "all" | RoomStatus; label: string }> = [
+  { value: "all", label: "All statuses" },
+  { value: "available", label: "Available" },
+  { value: "occupied", label: "Occupied" },
+  { value: "cleaning", label: "Cleaning" },
+  { value: "maintenance", label: "Maintenance" },
+];
+
+const STATUS_ITEMS = Object.fromEntries(STATUS_FILTERS.map((o) => [o.value, o.label]));
+
+const searchParser = parseAsString.withDefault("").withOptions({
+  limitUrlUpdates: debounce(400),
+  history: "replace",
+});
+
+const statusParser = parseAsStringLiteral([
+  "all",
+  "available",
+  "occupied",
+  "cleaning",
+  "maintenance",
+] as const)
+  .withDefault("all")
+  .withOptions({ history: "replace" });
+
+export function RoomsGrid({ tenant }: { tenant: string }) {
+  const [search, setSearch] = useQueryState("q", searchParser);
+  const [status, setStatus] = useQueryState("status", statusParser);
+  const [creating, setCreating] = React.useState(false);
+  const [editingRoom, setEditingRoom] = React.useState<Room | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<Room | null>(null);
+
+  const roomsQuery = useRoomsQuery(tenant, {
+    search,
+    status: status === "all" ? undefined : status,
+  });
+  const roomTypesQuery = useRoomTypesQuery(tenant);
+  const roomTypesById = new Map((roomTypesQuery.data ?? []).map((rt) => [rt.id, rt]));
+
+  const updateStatus = useUpdateRoomStatus(tenant);
+  const remove = useRemoveRoom(tenant);
+
+  const rooms = roomsQuery.data?.rooms ?? [];
+  const roomPrices = rooms
+    .map((r) => roomTypesById.get(r.roomTypeId)?.basePrice)
+    .filter((price): price is number => price !== undefined);
+  const avgPrice = roomPrices.length
+    ? Math.round(roomPrices.reduce((sum, price) => sum + price, 0) / roomPrices.length)
+    : 0;
+  const available = rooms.filter((r) => r.status === "available").length;
+  const occupied = rooms.filter((r) => r.status === "occupied").length;
+
+  if (roomsQuery.isPending) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-24" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-80 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (roomsQuery.isError) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Rooms" description="Every physical room, its photos, rate, and live status." />
+        <Alert variant="destructive">
+          <AlertCircleIcon aria-hidden />
+          <AlertTitle>Could not load rooms</AlertTitle>
+          <AlertDescription>{getErrorMessage(roomsQuery.error)}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Rooms"
+        description="Every physical room, its photos, rate, and live status."
+        actions={
+          <Button className="cursor-pointer" onClick={() => setCreating(true)}>
+            <PlusIcon data-icon="inline-start" aria-hidden />
+            Add Room
+          </Button>
+        }
+      />
+
+      <SectionCards
+        stats={[
+          { label: "Rooms", value: String(rooms.length) },
+          { label: "Available", value: String(available) },
+          { label: "Occupied", value: String(occupied) },
+          { label: "Average rate", value: formatCurrency(avgPrice) },
+        ]}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by room number"
+          className="sm:max-w-xs"
+        />
+        <Select
+          items={STATUS_ITEMS}
+          value={status}
+          onValueChange={(v) => setStatus((v ?? "all") as typeof status)}
+        >
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {rooms.length === 0 ? (
+        <Card className="py-2">
+          <CardContent>
+            <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
+              <BedIcon className="size-8" aria-hidden />
+              <p>No rooms found.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {rooms.map((room) => (
+            <RoomCard
+              key={room.id}
+              room={room}
+              roomType={roomTypesById.get(room.roomTypeId)}
+              onEdit={setEditingRoom}
+              onDelete={setPendingDelete}
+              onStatusChange={(r, newStatus) =>
+                updateStatus.mutate({ id: r.id, status: newStatus })
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      <RoomFormDialog tenant={tenant} open={creating} onOpenChange={setCreating} />
+
+      <RoomFormDialog
+        tenant={tenant}
+        room={editingRoom ?? undefined}
+        open={editingRoom !== null}
+        onOpenChange={(open) => !open && setEditingRoom(null)}
+      />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete room {pendingDelete?.number}?</AlertDialogTitle>
+            <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              disabled={remove.isPending}
+              onClick={async () => {
+                if (!pendingDelete) return;
+                await remove.mutateAsync(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              {remove.isPending ? "Deleting" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

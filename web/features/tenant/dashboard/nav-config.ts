@@ -1,11 +1,12 @@
 import type { LucideIcon } from "lucide-react"
 import {
+  BedIcon,
   BellIcon,
   CalendarCheckIcon,
   LayoutDashboardIcon,
-  LayoutGridIcon,
   MessageSquareIcon,
   ShoppingBasketIcon,
+  TreePineIcon,
   UsersIcon,
   UsersRoundIcon,
   UtensilsCrossedIcon,
@@ -34,15 +35,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Front of house",
     items: [
       { title: "Messages", href: "/messages", icon: MessageSquareIcon },
-      {
-        title: "Bookings",
-        href: "/bookings",
-        icon: CalendarCheckIcon,
-        items: [
-          { title: "All Bookings", href: "/bookings" },
-          { title: "Channels", href: "/bookings/channels" },
-        ],
-      },
       {
         title: "Orders",
         href: "/orders",
@@ -73,18 +65,29 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Property",
+    label: "Spaces",
     items: [
       {
-        title: "Spaces",
+        title: "Rooms",
         href: "/rooms",
-        icon: LayoutGridIcon,
+        icon: BedIcon,
         items: [
           { title: "Rooms", href: "/rooms" },
           { title: "Types", href: "/rooms/types" },
-          { title: "Tables", href: "/tables" },
+          { title: "Bookings", href: "/bookings" },
+          { title: "Booking Channels", href: "/bookings/channels" },
         ],
       },
+      {
+        title: "Dining",
+        href: "/tables",
+        icon: CalendarCheckIcon,
+        items: [
+          { title: "Tables", href: "/tables" },
+          { title: "Reservations", href: "/reservations" },
+        ],
+      },
+      { title: "Cabins", href: "/cabins", icon: TreePineIcon },
     ],
   },
   {

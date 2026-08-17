@@ -2,12 +2,16 @@ package routes
 
 import (
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
+	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
+	"github.com/bimal009/atithi/internal/rooms"
+	"github.com/bimal009/atithi/internal/tables"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,6 +19,10 @@ type Handlers struct {
 	Auth           *auth.AuthHandler
 	Hotel          *hotel.HotelHandler
 	RoomType       *roomtypes.RoomTypeHandler
+	Room           *rooms.RoomHandler
+	Cabin          *cabins.CabinHandler
+	Table          *tables.TableHandler
+	Reservation    *reservations.ReservationHandler
 	Role           *role.RoleHandler
 	Member         *member.MemberHandler
 	Customer       *customer.CustomerHandler
@@ -76,6 +84,46 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				roomTypes.GET("/:roomTypeId", h.RoomType.Get)
 				roomTypes.PATCH("/:roomTypeId", h.RoomType.Update)
 				roomTypes.DELETE("/:roomTypeId", h.RoomType.Delete)
+			}
+
+			roomsGroup := scoped.Group("/rooms")
+			{
+				roomsGroup.POST("", h.Room.Create)
+				roomsGroup.GET("", h.Room.GetAll)
+				roomsGroup.GET("/:roomId", h.Room.Get)
+				roomsGroup.PATCH("/:roomId", h.Room.Update)
+				roomsGroup.PATCH("/:roomId/status", h.Room.UpdateStatus)
+				roomsGroup.DELETE("/:roomId", h.Room.Delete)
+			}
+
+			cabinsGroup := scoped.Group("/cabins")
+			{
+				cabinsGroup.POST("", h.Cabin.Create)
+				cabinsGroup.GET("", h.Cabin.GetAll)
+				cabinsGroup.GET("/:cabinId", h.Cabin.Get)
+				cabinsGroup.PATCH("/:cabinId", h.Cabin.Update)
+				cabinsGroup.PATCH("/:cabinId/status", h.Cabin.UpdateStatus)
+				cabinsGroup.DELETE("/:cabinId", h.Cabin.Delete)
+			}
+
+			tablesGroup := scoped.Group("/tables")
+			{
+				tablesGroup.POST("", h.Table.Create)
+				tablesGroup.GET("", h.Table.GetAll)
+				tablesGroup.GET("/:tableId", h.Table.Get)
+				tablesGroup.PATCH("/:tableId", h.Table.Update)
+				tablesGroup.PATCH("/:tableId/status", h.Table.UpdateStatus)
+				tablesGroup.DELETE("/:tableId", h.Table.Delete)
+			}
+
+			reservationsGroup := scoped.Group("/reservations")
+			{
+				reservationsGroup.POST("", h.Reservation.Create)
+				reservationsGroup.GET("", h.Reservation.GetAll)
+				reservationsGroup.GET("/:reservationId", h.Reservation.Get)
+				reservationsGroup.PATCH("/:reservationId", h.Reservation.Update)
+				reservationsGroup.PATCH("/:reservationId/status", h.Reservation.UpdateStatus)
+				reservationsGroup.DELETE("/:reservationId", h.Reservation.Delete)
 			}
 
 			scoped.GET("/permissions", h.Role.ListPermissions)

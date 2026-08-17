@@ -12,6 +12,7 @@ type RoomType struct {
 	Capacity     int       `db:"capacity" json:"capacity"`
 	Description  *string   `db:"description" json:"description,omitempty"`
 	Amenities    []string  `db:"amenities" json:"amenities"`
+	Restrictions []string  `db:"restrictions" json:"restrictions"`
 	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`
 }

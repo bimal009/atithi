@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useParams, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
 import { TENANT } from "@/lib/mock-data"
@@ -30,10 +30,12 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  tenant,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { tenant: string }) {
   const pathname = usePathname()
-  const params = useParams<{ tenant: string }>()
-  const basePath = `/${params.tenant}/dashboard`
+  const basePath = `/${tenant}/dashboard`
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

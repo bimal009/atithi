@@ -10,13 +10,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 import { uploadImage } from "../api/upload";
-import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "../types";
+import { ACCEPTED_IMAGE_TYPES } from "../types";
+
+const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 
 export function AvatarUpload({
   value,
   onChange,
   fallback,
   folder = "/avatars",
+  maxBytes = DEFAULT_MAX_BYTES,
   disabled,
   className,
 }: {
@@ -24,11 +27,13 @@ export function AvatarUpload({
   onChange: (url: string | undefined) => void;
   fallback?: React.ReactNode;
   folder?: string;
+  maxBytes?: number;
   disabled?: boolean;
   className?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const maxLabel = `${Math.round(maxBytes / (1024 * 1024))} MB`;
 
   const handleFile = async (file: File) => {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
@@ -36,8 +41,8 @@ export function AvatarUpload({
       return;
     }
 
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("That image is over 5 MB — pick a smaller one");
+    if (file.size > maxBytes) {
+      toast.error(`That image is over ${maxLabel} — pick a smaller one`);
       return;
     }
 
@@ -98,7 +103,7 @@ export function AvatarUpload({
           </Button>
         ) : (
           <span className="text-xs text-muted-foreground">
-            JPG, PNG or WebP up to 5 MB
+            JPG, PNG or WebP up to {maxLabel}
           </span>
         )}
       </div>

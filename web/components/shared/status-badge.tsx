@@ -40,6 +40,11 @@ const STATUS_MAP: Record<string, { variant: BadgeVariant; tone: Tone }> = {
 
   // menu item
   unavailable: { variant: "destructive", tone: "none" },
+
+  // reservation
+  seated: { variant: "outline", tone: "accent" },
+  completed: { variant: "secondary", tone: "none" },
+  no_show: { variant: "destructive", tone: "none" },
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,6 +53,7 @@ const STATUS_LABELS: Record<string, string> = {
   frontdesk: "Front desk",
   available: "Available",
   unavailable: "Unavailable",
+  no_show: "No show",
 }
 
 export function StatusBadge({

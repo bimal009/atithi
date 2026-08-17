@@ -8,6 +8,7 @@ type CreateRoomTypeRequest struct {
 	Capacity     int      `json:"capacity" validate:"required,gt=0"`
 	Description  *string  `json:"description,omitempty" validate:"omitempty,max=2000"`
 	Amenities    []string `json:"amenities,omitempty"`
+	Restrictions []string `json:"restrictions,omitempty"`
 }
 
 type UpdateRoomTypeRequest struct {
@@ -18,4 +19,5 @@ type UpdateRoomTypeRequest struct {
 	Capacity     *int     `json:"capacity,omitempty" validate:"omitempty,gt=0"`
 	Description  *string  `json:"description,omitempty" validate:"omitempty,max=2000"`
 	Amenities    []string `json:"amenities,omitempty"`
+	Restrictions []string `json:"restrictions,omitempty"`
 }

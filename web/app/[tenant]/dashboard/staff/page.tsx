@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: "Staff · Atithi",
 };
 
-export default function StaffPage() {
-  return <StaffPageClient />;
+export default async function StaffPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
+  const { tenant } = await params;
+
+  return <StaffPageClient tenant={tenant} />;
 }

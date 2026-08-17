@@ -1,0 +1,321 @@
+package cabins
+
+import (
+	"context"
+	"errors"
+
+	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/pkg/apperr"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type CabinRepo interface {
+	Create(ctx context.Context, cabin *model.Cabin, userID string) (model.Cabin, error)
+	Get(ctx context.Context, id, hotelID, userID string) (model.Cabin, error)
+	ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Cabin, int, error)
+	Update(ctx context.Context, cabin *model.Cabin, userID string) (model.Cabin, error)
+	UpdateStatus(ctx context.Context, id, hotelID, userID, status string) (model.Cabin, error)
+	Delete(ctx context.Context, id, hotelID, userID string) error
+}
+
+type cabinRepo struct {
+	DB *pgxpool.Pool
+}
+
+func NewCabinRepo(db *pgxpool.Pool) CabinRepo {
+	return &cabinRepo{DB: db}
+}
+
+func (r *cabinRepo) Create(ctx context.Context, cabin *model.Cabin, userID string) (model.Cabin, error) {
+	query := `
+		INSERT INTO cabins (id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images)
+		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+		WHERE EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $14::uuid AND m.status = 'active'
+		)
+		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+	`
+
+	var created model.Cabin
+
+	err := r.DB.QueryRow(
+		ctx, query,
+		cabin.ID,
+		cabin.HotelID,
+		cabin.Name,
+		cabin.Number,
+		cabin.BasePrice,
+		cabin.PricingUnit,
+		cabin.PricingLabel,
+		cabin.Capacity,
+		cabin.Description,
+		cabin.Amenities,
+		cabin.Restrictions,
+		cabin.Status,
+		cabin.Images,
+		userID,
+	).Scan(
+		&created.ID,
+		&created.HotelID,
+		&created.Name,
+		&created.Number,
+		&created.BasePrice,
+		&created.PricingUnit,
+		&created.PricingLabel,
+		&created.Capacity,
+		&created.Description,
+		&created.Amenities,
+		&created.Restrictions,
+		&created.Status,
+		&created.Images,
+		&created.CreatedAt,
+		&created.UpdatedAt,
+	)
+
+	if err != nil {
+		if apperr.IsUniqueViolation(err) {
+			return model.Cabin{}, apperr.ErrCabinNumberExists
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Cabin{}, apperr.ErrHotelNotFound
+		}
+		return model.Cabin{}, err
+	}
+
+	return created, nil
+}
+
+func (r *cabinRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Cabin, error) {
+	query := `
+		SELECT id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		FROM cabins
+		WHERE id = $1::uuid AND hotel_id = $2::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
+		  )
+	`
+
+	var cabin model.Cabin
+
+	err := r.DB.QueryRow(ctx, query, id, hotelID, userID).Scan(
+		&cabin.ID,
+		&cabin.HotelID,
+		&cabin.Name,
+		&cabin.Number,
+		&cabin.BasePrice,
+		&cabin.PricingUnit,
+		&cabin.PricingLabel,
+		&cabin.Capacity,
+		&cabin.Description,
+		&cabin.Amenities,
+		&cabin.Restrictions,
+		&cabin.Status,
+		&cabin.Images,
+		&cabin.CreatedAt,
+		&cabin.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Cabin{}, apperr.ErrCabinNotFound
+		}
+		return model.Cabin{}, err
+	}
+
+	return cabin, nil
+}
+
+func (r *cabinRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Cabin, int, error) {
+	query := `
+		SELECT id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at,
+		       COUNT(*) OVER() AS total
+		FROM cabins
+		WHERE hotel_id = $1::uuid
+		  AND ($2 = '' OR name ILIKE '%' || $2 || '%' OR number ILIKE '%' || $2 || '%')
+		  AND ($6 = '' OR status = $6)
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
+		  )
+		ORDER BY number
+		LIMIT $4 OFFSET $5
+	`
+
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset(), status)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	list := make([]model.Cabin, 0)
+	var total int
+
+	for rows.Next() {
+		var cabin model.Cabin
+		if err := rows.Scan(
+			&cabin.ID,
+			&cabin.HotelID,
+			&cabin.Name,
+			&cabin.Number,
+			&cabin.BasePrice,
+			&cabin.PricingUnit,
+			&cabin.PricingLabel,
+			&cabin.Capacity,
+			&cabin.Description,
+			&cabin.Amenities,
+			&cabin.Restrictions,
+			&cabin.Status,
+			&cabin.Images,
+			&cabin.CreatedAt,
+			&cabin.UpdatedAt,
+			&total,
+		); err != nil {
+			return nil, 0, err
+		}
+		list = append(list, cabin)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return list, total, nil
+}
+
+func (r *cabinRepo) Update(ctx context.Context, cabin *model.Cabin, userID string) (model.Cabin, error) {
+	query := `
+		UPDATE cabins
+		SET
+			name = $1,
+			number = $2,
+			base_price = $3,
+			pricing_unit = $4,
+			pricing_label = $5,
+			capacity = $6,
+			description = $7,
+			amenities = $8,
+			restrictions = $9,
+			images = $10,
+			updated_at = now()
+		WHERE id = $11::uuid AND hotel_id = $12::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $13::uuid AND m.status = 'active'
+		  )
+		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+	`
+
+	var updated model.Cabin
+
+	err := r.DB.QueryRow(
+		ctx, query,
+		cabin.Name,
+		cabin.Number,
+		cabin.BasePrice,
+		cabin.PricingUnit,
+		cabin.PricingLabel,
+		cabin.Capacity,
+		cabin.Description,
+		cabin.Amenities,
+		cabin.Restrictions,
+		cabin.Images,
+		cabin.ID,
+		cabin.HotelID,
+		userID,
+	).Scan(
+		&updated.ID,
+		&updated.HotelID,
+		&updated.Name,
+		&updated.Number,
+		&updated.BasePrice,
+		&updated.PricingUnit,
+		&updated.PricingLabel,
+		&updated.Capacity,
+		&updated.Description,
+		&updated.Amenities,
+		&updated.Restrictions,
+		&updated.Status,
+		&updated.Images,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Cabin{}, apperr.ErrCabinNotFound
+		}
+		if apperr.IsUniqueViolation(err) {
+			return model.Cabin{}, apperr.ErrCabinNumberExists
+		}
+		return model.Cabin{}, err
+	}
+
+	return updated, nil
+}
+
+func (r *cabinRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status string) (model.Cabin, error) {
+	query := `
+		UPDATE cabins
+		SET status = $1, updated_at = now()
+		WHERE id = $2::uuid AND hotel_id = $3::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
+		  )
+		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+	`
+
+	var updated model.Cabin
+
+	err := r.DB.QueryRow(ctx, query, status, id, hotelID, userID).Scan(
+		&updated.ID,
+		&updated.HotelID,
+		&updated.Name,
+		&updated.Number,
+		&updated.BasePrice,
+		&updated.PricingUnit,
+		&updated.PricingLabel,
+		&updated.Capacity,
+		&updated.Description,
+		&updated.Amenities,
+		&updated.Restrictions,
+		&updated.Status,
+		&updated.Images,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Cabin{}, apperr.ErrCabinNotFound
+		}
+		return model.Cabin{}, err
+	}
+
+	return updated, nil
+}
+
+func (r *cabinRepo) Delete(ctx context.Context, id, hotelID, userID string) error {
+	query := `
+		DELETE FROM cabins
+		WHERE id = $1::uuid AND hotel_id = $2::uuid
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
+		  )
+	`
+
+	result, err := r.DB.Exec(ctx, query, id, hotelID, userID)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return apperr.ErrCabinNotFound
+	}
+
+	return nil
+}

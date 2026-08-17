@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: "Room Types · Atithi",
 };
 
-export default function RoomTypesPage() {
-  return <RoomTypesPageClient />;
+export default async function RoomTypesPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
+  const { tenant } = await params;
+
+  return <RoomTypesPageClient tenant={tenant} />;
 }

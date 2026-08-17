@@ -45,6 +45,7 @@ const emptyValues: RoomTypeInput = {
   pricingLabel: "",
   capacity: 2,
   amenities: "",
+  restrictions: "",
 };
 
 function valuesOf(roomType?: RoomType): RoomTypeInput {
@@ -57,6 +58,7 @@ function valuesOf(roomType?: RoomType): RoomTypeInput {
     pricingLabel: roomType.pricingLabel ?? "",
     capacity: roomType.capacity,
     amenities: roomType.amenities.join(", "),
+    restrictions: roomType.restrictions.join(", "),
   };
 }
 
@@ -109,6 +111,10 @@ export function RoomTypeFormDialog({
       amenities: (values.amenities ?? "")
         .split(",")
         .map((a) => a.trim())
+        .filter(Boolean),
+      restrictions: (values.restrictions ?? "")
+        .split(",")
+        .map((r) => r.trim())
         .filter(Boolean),
     };
 
@@ -241,6 +247,21 @@ export function RoomTypeFormDialog({
               />
               <FieldDescription>Comma-separated.</FieldDescription>
               <FieldError errors={[errors.amenities]} />
+            </Field>
+
+            <Field data-invalid={!!errors.restrictions}>
+              <FieldLabel htmlFor="type-restrictions">
+                Restrictions <span className="text-muted-foreground">(optional)</span>
+              </FieldLabel>
+              <Textarea
+                id="type-restrictions"
+                aria-invalid={!!errors.restrictions}
+                {...register("restrictions")}
+                placeholder="Non-smoking, No pets, Adults only"
+                rows={2}
+              />
+              <FieldDescription>Comma-separated.</FieldDescription>
+              <FieldError errors={[errors.restrictions]} />
             </Field>
           </FieldGroup>
 

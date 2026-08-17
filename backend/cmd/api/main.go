@@ -12,16 +12,20 @@ import (
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
+	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/permission"
+	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
+	"github.com/bimal009/atithi/internal/rooms"
 	"github.com/bimal009/atithi/internal/routes"
 	"github.com/bimal009/atithi/internal/session"
+	"github.com/bimal009/atithi/internal/tables"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/pkg/db"
 	"github.com/bimal009/atithi/pkg/logger"
@@ -67,6 +71,10 @@ func main() {
 	roleRepo := role.NewRoleRepo(pool)
 	permissionRepo := permission.NewPermissionRepo(pool)
 	roomTypeRepo := roomtypes.NewRoomTypeRepo(pool)
+	roomRepo := rooms.NewRoomRepo(pool)
+	cabinRepo := cabins.NewCabinRepo(pool)
+	tableRepo := tables.NewTableRepo(pool)
+	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
@@ -79,6 +87,18 @@ func main() {
 
 	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
 	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
+
+	roomService := rooms.NewRoomService(slog, roomRepo)
+	roomHandler := rooms.NewRoomHandler(slog, roomService)
+
+	cabinService := cabins.NewCabinService(slog, cabinRepo)
+	cabinHandler := cabins.NewCabinHandler(slog, cabinService)
+
+	tableService := tables.NewTableService(slog, tableRepo)
+	tableHandler := tables.NewTableHandler(slog, tableService)
+
+	reservationService := reservations.NewReservationService(slog, reservationRepo)
+	reservationHandler := reservations.NewReservationHandler(slog, reservationService)
 
 	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, pool)
 	roleHandler := role.NewRoleHandler(slog, roleService)
@@ -116,6 +136,10 @@ func main() {
 		Auth:           authHandler,
 		Hotel:          hotelHandler,
 		RoomType:       roomTypeHandler,
+		Room:           roomHandler,
+		Cabin:          cabinHandler,
+		Table:          tableHandler,
+		Reservation:    reservationHandler,
 		Role:           roleHandler,
 		Member:         memberHandler,
 		Customer:       customerHandler,

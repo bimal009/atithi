@@ -63,6 +63,19 @@ var (
 	ErrCustomerPhoneExists    = New(http.StatusConflict, "conflict", "Phone number already exists")
 	ErrCustomerDocumentExists = New(http.StatusConflict, "conflict", "Document number already exists")
 	ErrDocumentMismatch       = New(http.StatusBadRequest, "invalid_input", "Document type and number must both be set")
+
+	ErrRoomNotFound     = New(http.StatusNotFound, "not_found", "Room not found")
+	ErrRoomNumberExists = New(http.StatusConflict, "conflict", "Room number already exists")
+	ErrRoomTypeInvalid  = New(http.StatusBadRequest, "invalid_input", "Room type does not exist")
+
+	ErrCabinNotFound     = New(http.StatusNotFound, "not_found", "Cabin not found")
+	ErrCabinNumberExists = New(http.StatusConflict, "conflict", "Cabin number already exists")
+
+	ErrTableNotFound       = New(http.StatusNotFound, "not_found", "Table not found")
+	ErrTableNameExists     = New(http.StatusConflict, "conflict", "Table name already exists")
+	ErrReservationNotFound = New(http.StatusNotFound, "not_found", "Reservation not found")
+	ErrReservationOverlaps = New(http.StatusConflict, "conflict", "Table already reserved for that time")
+	ErrTableInvalid        = New(http.StatusBadRequest, "invalid_input", "Table does not exist")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

@@ -3,7 +3,15 @@ import { AppSidebar } from '@/features/tenant/dashboard/app-sidebar'
 import { SiteHeader } from '@/features/tenant/dashboard/site-header'
 import React from 'react'
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+const DashboardLayout = async ({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ tenant: string }>
+}) => {
+  const { tenant } = await params
+
   return (
     <SidebarProvider
       style={
@@ -13,9 +21,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" tenant={tenant} />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader tenant={tenant} />
         <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </div>

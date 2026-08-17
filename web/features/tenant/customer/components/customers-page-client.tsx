@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { debounce, parseAsString, useQueryState } from "nuqs";
 
@@ -41,9 +40,7 @@ function CustomersSkeleton() {
   );
 }
 
-export function CustomersPageClient() {
-  const { tenant } = useParams<{ tenant: string }>();
-
+export function CustomersPageClient({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
   const customersQuery = useCustomersQuery(tenant, search);
 

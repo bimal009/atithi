@@ -39,6 +39,11 @@ func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, re
 		amenities = []string{}
 	}
 
+	restrictions := req.Restrictions
+	if restrictions == nil {
+		restrictions = []string{}
+	}
+
 	pricingUnit := "night"
 	if req.PricingUnit != nil && *req.PricingUnit != "" {
 		pricingUnit = *req.PricingUnit
@@ -54,6 +59,7 @@ func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, re
 		Capacity:     req.Capacity,
 		Description:  req.Description,
 		Amenities:    amenities,
+		Restrictions: restrictions,
 	}
 
 	created, err := s.repo.Create(ctx, newRoomType, userID)
@@ -105,6 +111,9 @@ func (s *roomTypeService) Update(ctx context.Context, id, hotelID, userID string
 	}
 	if req.Amenities != nil {
 		existing.Amenities = req.Amenities
+	}
+	if req.Restrictions != nil {
+		existing.Restrictions = req.Restrictions
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)

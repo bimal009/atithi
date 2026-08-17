@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: "Customers · Atithi",
 };
 
-export default function CustomersPage() {
-  return <CustomersPageClient />;
+export default async function CustomersPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
+  const { tenant } = await params;
+
+  return <CustomersPageClient tenant={tenant} />;
 }

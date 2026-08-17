@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { debounce, parseAsString, useQueryState } from "nuqs";
 
@@ -45,9 +44,7 @@ function StaffSkeleton() {
   );
 }
 
-export function StaffPageClient() {
-  const { tenant } = useParams<{ tenant: string }>();
-
+export function StaffPageClient({ tenant }: { tenant: string }) {
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [search, setSearch] = useQueryState("q", searchParser);
 

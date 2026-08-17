@@ -8,6 +8,7 @@ export const roomTypeSchema = z.object({
   capacity: z.coerce.number().int().min(1, "Capacity must be at least 1"),
   description: z.string().trim().max(2000).optional(),
   amenities: z.string().trim().optional(),
+  restrictions: z.string().trim().optional(),
 });
 
 export type RoomTypeInput = z.input<typeof roomTypeSchema>;

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useParams } from "next/navigation"
 import { BellIcon } from "lucide-react"
 
 import { CURRENT_USER, KOT_ORDERS } from "@/lib/mock-data"
@@ -11,9 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export function SiteHeader() {
-  const params = useParams<{ tenant: string }>()
-  const basePath = `/${params.tenant}/dashboard`
+export function SiteHeader({ tenant }: { tenant: string }) {
+  const basePath = `/${tenant}/dashboard`
   const unreadCount = KOT_ORDERS.filter((o) => o.status === "pending").length
 
   return (

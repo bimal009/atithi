@@ -1,6 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,9 +29,7 @@ function RoomTypesSkeleton() {
   );
 }
 
-export function RoomTypesPageClient() {
-  const { tenant } = useParams<{ tenant: string }>();
-
+export function RoomTypesPageClient({ tenant }: { tenant: string }) {
   const roomTypesQuery = useRoomTypesQuery(tenant);
 
   if (roomTypesQuery.isPending) {
