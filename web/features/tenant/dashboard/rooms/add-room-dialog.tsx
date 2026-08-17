@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { MultiImageUpload } from "@/features/tenant/dashboard/rooms/multi-image-upload"
+import { formatPricingUnit } from "@/lib/pricing"
 import { generateId } from "@/lib/utils"
 
 const roomSchema = z.object({
@@ -89,6 +90,11 @@ export function AddRoomDialog({
     () => Object.fromEntries(roomTypes.map((rt) => [rt.type, rt.label])),
     [roomTypes],
   )
+
+  const selectedType = roomTypes.find((rt) => rt.type === type)
+  const priceUnitLabel = selectedType
+    ? formatPricingUnit(selectedType.pricingUnit, selectedType.pricingLabel)
+    : "per night"
 
   const onSubmit = handleSubmit((values) => {
     onCreate({
@@ -200,7 +206,7 @@ export function AddRoomDialog({
             </Field>
 
             <Field data-invalid={!!errors.price}>
-              <FieldLabel htmlFor="price">Price per night (Rs)</FieldLabel>
+              <FieldLabel htmlFor="price">Price (Rs)</FieldLabel>
               <Input
                 id="price"
                 type="number"
@@ -209,6 +215,11 @@ export function AddRoomDialog({
                 {...register("price")}
                 placeholder="2200"
               />
+              <FieldDescription>
+                {priceUnitLabel.startsWith("per")
+                  ? `Billed ${priceUnitLabel}.`
+                  : `Billed as ${priceUnitLabel}.`}
+              </FieldDescription>
               <FieldError errors={[errors.price]} />
             </Field>
 

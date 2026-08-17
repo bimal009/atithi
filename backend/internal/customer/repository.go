@@ -60,7 +60,10 @@ func (r *customerRepo) Create(ctx context.Context, customer *model.Customer) (mo
 	)
 
 	if err != nil {
-		if apperr.IsUniqueViolation(err) {
+		if constraint := apperr.UniqueViolationConstraint(err); constraint != "" {
+			if constraint == "uq_customers_hotel_document_number" {
+				return model.Customer{}, apperr.ErrCustomerDocumentExists
+			}
 			return model.Customer{}, apperr.ErrCustomerPhoneExists
 		}
 		return model.Customer{}, err
@@ -185,7 +188,10 @@ func (r *customerRepo) Update(ctx context.Context, customer *model.Customer) (mo
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Customer{}, apperr.ErrCustomerNotFound
 		}
-		if apperr.IsUniqueViolation(err) {
+		if constraint := apperr.UniqueViolationConstraint(err); constraint != "" {
+			if constraint == "uq_customers_hotel_document_number" {
+				return model.Customer{}, apperr.ErrCustomerDocumentExists
+			}
 			return model.Customer{}, apperr.ErrCustomerPhoneExists
 		}
 		return model.Customer{}, err

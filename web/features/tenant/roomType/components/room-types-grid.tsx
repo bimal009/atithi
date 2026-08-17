@@ -24,7 +24,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatPricingUnit } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
 import { useRemoveRoomType } from "../client/useRoomTypes";
@@ -40,13 +45,19 @@ function RoomTypeCard({
   onEdit: (roomType: RoomType) => void;
   onDelete: (roomType: RoomType) => void;
 }) {
+  const maxAmenities = 4;
+  const shownAmenities = roomType.amenities.slice(0, maxAmenities);
+  const hiddenAmenityCount = roomType.amenities.length - shownAmenities.length;
+
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="grid-cols-[1fr_auto]">
         <div>
           <CardTitle>{roomType.name}</CardTitle>
           {roomType.description && (
-            <CardDescription>{roomType.description}</CardDescription>
+            <CardDescription className="line-clamp-2">
+              {roomType.description}
+            </CardDescription>
           )}
         </div>
         <div className="flex items-center gap-1 justify-self-end">
@@ -84,23 +95,30 @@ function RoomTypeCard({
           </Tooltip>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-1 flex-col gap-3">
         <div className="flex items-baseline justify-between">
           <span className="text-2xl font-semibold tabular-nums">
             {formatCurrency(roomType.basePrice)}
           </span>
-          <span className="text-xs text-muted-foreground">per night</span>
+          <span className="text-xs text-muted-foreground">
+            {formatPricingUnit(roomType.pricingUnit, roomType.pricingLabel)}
+          </span>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {roomType.amenities.map((amenity) => (
+          {shownAmenities.map((amenity) => (
             <Badge key={amenity} variant="secondary" className="font-normal">
               {amenity}
             </Badge>
           ))}
+          {hiddenAmenityCount > 0 && (
+            <Badge variant="outline" className="font-normal">
+              +{hiddenAmenityCount}
+            </Badge>
+          )}
         </div>
 
-        <div className="border-t pt-3 text-sm text-muted-foreground">
+        <div className="mt-auto border-t pt-3 text-sm text-muted-foreground">
           Sleeps {roomType.capacity}
         </div>
       </CardContent>
@@ -116,19 +134,25 @@ export function RoomTypesGrid({
   roomTypes: RoomType[];
 }) {
   const [creating, setCreating] = React.useState(false);
-  const [editingRoomType, setEditingRoomType] = React.useState<RoomType | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<RoomType | null>(null);
+  const [editingRoomType, setEditingRoomType] = React.useState<RoomType | null>(
+    null,
+  );
+  const [pendingDelete, setPendingDelete] = React.useState<RoomType | null>(
+    null,
+  );
   const remove = useRemoveRoomType(tenant);
 
   const avgPrice = roomTypes.length
-    ? Math.round(roomTypes.reduce((sum, t) => sum + t.basePrice, 0) / roomTypes.length)
+    ? Math.round(
+        roomTypes.reduce((sum, t) => sum + t.basePrice, 0) / roomTypes.length,
+      )
     : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Room Types"
-        description="The rate categories every room gets added under — pricing, capacity, and amenities live here."
+        description="The rate categories every room gets added under. Pricing, capacity, and amenities live here."
         actions={
           <Button className="cursor-pointer" onClick={() => setCreating(true)}>
             <PlusIcon data-icon="inline-start" aria-hidden />
@@ -186,10 +210,14 @@ export function RoomTypesGrid({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {pendingDelete?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This can&apos;t be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               className="cursor-pointer"

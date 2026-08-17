@@ -26,42 +26,43 @@ func New(status int, code, message string) *AppError {
 }
 
 var (
-	ErrUserNotFound         = New(http.StatusNotFound, "not_found", "user not found")
-	ErrUserAlreadyExists    = New(http.StatusConflict, "conflict", "user already exists")
-	ErrHotelSlugExists      = New(http.StatusConflict, "conflict", "slug already exists")
-	ErrVerificationNotFound = New(http.StatusNotFound, "not_found", "verification not found")
-	ErrAccountNotFound      = New(http.StatusNotFound, "not_found", "account not found")
-	ErrInvalidOtp           = New(http.StatusBadRequest, "invalid_otp", "invalid or expired otp")
-	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "please wait before requesting another otp")
-	ErrTooManyOtpAttempts   = New(http.StatusTooManyRequests, "too_many_attempts", "too many incorrect codes, request a new one")
-	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "session not found")
-	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "session expired, please log in again")
-	ErrHotelNotFound        = New(http.StatusNotFound, "not_found", "hotel not found")
+	ErrUserNotFound         = New(http.StatusNotFound, "not_found", "User not found")
+	ErrUserAlreadyExists    = New(http.StatusConflict, "conflict", "User already exists")
+	ErrHotelSlugExists      = New(http.StatusConflict, "conflict", "Slug already exists")
+	ErrVerificationNotFound = New(http.StatusNotFound, "not_found", "Verification not found")
+	ErrAccountNotFound      = New(http.StatusNotFound, "not_found", "Account not found")
+	ErrInvalidOtp           = New(http.StatusBadRequest, "invalid_otp", "Invalid or expired OTP")
+	ErrTooManyRequests      = New(http.StatusTooManyRequests, "too_many_requests", "Please wait before retrying")
+	ErrTooManyOtpAttempts   = New(http.StatusTooManyRequests, "too_many_attempts", "Too many attempts, request a new OTP")
+	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "Session not found")
+	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "Session expired")
+	ErrHotelNotFound        = New(http.StatusNotFound, "not_found", "Hotel not found")
 
-	ErrRoleNotFound        = New(http.StatusNotFound, "not_found", "role not found")
-	ErrRoleSlugExists      = New(http.StatusConflict, "conflict", "a role with this slug already exists")
-	ErrSystemRoleImmutable = New(http.StatusForbidden, "forbidden", "system roles cannot be modified or deleted")
-	ErrRoleInUse           = New(http.StatusConflict, "conflict", "role is still assigned to members")
+	ErrRoleNotFound        = New(http.StatusNotFound, "not_found", "Role not found")
+	ErrRoleSlugExists      = New(http.StatusConflict, "conflict", "Role slug already exists")
+	ErrSystemRoleImmutable = New(http.StatusForbidden, "forbidden", "System roles are immutable")
+	ErrRoleInUse           = New(http.StatusConflict, "conflict", "Role is still in use")
 
-	ErrPermissionNotFound = New(http.StatusNotFound, "not_found", "permission not found")
-	ErrPermissionExists   = New(http.StatusConflict, "conflict", "permission already exists")
+	ErrPermissionNotFound = New(http.StatusNotFound, "not_found", "Permission not found")
+	ErrPermissionExists   = New(http.StatusConflict, "conflict", "Permission already exists")
 
-	ErrEmailTaken = New(http.StatusConflict, "conflict", "that email is already in use")
+	ErrEmailTaken = New(http.StatusConflict, "conflict", "Email already in use")
 
-	ErrMemberNotFound    = New(http.StatusNotFound, "not_found", "member not found")
-	ErrMemberExists      = New(http.StatusConflict, "conflict", "user is already a member of this hotel")
-	ErrOwnerRoleReserved = New(http.StatusForbidden, "forbidden", "the owner role is reserved and cannot be assigned or created")
-	ErrOwnerImmutable    = New(http.StatusForbidden, "forbidden", "the hotel owner cannot be edited or removed")
+	ErrMemberNotFound    = New(http.StatusNotFound, "not_found", "Member not found")
+	ErrMemberExists      = New(http.StatusConflict, "conflict", "Already a member of this hotel")
+	ErrOwnerRoleReserved = New(http.StatusForbidden, "forbidden", "Owner role is reserved")
+	ErrOwnerImmutable    = New(http.StatusForbidden, "forbidden", "Hotel owner cannot be changed")
 
-	ErrRoomTypeNotFound   = New(http.StatusNotFound, "not_found", "room type not found")
-	ErrRoomTypeNameExists = New(http.StatusConflict, "conflict", "a room type with this name already exists")
-	ErrInvalidInput       = New(http.StatusBadRequest, "invalid_input", "invalid input")
-	ErrInvalidPagination  = New(http.StatusBadRequest, "invalid_pagination", "invalid page or limit value")
-	ErrLimitExceeded      = New(http.StatusBadRequest, "limit_exceeded", "limit exceeds maximum allowed value")
+	ErrRoomTypeNotFound   = New(http.StatusNotFound, "not_found", "Room type not found")
+	ErrRoomTypeNameExists = New(http.StatusConflict, "conflict", "Room type name already exists")
+	ErrInvalidInput       = New(http.StatusBadRequest, "invalid_input", "Invalid input")
+	ErrInvalidPagination  = New(http.StatusBadRequest, "invalid_pagination", "Invalid page or limit")
+	ErrLimitExceeded      = New(http.StatusBadRequest, "limit_exceeded", "Limit exceeded")
 
-	ErrCustomerNotFound    = New(http.StatusNotFound, "not_found", "customer not found")
-	ErrCustomerPhoneExists = New(http.StatusConflict, "conflict", "a customer with this phone number already exists")
-	ErrDocumentMismatch    = New(http.StatusBadRequest, "invalid_input", "document type and document number must both be provided or both be empty")
+	ErrCustomerNotFound       = New(http.StatusNotFound, "not_found", "Customer not found")
+	ErrCustomerPhoneExists    = New(http.StatusConflict, "conflict", "Phone number already exists")
+	ErrCustomerDocumentExists = New(http.StatusConflict, "conflict", "Document number already exists")
+	ErrDocumentMismatch       = New(http.StatusBadRequest, "invalid_input", "Document type and number must both be set")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {
@@ -78,7 +79,7 @@ func HandleError(c *gin.Context, logger *slog.Logger, err error) {
 	if fields := validator.FieldErrors(err); fields != nil {
 		c.JSON(http.StatusBadRequest, &responses.Response[map[string]string]{
 			Success: false,
-			Message: "validation failed",
+			Message: "Validation failed",
 			Error:   "validation_error",
 			Data:    fields,
 		})
@@ -86,7 +87,7 @@ func HandleError(c *gin.Context, logger *slog.Logger, err error) {
 	}
 
 	logger.Error("unhandled error", "error", err)
-	c.JSON(http.StatusInternalServerError, responses.InternalServerError("internal server error"))
+	c.JSON(http.StatusInternalServerError, responses.InternalServerError("Internal server error"))
 }
 
 func IsUniqueViolation(err error) bool {
@@ -95,6 +96,14 @@ func IsUniqueViolation(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+func UniqueViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return pgErr.ConstraintName
+	}
+	return ""
 }
 
 func IsForeignKeyViolation(err error) bool {

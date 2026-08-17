@@ -21,8 +21,17 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { PRICING_LABEL_PLACEHOLDER, PRICING_UNIT_OPTIONS } from "@/lib/pricing";
+import type { PricingUnit } from "@/types";
 
 import { useCreateRoomType, useUpdateRoomType } from "../client/useRoomTypes";
 import { roomTypeSchema, type RoomTypeInput, type RoomTypeValues } from "../schema";
@@ -32,6 +41,8 @@ const emptyValues: RoomTypeInput = {
   name: "",
   description: "",
   basePrice: 0,
+  pricingUnit: "night",
+  pricingLabel: "",
   capacity: 2,
   amenities: "",
 };
@@ -42,6 +53,8 @@ function valuesOf(roomType?: RoomType): RoomTypeInput {
     name: roomType.name,
     description: roomType.description ?? "",
     basePrice: roomType.basePrice,
+    pricingUnit: roomType.pricingUnit,
+    pricingLabel: roomType.pricingLabel ?? "",
     capacity: roomType.capacity,
     amenities: roomType.amenities.join(", "),
   };
@@ -69,11 +82,16 @@ export function RoomTypeFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<RoomTypeInput, unknown, RoomTypeValues>({
     resolver: zodResolver(roomTypeSchema),
     defaultValues: emptyValues,
   });
+
+  const pricingUnit = watch("pricingUnit") ?? "night";
+  const labelPlaceholder = PRICING_LABEL_PLACEHOLDER[pricingUnit as PricingUnit];
 
   React.useEffect(() => {
     if (!open) return;
@@ -84,6 +102,8 @@ export function RoomTypeFormDialog({
     const payload = {
       name: values.name,
       basePrice: values.basePrice,
+      pricingUnit: values.pricingUnit,
+      pricingLabel: values.pricingLabel || undefined,
       capacity: values.capacity,
       description: values.description || undefined,
       amenities: (values.amenities ?? "")
@@ -128,7 +148,7 @@ export function RoomTypeFormDialog({
 
             <Field className="grid grid-cols-2 gap-3">
               <Field data-invalid={!!errors.basePrice}>
-                <FieldLabel htmlFor="type-price">Base price / night (Rs)</FieldLabel>
+                <FieldLabel htmlFor="type-price">Base price (Rs)</FieldLabel>
                 <Input
                   id="type-price"
                   type="number"
@@ -139,17 +159,60 @@ export function RoomTypeFormDialog({
                 />
                 <FieldError errors={[errors.basePrice]} />
               </Field>
-              <Field data-invalid={!!errors.capacity}>
-                <FieldLabel htmlFor="type-capacity">Capacity</FieldLabel>
-                <Input
-                  id="type-capacity"
-                  type="number"
-                  min={1}
-                  aria-invalid={!!errors.capacity}
-                  {...register("capacity")}
-                />
-                <FieldError errors={[errors.capacity]} />
+              <Field data-invalid={!!errors.pricingUnit}>
+                <FieldLabel htmlFor="type-pricing-unit">Billed</FieldLabel>
+                <Select
+                  items={Object.fromEntries(
+                    PRICING_UNIT_OPTIONS.map((o) => [o.value, o.label]),
+                  )}
+                  value={pricingUnit}
+                  onValueChange={(value) =>
+                    setValue("pricingUnit", (value ?? "night") as PricingUnit, {
+                      shouldValidate: true,
+                    })
+                  }
+                >
+                  <SelectTrigger id="type-pricing-unit" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRICING_UNIT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError errors={[errors.pricingUnit]} />
               </Field>
+            </Field>
+
+            {labelPlaceholder && (
+              <Field data-invalid={!!errors.pricingLabel}>
+                <FieldLabel htmlFor="type-pricing-label">
+                  {pricingUnit === "daycation" ? "Time window" : "Package name"}{" "}
+                  <span className="text-muted-foreground">(optional)</span>
+                </FieldLabel>
+                <Input
+                  id="type-pricing-label"
+                  aria-invalid={!!errors.pricingLabel}
+                  {...register("pricingLabel")}
+                  placeholder={labelPlaceholder}
+                />
+                <FieldError errors={[errors.pricingLabel]} />
+              </Field>
+            )}
+
+            <Field data-invalid={!!errors.capacity}>
+              <FieldLabel htmlFor="type-capacity">Capacity</FieldLabel>
+              <Input
+                id="type-capacity"
+                type="number"
+                min={1}
+                aria-invalid={!!errors.capacity}
+                {...register("capacity")}
+              />
+              <FieldError errors={[errors.capacity]} />
             </Field>
 
             <Field data-invalid={!!errors.description}>
@@ -169,11 +232,12 @@ export function RoomTypeFormDialog({
               <FieldLabel htmlFor="type-amenities">
                 Amenities <span className="text-muted-foreground">(optional)</span>
               </FieldLabel>
-              <Input
+              <Textarea
                 id="type-amenities"
                 aria-invalid={!!errors.amenities}
                 {...register("amenities")}
                 placeholder="Wi-Fi, AC, Jacuzzi"
+                rows={2}
               />
               <FieldDescription>Comma-separated.</FieldDescription>
               <FieldError errors={[errors.amenities]} />
