@@ -3,15 +3,19 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { FolderPlusIcon, PlusIcon } from "lucide-react"
+import { useParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { MENU_ITEMS, SUB_MENUS } from "@/lib/mock-data"
+import { CATEGORY_SUB_MENUS, MENU_ITEMS } from "@/lib/mock-data"
+import { useSubMenusQuery } from "@/features/tenant/subMenu/client/useSubMenus"
+import type { SubMenu } from "@/features/tenant/subMenu/types"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -24,18 +28,18 @@ import {
 import { EmptyState } from "@/components/shared/empty-state"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+
+// DUMMY PROTOTYPE: a category can belong to more than one sub-menu (many-to-many),
+// instead of the single required sub-menu it has today. Local state only, no backend.
+type CategoryEntry = {
+  name: string
+  subMenus: string[]
+}
 
 const categorySchema = z.object({
   name: z.string().trim().min(2, "Enter a category name").max(100),
-  subMenu: z.string().min(1, "Select a sub-menu"),
+  subMenus: z.array(z.string()).min(1, "Select at least one sub-menu"),
   description: z.string().trim().max(500).optional(),
 })
 
@@ -43,11 +47,17 @@ type CategoryValues = z.infer<typeof categorySchema>
 
 const emptyValues: CategoryValues = {
   name: "",
-  subMenu: SUB_MENUS[0].name,
+  subMenus: [],
   description: "",
 }
 
-function AddCategoryDialog({ onCreate }: { onCreate: (form: CategoryValues) => void }) {
+function AddCategoryDialog({
+  subMenus,
+  onCreate,
+}: {
+  subMenus: SubMenu[]
+  onCreate: (form: CategoryValues) => void
+}) {
   const [open, setOpen] = React.useState(false)
 
   const {
@@ -62,7 +72,14 @@ function AddCategoryDialog({ onCreate }: { onCreate: (form: CategoryValues) => v
     defaultValues: emptyValues,
   })
 
-  const subMenu = watch("subMenu")
+  const selectedSubMenus = watch("subMenus")
+
+  function toggleSubMenu(name: string) {
+    const next = selectedSubMenus.includes(name)
+      ? selectedSubMenus.filter((s) => s !== name)
+      : [...selectedSubMenus, name]
+    setValue("subMenus", next, { shouldValidate: true })
+  }
 
   const onSubmit = handleSubmit((values) => {
     onCreate(values)
@@ -101,26 +118,29 @@ function AddCategoryDialog({ onCreate }: { onCreate: (form: CategoryValues) => v
               />
               <FieldError errors={[errors.name]} />
             </Field>
-            <Field data-invalid={!!errors.subMenu}>
-              <FieldLabel htmlFor="category-submenu">Sub-menu</FieldLabel>
-              <Select
-                value={subMenu}
-                onValueChange={(value) =>
-                  setValue("subMenu", value ?? "", { shouldValidate: true })
-                }
-              >
-                <SelectTrigger id="category-submenu" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUB_MENUS.map((sm) => (
-                    <SelectItem key={sm.id} value={sm.name}>
+            <Field data-invalid={!!errors.subMenus}>
+              <FieldLabel>Sub-menus</FieldLabel>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                {subMenus.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No sub-menus yet. Add one under Sub Menu first.
+                  </p>
+                ) : (
+                  subMenus.map((sm) => (
+                    <label
+                      key={sm.id}
+                      className="flex cursor-pointer items-center gap-2.5 text-sm"
+                    >
+                      <Checkbox
+                        checked={selectedSubMenus.includes(sm.name)}
+                        onCheckedChange={() => toggleSubMenu(sm.name)}
+                      />
                       {sm.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError errors={[errors.subMenu]} />
+                    </label>
+                  ))
+                )}
+              </div>
+              <FieldError errors={[errors.subMenus]} />
             </Field>
             <Field data-invalid={!!errors.description}>
               <FieldLabel htmlFor="category-description">
@@ -145,23 +165,36 @@ function AddCategoryDialog({ onCreate }: { onCreate: (form: CategoryValues) => v
 }
 
 export default function MenuCategoriesPage() {
-  const [categories, setCategories] = React.useState(
-    Array.from(new Set(MENU_ITEMS.map((m) => m.category)))
+  const { tenant } = useParams<{ tenant: string }>()
+  const subMenusQuery = useSubMenusQuery(tenant)
+  const subMenus = subMenusQuery.data ?? []
+
+  const [categories, setCategories] = React.useState<CategoryEntry[]>(
+    Array.from(new Set(MENU_ITEMS.map((m) => m.category))).map((name) => ({
+      name,
+      subMenus: CATEGORY_SUB_MENUS[name] ?? [],
+    }))
   )
 
   const dishCount = MENU_ITEMS.length
   const emptyCategories = categories.filter(
-    (c) => MENU_ITEMS.filter((m) => m.category === c).length === 0
+    (c) => MENU_ITEMS.filter((m) => m.category === c.name).length === 0
   ).length
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Categories"
-        description={`${categories.length} menu categories`}
+        description={`${categories.length} menu categories, dummy many-to-many sub-menus`}
         actions={
           <AddCategoryDialog
-            onCreate={(form) => setCategories((prev) => [...prev, form.name])}
+            subMenus={subMenus}
+            onCreate={(form) =>
+              setCategories((prev) => [
+                ...prev,
+                { name: form.name, subMenus: form.subMenus },
+              ])
+            }
           />
         }
       />
@@ -169,7 +202,7 @@ export default function MenuCategoriesPage() {
       <SectionCards
         stats={[
           { label: "Categories", value: String(categories.length) },
-          { label: "Sub-menus", value: String(SUB_MENUS.length) },
+          { label: "Sub-menus", value: String(subMenus.length) },
           { label: "Dishes covered", value: String(dishCount) },
           { label: "Empty categories", value: String(emptyCategories) },
         ]}
@@ -188,14 +221,29 @@ export default function MenuCategoriesPage() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((category) => {
-            const count = MENU_ITEMS.filter((m) => m.category === category).length
+            const count = MENU_ITEMS.filter((m) => m.category === category.name).length
             return (
-              <Card key={category} className="gap-2">
-                <CardContent className="flex flex-col gap-1.5">
-                  <span className="font-medium">{category}</span>
-                  <Badge variant="secondary" className="w-fit">
-                    {count} {count === 1 ? "dish" : "dishes"}
-                  </Badge>
+              <Card key={category.name} className="gap-2">
+                <CardContent className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{category.name}</span>
+                    <Badge variant="secondary">
+                      {count} {count === 1 ? "dish" : "dishes"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {category.subMenus.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">
+                        No sub-menus assigned
+                      </span>
+                    ) : (
+                      category.subMenus.map((sm) => (
+                        <Badge key={sm} variant="outline" className="font-normal">
+                          {sm}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )

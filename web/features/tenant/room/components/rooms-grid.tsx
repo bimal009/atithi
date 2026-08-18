@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircleIcon, BedIcon, PlusIcon } from "lucide-react";
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { AlertCircleIcon, BedIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -29,9 +29,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { getErrorMessage } from "@/lib/axios";
+import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomStatus } from "@/types";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useRoomTypesQuery } from "../../roomType/client/useRoomTypes";
 import { useRemoveRoom, useRoomsQuery, useUpdateRoomStatus } from "../client/useRooms";
 import type { Room } from "../types";
@@ -63,9 +65,14 @@ const statusParser = parseAsStringLiteral([
   .withDefault("all")
   .withOptions({ history: "replace" });
 
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 12;
+
 export function RoomsGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
   const [status, setStatus] = useQueryState("status", statusParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editingRoom, setEditingRoom] = React.useState<Room | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Room | null>(null);
@@ -73,14 +80,20 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
   const roomsQuery = useRoomsQuery(tenant, {
     search,
     status: status === "all" ? undefined : status,
+    page,
+    limit: PAGE_SIZE,
   });
   const roomTypesQuery = useRoomTypesQuery(tenant);
   const roomTypesById = new Map((roomTypesQuery.data ?? []).map((rt) => [rt.id, rt]));
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = billingTypesQuery.data ?? [];
 
   const updateStatus = useUpdateRoomStatus(tenant);
   const remove = useRemoveRoom(tenant);
 
   const rooms = roomsQuery.data?.rooms ?? [];
+  const total = roomsQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const roomPrices = rooms
     .map((r) => roomTypesById.get(r.roomTypeId)?.basePrice)
     .filter((price): price is number => price !== undefined);
@@ -89,6 +102,12 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
     : 0;
   const available = rooms.filter((r) => r.status === "available").length;
   const occupied = rooms.filter((r) => r.status === "occupied").length;
+
+  const goToPage = (next: number) => setPage(Math.min(Math.max(1, next), pageCount));
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   if (roomsQuery.isPending) {
     return (
@@ -137,7 +156,7 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
 
       <SectionCards
         stats={[
-          { label: "Rooms", value: String(rooms.length) },
+          { label: "Rooms", value: String(total) },
           { label: "Available", value: String(available) },
           { label: "Occupied", value: String(occupied) },
           { label: "Average rate", value: formatCurrency(avgPrice) },
@@ -147,14 +166,20 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            resetToFirstPage();
+          }}
           placeholder="Search by room number"
           className="sm:max-w-xs"
         />
         <Select
           items={STATUS_ITEMS}
           value={status}
-          onValueChange={(v) => setStatus((v ?? "all") as typeof status)}
+          onValueChange={(v) => {
+            setStatus((v ?? "all") as typeof status);
+            resetToFirstPage();
+          }}
         >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
@@ -185,6 +210,10 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
               key={room.id}
               room={room}
               roomType={roomTypesById.get(room.roomTypeId)}
+              billingLabel={billingTypeName(
+                billingTypes,
+                roomTypesById.get(room.roomTypeId)?.billingTypeId,
+              )}
               onEdit={setEditingRoom}
               onDelete={setPendingDelete}
               onStatusChange={(r, newStatus) =>
@@ -192,6 +221,32 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
               }
             />
           ))}
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {pageCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page >= pageCount}
+              onClick={() => goToPage(page + 1)}
+            >
+              <ChevronRightIcon />
+            </Button>
+          </div>
         </div>
       )}
 

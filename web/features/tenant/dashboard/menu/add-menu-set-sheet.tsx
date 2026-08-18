@@ -98,7 +98,7 @@ export function AddMenuSetSheet({
               Bundle a few dishes into a combo at a special price.
             </DialogDescription>
           </DialogHeader>
-          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="set-name">Set name</FieldLabel>
               <Input

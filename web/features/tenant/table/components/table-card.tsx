@@ -44,26 +44,22 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
   maintenance: "Maintenance",
 };
 
-const SECTION_LABEL: Record<DiningTable["section"], string> = {
-  indoor: "Indoor",
-  outdoor: "Outdoor",
-  rooftop: "Rooftop",
-};
-
 export function TableCard({
   table,
+  sectionLabel,
   onEdit,
   onDelete,
   onStatusChange,
 }: {
   table: DiningTable;
+  sectionLabel: string;
   onEdit: (table: DiningTable) => void;
   onDelete: (table: DiningTable) => void;
   onStatusChange: (table: DiningTable, status: RoomStatus) => void;
 }) {
   return (
     <Card className="flex h-full flex-col overflow-hidden py-0">
-      <div className="group/gallery relative aspect-[4/3] bg-muted">
+      <div className="group/gallery relative h-56 w-full shrink-0 overflow-hidden bg-muted">
         {table.images.length > 0 ? (
           <Carousel className="size-full" opts={{ loop: table.images.length > 1 }}>
             <CarouselContent className="ml-0 size-full">
@@ -94,36 +90,37 @@ export function TableCard({
             <span className="text-xs">No photos</span>
           </div>
         )}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button type="button" className="absolute top-2 left-2 cursor-pointer">
-                <Badge className={`font-normal ${STATUS_BADGE[table.status]}`}>
-                  {STATUS_LABEL[table.status]}
-                </Badge>
-              </button>
-            }
-          />
-          <DropdownMenuContent align="start">
-            {STATUS_OPTIONS.map((status) => (
-              <DropdownMenuItem
-                key={status}
-                disabled={status === table.status}
-                className="cursor-pointer"
-                onClick={() => onStatusChange(table, status)}
-              >
-                {STATUS_LABEL[status]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <CardHeader className="grid-cols-[1fr_auto] pt-4">
         <div>
           <CardTitle>{table.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">{SECTION_LABEL[table.section]}</p>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <p className="text-sm text-muted-foreground">{sectionLabel}</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button type="button" className="cursor-pointer">
+                    <Badge className={`font-normal ${STATUS_BADGE[table.status]}`}>
+                      {STATUS_LABEL[table.status]}
+                    </Badge>
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="start">
+                {STATUS_OPTIONS.map((status) => (
+                  <DropdownMenuItem
+                    key={status}
+                    disabled={status === table.status}
+                    className="cursor-pointer"
+                    onClick={() => onStatusChange(table, status)}
+                  >
+                    {STATUS_LABEL[status]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <div className="flex items-center gap-1 justify-self-end">
           <Tooltip>
@@ -161,8 +158,8 @@ export function TableCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col gap-3">
-        <div className="mt-auto flex items-center gap-4 border-t pt-3 text-sm text-muted-foreground">
+      <CardContent className="flex flex-1 flex-col gap-4 pb-4">
+        <div className="mt-auto flex items-center gap-4 border-t pt-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <UsersIcon className="size-3.5" aria-hidden />
             Seats {table.capacity}

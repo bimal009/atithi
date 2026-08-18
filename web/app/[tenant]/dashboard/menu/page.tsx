@@ -6,6 +6,7 @@ import { UtensilsCrossedIcon } from "lucide-react"
 import { MENU_CATEGORIES, MENU_ITEMS } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
+import { FOOD_TYPE_DOT_CLASS, FOOD_TYPE_LABEL } from "@/lib/food-type"
 import type { MenuItem } from "@/types"
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
@@ -38,11 +39,10 @@ export default function MenuDishesPage() {
         <div className="flex items-center gap-2">
           <span
             aria-hidden
+            title={FOOD_TYPE_LABEL[item.foodType]}
             className={cn(
               "size-1.5 shrink-0 rounded-full border",
-              item.isVeg
-                ? "border-primary bg-primary/40"
-                : "border-destructive bg-destructive/40"
+              FOOD_TYPE_DOT_CLASS[item.foodType]
             )}
           />
           <div className="flex flex-col">
@@ -92,9 +92,9 @@ export default function MenuDishesPage() {
             description: "Ready to order",
           },
           {
-            label: "Vegetarian",
-            value: String(items.filter((i) => i.isVeg).length),
-            description: `${items.length - items.filter((i) => i.isVeg).length} non-veg`,
+            label: "Veg",
+            value: String(items.filter((i) => i.foodType === "veg").length),
+            description: `${items.filter((i) => i.foodType === "non-veg").length} non-veg`,
           },
           { label: "Categories", value: String(MENU_CATEGORIES.length) },
         ]}

@@ -47,25 +47,19 @@ func (s *cabinService) Create(ctx context.Context, hotelID, userID string, req *
 		images = []string{}
 	}
 
-	pricingUnit := "night"
-	if req.PricingUnit != nil && *req.PricingUnit != "" {
-		pricingUnit = *req.PricingUnit
-	}
-
 	newCabin := &model.Cabin{
-		ID:           uuid.NewString(),
-		HotelID:      hotelID,
-		Name:         req.Name,
-		Number:       req.Number,
-		BasePrice:    req.BasePrice,
-		PricingUnit:  pricingUnit,
-		PricingLabel: req.PricingLabel,
-		Capacity:     req.Capacity,
-		Description:  req.Description,
-		Amenities:    amenities,
-		Restrictions: restrictions,
-		Status:       StatusAvailable,
-		Images:       images,
+		ID:            uuid.NewString(),
+		HotelID:       hotelID,
+		Name:          req.Name,
+		Number:        req.Number,
+		BasePrice:     req.BasePrice,
+		BillingTypeID: &req.BillingTypeID,
+		Capacity:      req.Capacity,
+		Description:   req.Description,
+		Amenities:     amenities,
+		Restrictions:  restrictions,
+		Status:        StatusAvailable,
+		Images:        images,
 	}
 
 	created, err := s.repo.Create(ctx, newCabin, userID)
@@ -123,11 +117,8 @@ func (s *cabinService) Update(ctx context.Context, id, hotelID, userID string, r
 	if req.BasePrice != nil {
 		existing.BasePrice = *req.BasePrice
 	}
-	if req.PricingUnit != nil {
-		existing.PricingUnit = *req.PricingUnit
-	}
-	if req.PricingLabel != nil {
-		existing.PricingLabel = req.PricingLabel
+	if req.BillingTypeID != nil {
+		existing.BillingTypeID = req.BillingTypeID
 	}
 	if req.Capacity != nil {
 		existing.Capacity = *req.Capacity

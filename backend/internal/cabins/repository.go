@@ -29,13 +29,13 @@ func NewCabinRepo(db *pgxpool.Pool) CabinRepo {
 
 func (r *cabinRepo) Create(ctx context.Context, cabin *model.Cabin, userID string) (model.Cabin, error) {
 	query := `
-		INSERT INTO cabins (id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images)
-		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+		INSERT INTO cabins (id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images)
+		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $14::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $13::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at
 	`
 
 	var created model.Cabin
@@ -47,8 +47,7 @@ func (r *cabinRepo) Create(ctx context.Context, cabin *model.Cabin, userID strin
 		cabin.Name,
 		cabin.Number,
 		cabin.BasePrice,
-		cabin.PricingUnit,
-		cabin.PricingLabel,
+		cabin.BillingTypeID,
 		cabin.Capacity,
 		cabin.Description,
 		cabin.Amenities,
@@ -62,8 +61,7 @@ func (r *cabinRepo) Create(ctx context.Context, cabin *model.Cabin, userID strin
 		&created.Name,
 		&created.Number,
 		&created.BasePrice,
-		&created.PricingUnit,
-		&created.PricingLabel,
+		&created.BillingTypeID,
 		&created.Capacity,
 		&created.Description,
 		&created.Amenities,
@@ -89,7 +87,7 @@ func (r *cabinRepo) Create(ctx context.Context, cabin *model.Cabin, userID strin
 
 func (r *cabinRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Cabin, error) {
 	query := `
-		SELECT id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		SELECT id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at
 		FROM cabins
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -106,8 +104,7 @@ func (r *cabinRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 		&cabin.Name,
 		&cabin.Number,
 		&cabin.BasePrice,
-		&cabin.PricingUnit,
-		&cabin.PricingLabel,
+		&cabin.BillingTypeID,
 		&cabin.Capacity,
 		&cabin.Description,
 		&cabin.Amenities,
@@ -130,7 +127,7 @@ func (r *cabinRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 
 func (r *cabinRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Cabin, int, error) {
 	query := `
-		SELECT id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at,
+		SELECT id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at,
 		       COUNT(*) OVER() AS total
 		FROM cabins
 		WHERE hotel_id = $1::uuid
@@ -161,8 +158,7 @@ func (r *cabinRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 			&cabin.Name,
 			&cabin.Number,
 			&cabin.BasePrice,
-			&cabin.PricingUnit,
-			&cabin.PricingLabel,
+			&cabin.BillingTypeID,
 			&cabin.Capacity,
 			&cabin.Description,
 			&cabin.Amenities,
@@ -192,20 +188,19 @@ func (r *cabinRepo) Update(ctx context.Context, cabin *model.Cabin, userID strin
 			name = $1,
 			number = $2,
 			base_price = $3,
-			pricing_unit = $4,
-			pricing_label = $5,
-			capacity = $6,
-			description = $7,
-			amenities = $8,
-			restrictions = $9,
-			images = $10,
+			billing_type_id = $4,
+			capacity = $5,
+			description = $6,
+			amenities = $7,
+			restrictions = $8,
+			images = $9,
 			updated_at = now()
-		WHERE id = $11::uuid AND hotel_id = $12::uuid
+		WHERE id = $10::uuid AND hotel_id = $11::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $13::uuid AND m.status = 'active'
+			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $12::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at
 	`
 
 	var updated model.Cabin
@@ -215,8 +210,7 @@ func (r *cabinRepo) Update(ctx context.Context, cabin *model.Cabin, userID strin
 		cabin.Name,
 		cabin.Number,
 		cabin.BasePrice,
-		cabin.PricingUnit,
-		cabin.PricingLabel,
+		cabin.BillingTypeID,
 		cabin.Capacity,
 		cabin.Description,
 		cabin.Amenities,
@@ -231,8 +225,7 @@ func (r *cabinRepo) Update(ctx context.Context, cabin *model.Cabin, userID strin
 		&updated.Name,
 		&updated.Number,
 		&updated.BasePrice,
-		&updated.PricingUnit,
-		&updated.PricingLabel,
+		&updated.BillingTypeID,
 		&updated.Capacity,
 		&updated.Description,
 		&updated.Amenities,
@@ -265,7 +258,7 @@ func (r *cabinRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = cabins.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, number, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at
 	`
 
 	var updated model.Cabin
@@ -276,8 +269,7 @@ func (r *cabinRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 		&updated.Name,
 		&updated.Number,
 		&updated.BasePrice,
-		&updated.PricingUnit,
-		&updated.PricingLabel,
+		&updated.BillingTypeID,
 		&updated.Capacity,
 		&updated.Description,
 		&updated.Amenities,

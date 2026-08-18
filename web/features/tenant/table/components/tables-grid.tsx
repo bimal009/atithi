@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircleIcon, PlusIcon, UtensilsIcon } from "lucide-react";
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { AlertCircleIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, UtensilsIcon } from "lucide-react";
+import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -29,8 +29,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { getErrorMessage } from "@/lib/axios";
+import { sectionName } from "@/lib/section";
 import type { RoomStatus } from "@/types";
 
+import { useSectionsQuery } from "../../section/client/useSections";
 import { useRemoveTable, useTablesQuery, useUpdateTableStatus } from "../client/useTables";
 import type { DiningTable } from "../types";
 import { TableCard } from "./table-card";
@@ -61,9 +63,14 @@ const statusParser = parseAsStringLiteral([
   .withDefault("all")
   .withOptions({ history: "replace" });
 
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 12;
+
 export function TablesGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
   const [status, setStatus] = useQueryState("status", statusParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editingTable, setEditingTable] = React.useState<DiningTable | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<DiningTable | null>(null);
@@ -71,14 +78,26 @@ export function TablesGrid({ tenant }: { tenant: string }) {
   const tablesQuery = useTablesQuery(tenant, {
     search,
     status: status === "all" ? undefined : status,
+    page,
+    limit: PAGE_SIZE,
   });
 
   const updateStatus = useUpdateTableStatus(tenant);
   const remove = useRemoveTable(tenant);
+  const sectionsQuery = useSectionsQuery(tenant);
+  const sections = sectionsQuery.data ?? [];
 
   const tables = tablesQuery.data?.tables ?? [];
+  const total = tablesQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const available = tables.filter((t) => t.status === "available").length;
   const occupied = tables.filter((t) => t.status === "occupied").length;
+
+  const goToPage = (next: number) => setPage(Math.min(Math.max(1, next), pageCount));
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   if (tablesQuery.isPending) {
     return (
@@ -127,7 +146,7 @@ export function TablesGrid({ tenant }: { tenant: string }) {
 
       <SectionCards
         stats={[
-          { label: "Tables", value: String(tables.length) },
+          { label: "Tables", value: String(total) },
           { label: "Available", value: String(available) },
           { label: "Occupied", value: String(occupied) },
         ]}
@@ -136,14 +155,20 @@ export function TablesGrid({ tenant }: { tenant: string }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            resetToFirstPage();
+          }}
           placeholder="Search by table name"
           className="sm:max-w-xs"
         />
         <Select
           items={STATUS_ITEMS}
           value={status}
-          onValueChange={(v) => setStatus((v ?? "all") as typeof status)}
+          onValueChange={(v) => {
+            setStatus((v ?? "all") as typeof status);
+            resetToFirstPage();
+          }}
         >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
@@ -173,6 +198,7 @@ export function TablesGrid({ tenant }: { tenant: string }) {
             <TableCard
               key={table.id}
               table={table}
+              sectionLabel={sectionName(sections, table.sectionId)}
               onEdit={setEditingTable}
               onDelete={setPendingDelete}
               onStatusChange={(t, newStatus) =>
@@ -180,6 +206,32 @@ export function TablesGrid({ tenant }: { tenant: string }) {
               }
             />
           ))}
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {pageCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page >= pageCount}
+              onClick={() => goToPage(page + 1)}
+            >
+              <ChevronRightIcon />
+            </Button>
+          </div>
         </div>
       )}
 

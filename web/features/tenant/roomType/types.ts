@@ -1,11 +1,9 @@
-import type { PricingUnit } from "@/types";
-
 export type RoomType = {
   id: string;
   hotelId: string;
   name: string;
   basePrice: number;
-  pricingUnit: PricingUnit;
+  billingTypeId: string;
   pricingLabel?: string;
   capacity: number;
   description?: string;
@@ -18,7 +16,7 @@ export type RoomType = {
 export type CreateRoomTypeInput = {
   name: string;
   basePrice: number;
-  pricingUnit?: PricingUnit;
+  billingTypeId: string;
   pricingLabel?: string;
   capacity: number;
   description?: string;

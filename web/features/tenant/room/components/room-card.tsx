@@ -24,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatPricingUnit } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomStatus } from "@/types";
 
@@ -50,19 +49,21 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
 export function RoomCard({
   room,
   roomType,
+  billingLabel,
   onEdit,
   onDelete,
   onStatusChange,
 }: {
   room: Room;
   roomType?: RoomType;
+  billingLabel?: string;
   onEdit: (room: Room) => void;
   onDelete: (room: Room) => void;
   onStatusChange: (room: Room, status: RoomStatus) => void;
 }) {
   return (
     <Card className="flex h-full flex-col overflow-hidden py-0">
-      <div className="group/gallery relative aspect-[4/3] bg-muted">
+      <div className="group/gallery relative h-56 w-full shrink-0 overflow-hidden bg-muted">
         {room.images.length > 0 ? (
           <Carousel className="size-full" opts={{ loop: room.images.length > 1 }}>
             <CarouselContent className="ml-0 size-full">
@@ -93,36 +94,37 @@ export function RoomCard({
             <span className="text-xs">No photos</span>
           </div>
         )}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button type="button" className="absolute top-2 left-2 cursor-pointer">
-                <Badge className={`font-normal ${STATUS_BADGE[room.status]}`}>
-                  {STATUS_LABEL[room.status]}
-                </Badge>
-              </button>
-            }
-          />
-          <DropdownMenuContent align="start">
-            {STATUS_OPTIONS.map((status) => (
-              <DropdownMenuItem
-                key={status}
-                disabled={status === room.status}
-                className="cursor-pointer"
-                onClick={() => onStatusChange(room, status)}
-              >
-                {STATUS_LABEL[status]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <CardHeader className="grid-cols-[1fr_auto] pt-4">
         <div>
           <CardTitle>Room {room.number}</CardTitle>
-          <p className="text-sm text-muted-foreground">{roomType?.name ?? "Unknown type"}</p>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <p className="text-sm text-muted-foreground">{roomType?.name ?? "Unknown type"}</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button type="button" className="cursor-pointer">
+                    <Badge className={`font-normal ${STATUS_BADGE[room.status]}`}>
+                      {STATUS_LABEL[room.status]}
+                    </Badge>
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="start">
+                {STATUS_OPTIONS.map((status) => (
+                  <DropdownMenuItem
+                    key={status}
+                    disabled={status === room.status}
+                    className="cursor-pointer"
+                    onClick={() => onStatusChange(room, status)}
+                  >
+                    {STATUS_LABEL[status]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <div className="flex items-center gap-1 justify-self-end">
           <Tooltip>
@@ -160,19 +162,20 @@ export function RoomCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col gap-3">
+      <CardContent className="flex flex-1 flex-col gap-4 pb-4">
         <div className="flex items-baseline justify-between">
           <span className="text-2xl font-semibold tabular-nums">
             {roomType ? formatCurrency(roomType.basePrice) : "—"}
           </span>
-          {roomType && (
+          {roomType && billingLabel && (
             <span className="text-xs text-muted-foreground">
-              {formatPricingUnit(roomType.pricingUnit, roomType.pricingLabel)}
+              {billingLabel}
+              {roomType.pricingLabel ? ` · ${roomType.pricingLabel}` : ""}
             </span>
           )}
         </div>
 
-        <div className="mt-auto flex items-center gap-4 border-t pt-3 text-sm text-muted-foreground">
+        <div className="mt-auto flex items-center gap-4 border-t pt-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <LayersIcon className="size-3.5" aria-hidden />
             Floor {room.floor}

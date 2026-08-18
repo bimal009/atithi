@@ -5,11 +5,18 @@ import { Cabin, CreateCabinInput, ListCabinsResponse, UpdateCabinInput } from ".
 
 export const listCabins = async (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListCabinsResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListCabinsResponse>>(
     `/hotels/slug/${tenant}/cabins`,
-    { params: { search: params?.search || undefined, status: params?.status || undefined, limit: 100 } },
+    {
+      params: {
+        search: params?.search || undefined,
+        status: params?.status || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 12,
+      },
+    },
   );
   return data;
 };

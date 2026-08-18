@@ -30,32 +30,24 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
-import type { TableSection } from "@/types";
 
+import { useSectionsQuery } from "../../section/client/useSections";
 import { useCreateTable, useUpdateTable } from "../client/useTables";
 import { tableSchema, type TableInput, type TableValues } from "../schema";
 import type { DiningTable } from "../types";
 
-const SECTION_OPTIONS: { value: TableSection; label: string }[] = [
-  { value: "indoor", label: "Indoor" },
-  { value: "outdoor", label: "Outdoor" },
-  { value: "rooftop", label: "Rooftop" },
-];
-
-const SECTION_ITEMS = Object.fromEntries(SECTION_OPTIONS.map((o) => [o.value, o.label]));
-
 const emptyValues: TableInput = {
   name: "",
   capacity: 2,
-  section: "indoor",
+  sectionId: "",
 };
 
-function valuesOf(table?: DiningTable): TableInput {
-  if (!table) return emptyValues;
+function valuesOf(table?: DiningTable, defaultSectionId?: string): TableInput {
+  if (!table) return { ...emptyValues, sectionId: defaultSectionId ?? "" };
   return {
     name: table.name,
     capacity: table.capacity,
-    section: table.section,
+    sectionId: table.sectionId,
   };
 }
 
@@ -76,6 +68,8 @@ export function TableFormDialog({
   const create = useCreateTable(tenant);
   const update = useUpdateTable(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
+  const sectionsQuery = useSectionsQuery(tenant);
+  const sections = React.useMemo(() => sectionsQuery.data ?? [], [sectionsQuery.data]);
 
   const [images, setImages] = React.useState<string[]>([]);
 
@@ -91,19 +85,19 @@ export function TableFormDialog({
     defaultValues: emptyValues,
   });
 
-  const section = watch("section");
+  const sectionId = watch("sectionId");
 
   React.useEffect(() => {
     if (!open) return;
-    reset(valuesOf(table));
+    reset(valuesOf(table, sections[0]?.id));
     setImages(table?.images ?? []);
-  }, [open, table, reset]);
+  }, [open, table, reset, sections]);
 
   const onSubmit = handleSubmit(async (values) => {
     const payload = {
       name: values.name,
       capacity: values.capacity,
-      section: values.section,
+      sectionId: values.sectionId,
       images,
     };
 
@@ -128,7 +122,7 @@ export function TableFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
               <MultiImageUpload value={images} onChange={setImages} folder="/tables" maxCount={3} />
@@ -159,29 +153,32 @@ export function TableFormDialog({
                 />
                 <FieldError errors={[errors.capacity]} />
               </Field>
-              <Field data-invalid={!!errors.section}>
+              <Field data-invalid={!!errors.sectionId}>
                 <FieldLabel htmlFor="table-section">Section</FieldLabel>
                 <Select
-                  items={SECTION_ITEMS}
-                  value={section}
+                  items={Object.fromEntries(sections.map((s) => [s.id, s.name]))}
+                  value={sectionId}
                   onValueChange={(value) =>
-                    setValue("section", (value ?? "indoor") as TableSection, {
-                      shouldValidate: true,
-                    })
+                    setValue("sectionId", value ?? "", { shouldValidate: true })
                   }
                 >
                   <SelectTrigger id="table-section" className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a section" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SECTION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {sections.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError errors={[errors.section]} />
+                <FieldError errors={[errors.sectionId]} />
+                {sections.length === 0 && (
+                  <FieldDescription>
+                    No sections yet. Add one under Sections first.
+                  </FieldDescription>
+                )}
               </Field>
             </Field>
           </FieldGroup>

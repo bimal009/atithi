@@ -6,9 +6,10 @@ import { ImagePlusIcon, PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { ADD_ONS, MENU_CATEGORIES, SUB_MENUS } from "@/lib/mock-data"
+import { ADD_ONS, MENU_CATEGORIES, getSubMenusForCategory } from "@/lib/mock-data"
 import { formatCurrency, generateId } from "@/lib/utils"
-import type { MenuItem } from "@/types"
+import { FOOD_TYPE_OPTIONS } from "@/lib/food-type"
+import type { FoodType, MenuItem } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -39,9 +40,8 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
 const dishSchema = z.object({
-  isVeg: z.enum(["veg", "non-veg"]),
+  foodType: z.enum(["veg", "non-veg", "vegan", "egg", "jain"]),
   name: z.string().trim().min(2, "Enter a dish name").max(150),
-  subMenu: z.string().min(1, "Select a sub-menu"),
   category: z.string().min(1, "Select a category"),
   price: z.coerce.number().min(0, "Enter a valid price"),
   discount: z.string().trim().optional(),
@@ -55,9 +55,8 @@ type DishValues = z.output<typeof dishSchema>
 
 const emptyValues: DishInput = {
   name: "",
-  subMenu: SUB_MENUS[0].name,
   category: MENU_CATEGORIES[0],
-  isVeg: "veg",
+  foodType: "veg",
   price: 0,
   discount: "",
   description: "",
@@ -87,9 +86,9 @@ export function AddDishDialog({
     defaultValues: emptyValues,
   })
 
-  const isVeg = watch("isVeg")
-  const subMenu = watch("subMenu")
+  const foodType = watch("foodType")
   const category = watch("category")
+  const derivedSubMenus = getSubMenusForCategory(category)
   const available = watch("available")
 
   function toggleAddOn(id: string) {
@@ -114,11 +113,10 @@ export function AddDishDialog({
     onCreate({
       id: generateId("m"),
       name: values.name,
-      subMenu: values.subMenu,
       category: values.category,
       price: values.price,
       discount: values.discount ? Number(values.discount) : undefined,
-      isVeg: values.isVeg === "veg",
+      foodType: values.foodType,
       available: values.available,
       description: values.description || undefined,
       ingredients: values.ingredients || undefined,
@@ -150,15 +148,15 @@ export function AddDishDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field className="grid grid-cols-2 gap-3">
-              <Field data-invalid={!!errors.isVeg}>
+              <Field data-invalid={!!errors.foodType}>
                 <FieldLabel htmlFor="dish-type">Type</FieldLabel>
                 <Select
-                  items={{ veg: "Veg", "non-veg": "Non-veg" }}
-                  value={isVeg}
+                  items={Object.fromEntries(FOOD_TYPE_OPTIONS.map((o) => [o.value, o.label]))}
+                  value={foodType}
                   onValueChange={(v) =>
-                    setValue("isVeg", (v ?? "veg") as DishValues["isVeg"], {
+                    setValue("foodType", (v ?? "veg") as FoodType, {
                       shouldValidate: true,
                     })
                   }
@@ -167,11 +165,14 @@ export function AddDishDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="veg">Veg</SelectItem>
-                    <SelectItem value="non-veg">Non-veg</SelectItem>
+                    {FOOD_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <FieldError errors={[errors.isVeg]} />
+                <FieldError errors={[errors.foodType]} />
               </Field>
               <Field data-invalid={!!errors.name}>
                 <FieldLabel htmlFor="dish-name">Dish name</FieldLabel>
@@ -215,49 +216,31 @@ export function AddDishDialog({
               </button>
             </Field>
 
-            <Field className="grid grid-cols-2 gap-3">
-              <Field data-invalid={!!errors.subMenu}>
-                <FieldLabel htmlFor="dish-submenu">Sub-menu</FieldLabel>
-                <Select
-                  value={subMenu}
-                  onValueChange={(v) =>
-                    setValue("subMenu", v ?? "", { shouldValidate: true })
-                  }
-                >
-                  <SelectTrigger id="dish-submenu" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SUB_MENUS.map((sm) => (
-                      <SelectItem key={sm.id} value={sm.name}>
-                        {sm.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError errors={[errors.subMenu]} />
-              </Field>
-              <Field data-invalid={!!errors.category}>
-                <FieldLabel htmlFor="dish-category">Category</FieldLabel>
-                <Select
-                  value={category}
-                  onValueChange={(v) =>
-                    setValue("category", v ?? "", { shouldValidate: true })
-                  }
-                >
-                  <SelectTrigger id="dish-category" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MENU_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError errors={[errors.category]} />
-              </Field>
+            <Field data-invalid={!!errors.category}>
+              <FieldLabel htmlFor="dish-category">Category</FieldLabel>
+              <Select
+                value={category}
+                onValueChange={(v) =>
+                  setValue("category", v ?? "", { shouldValidate: true })
+                }
+              >
+                <SelectTrigger id="dish-category" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MENU_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                {derivedSubMenus.length > 0
+                  ? `Shows up on ${derivedSubMenus.join(", ")}, set on the category.`
+                  : "This category isn't on any sub-menu yet."}
+              </FieldDescription>
+              <FieldError errors={[errors.category]} />
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">

@@ -7,7 +7,7 @@ type Table struct {
 	HotelID   string    `db:"hotel_id" json:"hotelId"`
 	Name      string    `db:"name" json:"name"`
 	Capacity  int       `db:"capacity" json:"capacity"`
-	Section   string    `db:"section" json:"section"`
+	SectionID string    `db:"section_id" json:"sectionId"`
 	Status    string    `db:"status" json:"status"`
 	Images    []string  `db:"images" json:"images"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`

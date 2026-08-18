@@ -138,7 +138,7 @@ export function ReservationFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field data-invalid={!!errors.guestName}>
               <FieldLabel htmlFor="reservation-guest-name">Guest name</FieldLabel>
               <Input

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircleIcon, PlusIcon, TreePineIcon } from "lucide-react";
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { AlertCircleIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TreePineIcon } from "lucide-react";
+import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -29,9 +29,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { getErrorMessage } from "@/lib/axios";
+import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomStatus } from "@/types";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useCabinsQuery, useRemoveCabin, useUpdateCabinStatus } from "../client/useCabins";
 import type { Cabin } from "../types";
 import { CabinCard } from "./cabin-card";
@@ -62,9 +64,14 @@ const statusParser = parseAsStringLiteral([
   .withDefault("all")
   .withOptions({ history: "replace" });
 
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 12;
+
 export function CabinsGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
   const [status, setStatus] = useQueryState("status", statusParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editingCabin, setEditingCabin] = React.useState<Cabin | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Cabin | null>(null);
@@ -72,17 +79,29 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
   const cabinsQuery = useCabinsQuery(tenant, {
     search,
     status: status === "all" ? undefined : status,
+    page,
+    limit: PAGE_SIZE,
   });
 
   const updateStatus = useUpdateCabinStatus(tenant);
   const remove = useRemoveCabin(tenant);
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = billingTypesQuery.data ?? [];
 
   const cabins = cabinsQuery.data?.cabins ?? [];
+  const total = cabinsQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const avgPrice = cabins.length
     ? Math.round(cabins.reduce((sum, c) => sum + c.basePrice, 0) / cabins.length)
     : 0;
   const available = cabins.filter((c) => c.status === "available").length;
   const occupied = cabins.filter((c) => c.status === "occupied").length;
+
+  const goToPage = (next: number) => setPage(Math.min(Math.max(1, next), pageCount));
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   if (cabinsQuery.isPending) {
     return (
@@ -131,7 +150,7 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
 
       <SectionCards
         stats={[
-          { label: "Cabins", value: String(cabins.length) },
+          { label: "Cabins", value: String(total) },
           { label: "Available", value: String(available) },
           { label: "Occupied", value: String(occupied) },
           { label: "Average rate", value: formatCurrency(avgPrice) },
@@ -141,14 +160,20 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            resetToFirstPage();
+          }}
           placeholder="Search by cabin name or number"
           className="sm:max-w-xs"
         />
         <Select
           items={STATUS_ITEMS}
           value={status}
-          onValueChange={(v) => setStatus((v ?? "all") as typeof status)}
+          onValueChange={(v) => {
+            setStatus((v ?? "all") as typeof status);
+            resetToFirstPage();
+          }}
         >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
@@ -178,6 +203,7 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
             <CabinCard
               key={cabin.id}
               cabin={cabin}
+              billingLabel={billingTypeName(billingTypes, cabin.billingTypeId)}
               onEdit={setEditingCabin}
               onDelete={setPendingDelete}
               onStatusChange={(c, newStatus) =>
@@ -185,6 +211,32 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
               }
             />
           ))}
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {pageCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={page >= pageCount}
+              onClick={() => goToPage(page + 1)}
+            >
+              <ChevronRightIcon />
+            </Button>
+          </div>
         </div>
       )}
 

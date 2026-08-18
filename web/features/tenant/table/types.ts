@@ -1,11 +1,11 @@
-import type { RoomStatus, TableSection } from "@/types";
+import type { RoomStatus } from "@/types";
 
 export type DiningTable = {
   id: string;
   hotelId: string;
   name: string;
   capacity: number;
-  section: TableSection;
+  sectionId: string;
   status: RoomStatus;
   images: string[];
   createdAt: string;
@@ -15,7 +15,7 @@ export type DiningTable = {
 export type CreateTableInput = {
   name: string;
   capacity: number;
-  section: TableSection;
+  sectionId: string;
   images?: string[];
 };
 

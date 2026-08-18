@@ -29,13 +29,13 @@ func NewTableRepo(db *pgxpool.Pool) TableRepo {
 
 func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID string) (model.Table, error) {
 	query := `
-		INSERT INTO dining_tables (id, hotel_id, name, capacity, section, status, images)
+		INSERT INTO dining_tables (id, hotel_id, name, capacity, section_id, status, images)
 		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7
 		WHERE EXISTS (
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $8::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, name, capacity, section, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
 	`
 
 	var created model.Table
@@ -46,7 +46,7 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 		table.HotelID,
 		table.Name,
 		table.Capacity,
-		table.Section,
+		table.SectionID,
 		table.Status,
 		table.Images,
 		userID,
@@ -55,7 +55,7 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 		&created.HotelID,
 		&created.Name,
 		&created.Capacity,
-		&created.Section,
+		&created.SectionID,
 		&created.Status,
 		&created.Images,
 		&created.CreatedAt,
@@ -77,7 +77,7 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 
 func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Table, error) {
 	query := `
-		SELECT id, hotel_id, name, capacity, section, status, images, created_at, updated_at
+		SELECT id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
 		FROM dining_tables
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -93,7 +93,7 @@ func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 		&table.HotelID,
 		&table.Name,
 		&table.Capacity,
-		&table.Section,
+		&table.SectionID,
 		&table.Status,
 		&table.Images,
 		&table.CreatedAt,
@@ -112,7 +112,7 @@ func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 
 func (r *tableRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Table, int, error) {
 	query := `
-		SELECT id, hotel_id, name, capacity, section, status, images, created_at, updated_at,
+		SELECT id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at,
 		       COUNT(*) OVER() AS total
 		FROM dining_tables
 		WHERE hotel_id = $1::uuid
@@ -142,7 +142,7 @@ func (r *tableRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 			&table.HotelID,
 			&table.Name,
 			&table.Capacity,
-			&table.Section,
+			&table.SectionID,
 			&table.Status,
 			&table.Images,
 			&table.CreatedAt,
@@ -167,7 +167,7 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		SET
 			name = $1,
 			capacity = $2,
-			section = $3,
+			section_id = $3,
 			images = $4,
 			updated_at = now()
 		WHERE id = $5::uuid AND hotel_id = $6::uuid
@@ -175,7 +175,7 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = dining_tables.hotel_id AND m.user_id = $7::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, capacity, section, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
 	`
 
 	var updated model.Table
@@ -184,7 +184,7 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		ctx, query,
 		table.Name,
 		table.Capacity,
-		table.Section,
+		table.SectionID,
 		table.Images,
 		table.ID,
 		table.HotelID,
@@ -194,7 +194,7 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		&updated.HotelID,
 		&updated.Name,
 		&updated.Capacity,
-		&updated.Section,
+		&updated.SectionID,
 		&updated.Status,
 		&updated.Images,
 		&updated.CreatedAt,
@@ -223,7 +223,7 @@ func (r *tableRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = dining_tables.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, capacity, section, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
 	`
 
 	var updated model.Table
@@ -233,7 +233,7 @@ func (r *tableRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 		&updated.HotelID,
 		&updated.Name,
 		&updated.Capacity,
-		&updated.Section,
+		&updated.SectionID,
 		&updated.Status,
 		&updated.Images,
 		&updated.CreatedAt,

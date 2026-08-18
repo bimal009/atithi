@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,10 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
+import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
-import { formatPricingUnit } from "@/lib/pricing";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useRoomTypesQuery } from "../../roomType/client/useRoomTypes";
 import { useCreateRoom, useUpdateRoom } from "../client/useRooms";
 import { roomSchema, type RoomInput, type RoomValues } from "../schema";
@@ -68,7 +70,9 @@ export function RoomFormDialog({
 }) {
   const isEdit = !!room;
   const roomTypesQuery = useRoomTypesQuery(tenant);
-  const roomTypes = roomTypesQuery.data ?? [];
+  const roomTypes = React.useMemo(() => roomTypesQuery.data ?? [], [roomTypesQuery.data]);
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = billingTypesQuery.data ?? [];
   const create = useCreateRoom(tenant);
   const update = useUpdateRoom(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
@@ -125,7 +129,7 @@ export function RoomFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
               <MultiImageUpload value={images} onChange={setImages} folder="/rooms" maxCount={10} />
@@ -180,8 +184,14 @@ export function RoomFormDialog({
               {selectedType && (
                 <FieldDescription>
                   {formatCurrency(selectedType.basePrice)}{" "}
-                  {formatPricingUnit(selectedType.pricingUnit, selectedType.pricingLabel)} · Sleeps{" "}
-                  {selectedType.capacity} — set on the room type.
+                  {billingTypeName(billingTypes, selectedType.billingTypeId)} · Sleeps{" "}
+                  {selectedType.capacity}.set on the room type.{" "}
+                  <Link
+                    href={`/${tenant}/dashboard/rooms/types`}
+                    className="underline hover:text-foreground"
+                  >
+                    Manage room types
+                  </Link>
                 </FieldDescription>
               )}
               <FieldError errors={[errors.roomTypeId]} />

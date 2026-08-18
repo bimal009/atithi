@@ -20,10 +20,16 @@ export const cabinKeys = {
 
 export const useCabinsQuery = (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ) =>
   useQuery({
-    queryKey: [...cabinKeys.all(tenant), params?.search ?? "", params?.status ?? ""],
+    queryKey: [
+      ...cabinKeys.all(tenant),
+      params?.search ?? "",
+      params?.status ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 12,
+    ],
     queryFn: async () => (await listCabins(tenant, params)).data,
   });
 

@@ -138,7 +138,7 @@ export function RoleFormDialog({
               <Skeleton className="h-48 w-full" />
             </div>
           ) : (
-            <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+            <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
               <Field data-invalid={!!errors.name}>
                 <FieldLabel htmlFor="role-name">Role name</FieldLabel>
                 <Input

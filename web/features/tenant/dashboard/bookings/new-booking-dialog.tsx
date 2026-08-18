@@ -226,7 +226,7 @@ export function NewBookingDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[60vh] overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field className="grid grid-cols-2 gap-3">
               <Field data-invalid={!!errors.guestName}>
                 <FieldLabel htmlFor="guest-name">Guest name</FieldLabel>

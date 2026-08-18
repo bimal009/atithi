@@ -31,9 +31,8 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
-import { PRICING_LABEL_PLACEHOLDER, PRICING_UNIT_OPTIONS } from "@/lib/pricing";
-import type { PricingUnit } from "@/types";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useCreateCabin, useUpdateCabin } from "../client/useCabins";
 import { cabinSchema, type CabinInput, type CabinValues } from "../schema";
 import type { Cabin } from "../types";
@@ -42,22 +41,20 @@ const emptyValues: CabinInput = {
   name: "",
   number: "",
   basePrice: 0,
-  pricingUnit: "night",
-  pricingLabel: "",
+  billingTypeId: "",
   capacity: 2,
   description: "",
   amenities: "",
   restrictions: "",
 };
 
-function valuesOf(cabin?: Cabin): CabinInput {
-  if (!cabin) return emptyValues;
+function valuesOf(cabin?: Cabin, defaultBillingTypeId?: string): CabinInput {
+  if (!cabin) return { ...emptyValues, billingTypeId: defaultBillingTypeId ?? "" };
   return {
     name: cabin.name,
     number: cabin.number,
     basePrice: cabin.basePrice,
-    pricingUnit: cabin.pricingUnit,
-    pricingLabel: cabin.pricingLabel ?? "",
+    billingTypeId: cabin.billingTypeId ?? "",
     capacity: cabin.capacity,
     description: cabin.description ?? "",
     amenities: cabin.amenities.join(", "),
@@ -82,6 +79,11 @@ export function CabinFormDialog({
   const create = useCreateCabin(tenant);
   const update = useUpdateCabin(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = React.useMemo(
+    () => billingTypesQuery.data ?? [],
+    [billingTypesQuery.data],
+  );
 
   const [images, setImages] = React.useState<string[]>([]);
 
@@ -97,22 +99,20 @@ export function CabinFormDialog({
     defaultValues: emptyValues,
   });
 
-  const pricingUnit = watch("pricingUnit") ?? "night";
-  const labelPlaceholder = PRICING_LABEL_PLACEHOLDER[pricingUnit as PricingUnit];
+  const billingTypeId = watch("billingTypeId");
 
   React.useEffect(() => {
     if (!open) return;
-    reset(valuesOf(cabin));
+    reset(valuesOf(cabin, billingTypes[0]?.id));
     setImages(cabin?.images ?? []);
-  }, [open, cabin, reset]);
+  }, [open, cabin, reset, billingTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
     const payload = {
       name: values.name,
       number: values.number,
       basePrice: values.basePrice,
-      pricingUnit: values.pricingUnit,
-      pricingLabel: values.pricingLabel || undefined,
+      billingTypeId: values.billingTypeId,
       capacity: values.capacity,
       description: values.description || undefined,
       amenities: (values.amenities ?? "")
@@ -147,7 +147,7 @@ export function CabinFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
               <MultiImageUpload value={images} onChange={setImages} folder="/cabins" maxCount={5} />
@@ -191,49 +191,29 @@ export function CabinFormDialog({
                 />
                 <FieldError errors={[errors.basePrice]} />
               </Field>
-              <Field data-invalid={!!errors.pricingUnit}>
-                <FieldLabel htmlFor="cabin-pricing-unit">Billed</FieldLabel>
+              <Field data-invalid={!!errors.billingTypeId}>
+                <FieldLabel htmlFor="cabin-billing-type">Billed</FieldLabel>
                 <Select
-                  items={Object.fromEntries(
-                    PRICING_UNIT_OPTIONS.map((o) => [o.value, o.label]),
-                  )}
-                  value={pricingUnit}
+                  items={Object.fromEntries(billingTypes.map((b) => [b.id, b.name]))}
+                  value={billingTypeId}
                   onValueChange={(value) =>
-                    setValue("pricingUnit", (value ?? "night") as PricingUnit, {
-                      shouldValidate: true,
-                    })
+                    setValue("billingTypeId", value ?? "", { shouldValidate: true })
                   }
                 >
-                  <SelectTrigger id="cabin-pricing-unit" className="w-full">
-                    <SelectValue />
+                  <SelectTrigger id="cabin-billing-type" className="w-full">
+                    <SelectValue placeholder="Select a billing type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRICING_UNIT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {billingTypes.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError errors={[errors.pricingUnit]} />
+                <FieldError errors={[errors.billingTypeId]} />
               </Field>
             </Field>
-
-            {labelPlaceholder && (
-              <Field data-invalid={!!errors.pricingLabel}>
-                <FieldLabel htmlFor="cabin-pricing-label">
-                  {pricingUnit === "daycation" ? "Time window" : "Package name"}{" "}
-                  <span className="text-muted-foreground">(optional)</span>
-                </FieldLabel>
-                <Input
-                  id="cabin-pricing-label"
-                  aria-invalid={!!errors.pricingLabel}
-                  {...register("pricingLabel")}
-                  placeholder={labelPlaceholder}
-                />
-                <FieldError errors={[errors.pricingLabel]} />
-              </Field>
-            )}
 
             <Field data-invalid={!!errors.capacity}>
               <FieldLabel htmlFor="cabin-capacity">Capacity</FieldLabel>

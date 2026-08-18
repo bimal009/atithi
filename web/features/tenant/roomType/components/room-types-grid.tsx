@@ -29,19 +29,22 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatPricingUnit } from "@/lib/pricing";
+import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useRemoveRoomType } from "../client/useRoomTypes";
 import type { RoomType } from "../types";
 import { RoomTypeFormDialog } from "./room-type-form-dialog";
 
 function RoomTypeCard({
   roomType,
+  billingLabel,
   onEdit,
   onDelete,
 }: {
   roomType: RoomType;
+  billingLabel: string;
   onEdit: (roomType: RoomType) => void;
   onDelete: (roomType: RoomType) => void;
 }) {
@@ -101,7 +104,8 @@ function RoomTypeCard({
             {formatCurrency(roomType.basePrice)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {formatPricingUnit(roomType.pricingUnit, roomType.pricingLabel)}
+            {billingLabel}
+            {roomType.pricingLabel ? ` · ${roomType.pricingLabel}` : ""}
           </span>
         </div>
 
@@ -141,6 +145,8 @@ export function RoomTypesGrid({
     null,
   );
   const remove = useRemoveRoomType(tenant);
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = billingTypesQuery.data ?? [];
 
   const avgPrice = roomTypes.length
     ? Math.round(
@@ -183,6 +189,7 @@ export function RoomTypesGrid({
             <RoomTypeCard
               key={roomType.id}
               roomType={roomType}
+              billingLabel={billingTypeName(billingTypes, roomType.billingTypeId)}
               onEdit={setEditingRoomType}
               onDelete={setPendingDelete}
             />

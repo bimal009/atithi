@@ -5,6 +5,7 @@ import {
   CalendarCheckIcon,
   LayoutDashboardIcon,
   MessageSquareIcon,
+  ReceiptTextIcon,
   ShoppingBasketIcon,
   TreePineIcon,
   UsersIcon,
@@ -75,7 +76,6 @@ export const NAV_GROUPS: NavGroup[] = [
           { title: "Rooms", href: "/rooms" },
           { title: "Types", href: "/rooms/types" },
           { title: "Bookings", href: "/bookings" },
-          { title: "Booking Channels", href: "/bookings/channels" },
         ],
       },
       {
@@ -84,10 +84,17 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: CalendarCheckIcon,
         items: [
           { title: "Tables", href: "/tables" },
+          { title: "Sections", href: "/sections" },
           { title: "Reservations", href: "/reservations" },
         ],
       },
       { title: "Cabins", href: "/cabins", icon: TreePineIcon },
+    ],
+  },
+  {
+    label: "Billing",
+    items: [
+      { title: "Billing Types", href: "/billing-types", icon: ReceiptTextIcon },
     ],
   },
   {

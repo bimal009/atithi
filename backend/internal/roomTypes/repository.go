@@ -30,13 +30,13 @@ func NewRoomTypeRepo(db *pgxpool.Pool) RoomTypeRepo {
 
 func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, userID string) (model.RoomType, error) {
 	query := `
-		INSERT INTO room_types (id, hotel_id, name, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions)
+		INSERT INTO room_types (id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions)
 		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10
 		WHERE EXISTS (
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $11::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, name, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
+		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
 	`
 
 	var created model.RoomType
@@ -47,7 +47,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 		roomType.HotelID,
 		roomType.Name,
 		roomType.BasePrice,
-		roomType.PricingUnit,
+		roomType.BillingTypeID,
 		roomType.PricingLabel,
 		roomType.Capacity,
 		roomType.Description,
@@ -59,7 +59,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 		&created.HotelID,
 		&created.Name,
 		&created.BasePrice,
-		&created.PricingUnit,
+		&created.BillingTypeID,
 		&created.PricingLabel,
 		&created.Capacity,
 		&created.Description,
@@ -84,7 +84,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 
 func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (model.RoomType, error) {
 	query := `
-		SELECT id, hotel_id, name, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
+		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
 		FROM room_types
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -100,7 +100,7 @@ func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 		&roomType.HotelID,
 		&roomType.Name,
 		&roomType.BasePrice,
-		&roomType.PricingUnit,
+		&roomType.BillingTypeID,
 		&roomType.PricingLabel,
 		&roomType.Capacity,
 		&roomType.Description,
@@ -122,7 +122,7 @@ func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 
 func (r *roomTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.RoomType, error) {
 	query := `
-		SELECT id, hotel_id, name, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
+		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
 		FROM room_types
 		WHERE hotel_id = $1::uuid
 		  AND EXISTS (
@@ -147,7 +147,7 @@ func (r *roomTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string)
 			&roomType.HotelID,
 			&roomType.Name,
 			&roomType.BasePrice,
-			&roomType.PricingUnit,
+			&roomType.BillingTypeID,
 			&roomType.PricingLabel,
 			&roomType.Capacity,
 			&roomType.Description,
@@ -174,7 +174,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 		SET
 			name = $1,
 			base_price = $2,
-			pricing_unit = $3,
+			billing_type_id = $3,
 			pricing_label = $4,
 			capacity = $5,
 			description = $6,
@@ -186,7 +186,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = room_types.hotel_id AND m.user_id = $11::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, base_price, pricing_unit, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
+		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, created_at, updated_at
 	`
 
 	var updated model.RoomType
@@ -195,7 +195,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 		ctx, query,
 		roomType.Name,
 		roomType.BasePrice,
-		roomType.PricingUnit,
+		roomType.BillingTypeID,
 		roomType.PricingLabel,
 		roomType.Capacity,
 		roomType.Description,
@@ -209,7 +209,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 		&updated.HotelID,
 		&updated.Name,
 		&updated.BasePrice,
-		&updated.PricingUnit,
+		&updated.BillingTypeID,
 		&updated.PricingLabel,
 		&updated.Capacity,
 		&updated.Description,

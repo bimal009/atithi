@@ -30,6 +30,62 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
+function NavCollapsibleItem({
+  item,
+  basePath,
+  pathname,
+  isSubActive,
+}: {
+  item: (typeof NAV_GROUPS)[number]["items"][number]
+  basePath: string
+  pathname: string
+  isSubActive: boolean
+}) {
+  const [open, setOpen] = React.useState(isSubActive)
+
+  React.useEffect(() => {
+    if (isSubActive) setOpen(true)
+  }, [isSubActive])
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <SidebarMenuItem>
+        <CollapsibleTrigger
+          render={
+            <SidebarMenuButton
+              tooltip={item.title}
+              isActive={isSubActive}
+              className="group data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary"
+            />
+          }
+        >
+          {item.icon && <item.icon />}
+          <span>{item.title}</span>
+          <ChevronRightIcon className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open:rotate-90" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {item.items?.map((sub) => {
+              const subHref = `${basePath}${sub.href}`
+              return (
+                <SidebarMenuSubItem key={sub.title}>
+                  <SidebarMenuSubButton
+                    isActive={pathname === subHref}
+                    className="data-active:bg-primary/5 data-active:font-medium data-active:text-primary"
+                    render={<Link href={subHref} />}
+                  >
+                    <span>{sub.title}</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              )
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  )
+}
+
 export function AppSidebar({
   tenant,
   ...props
@@ -100,41 +156,13 @@ export function AppSidebar({
                   )
 
                   return (
-                    <Collapsible key={item.title} defaultOpen={isSubActive}>
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger
-                          render={
-                            <SidebarMenuButton
-                              tooltip={item.title}
-                              isActive={isSubActive}
-                              className="group data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary"
-                            />
-                          }
-                        >
-                          <item.icon />
-                          <span>{item.title}</span>
-                          <ChevronRightIcon className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open:rotate-90" />
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {item.items.map((sub) => {
-                              const subHref = `${basePath}${sub.href}`
-                              return (
-                                <SidebarMenuSubItem key={sub.title}>
-                                  <SidebarMenuSubButton
-                                    isActive={pathname === subHref}
-                                    className="data-active:bg-primary/5 data-active:font-medium data-active:text-primary"
-                                    render={<Link href={subHref} />}
-                                  >
-                                    <span>{sub.title}</span>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              )
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
+                    <NavCollapsibleItem
+                      key={item.title}
+                      item={item}
+                      basePath={basePath}
+                      pathname={pathname}
+                      isSubActive={isSubActive}
+                    />
                   )
                 })}
               </SidebarMenu>

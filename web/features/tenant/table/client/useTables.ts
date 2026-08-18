@@ -20,10 +20,16 @@ export const tableKeys = {
 
 export const useTablesQuery = (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ) =>
   useQuery({
-    queryKey: [...tableKeys.all(tenant), params?.search ?? "", params?.status ?? ""],
+    queryKey: [
+      ...tableKeys.all(tenant),
+      params?.search ?? "",
+      params?.status ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 12,
+    ],
     queryFn: async () => (await listTables(tenant, params)).data,
   });
 

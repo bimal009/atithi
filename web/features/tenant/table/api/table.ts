@@ -5,11 +5,18 @@ import { CreateTableInput, DiningTable, ListTablesResponse, UpdateTableInput } f
 
 export const listTables = async (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListTablesResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListTablesResponse>>(
     `/hotels/slug/${tenant}/tables`,
-    { params: { search: params?.search || undefined, status: params?.status || undefined, limit: 100 } },
+    {
+      params: {
+        search: params?.search || undefined,
+        status: params?.status || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 12,
+      },
+    },
   );
   return data;
 };

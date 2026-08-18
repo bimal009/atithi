@@ -7,6 +7,7 @@ import { ArrowLeftIcon, MinusIcon, PlusIcon, ShoppingCartIcon } from "lucide-rea
 
 import { ADD_ONS, addKotOrder, MENU_CATEGORIES, MENU_ITEMS, ROOMS } from "@/lib/mock-data"
 import { cn, formatCurrency, orderItemTotal, orderTotal } from "@/lib/utils"
+import { FOOD_TYPE_DOT_CLASS, FOOD_TYPE_LABEL } from "@/lib/food-type"
 import type { AddOn, MenuItem, OrderItem } from "@/types"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
@@ -194,11 +195,10 @@ export function NewOrderPageClient({ tenant }: { tenant: string }) {
                           <div className="flex items-center gap-3">
                             <span
                               aria-hidden
+                              title={FOOD_TYPE_LABEL[item.foodType]}
                               className={cn(
                                 "size-2 shrink-0 rounded-full border",
-                                item.isVeg
-                                  ? "border-primary bg-primary/20"
-                                  : "border-destructive bg-destructive/20"
+                                FOOD_TYPE_DOT_CLASS[item.foodType]
                               )}
                             />
                             <div className="flex min-w-0 flex-1 flex-col">

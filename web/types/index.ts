@@ -113,14 +113,15 @@ export interface StaffMember {
   joinedAt: string;
 }
 
+export type FoodType = "veg" | "non-veg" | "vegan" | "egg" | "jain";
+
 export interface MenuItem {
   id: string;
   name: string;
   category: string;
-  subMenu?: string;
   price: number;
   discount?: number;
-  isVeg: boolean;
+  foodType: FoodType;
   available: boolean;
   description?: string;
   ingredients?: string;

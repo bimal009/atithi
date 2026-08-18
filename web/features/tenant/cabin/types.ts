@@ -1,4 +1,4 @@
-import type { PricingUnit, RoomStatus } from "@/types";
+import type { RoomStatus } from "@/types";
 
 export type Cabin = {
   id: string;
@@ -6,8 +6,7 @@ export type Cabin = {
   name: string;
   number: string;
   basePrice: number;
-  pricingUnit: PricingUnit;
-  pricingLabel?: string;
+  billingTypeId?: string;
   capacity: number;
   description?: string;
   amenities: string[];
@@ -22,8 +21,7 @@ export type CreateCabinInput = {
   name: string;
   number: string;
   basePrice: number;
-  pricingUnit?: PricingUnit;
-  pricingLabel?: string;
+  billingTypeId: string;
   capacity: number;
   description?: string;
   amenities?: string[];

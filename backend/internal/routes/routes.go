@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/bimal009/atithi/internal/auth"
+	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
@@ -11,6 +12,8 @@ import (
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
 	"github.com/bimal009/atithi/internal/rooms"
+	"github.com/bimal009/atithi/internal/sections"
+	submenus "github.com/bimal009/atithi/internal/submenus"
 	"github.com/bimal009/atithi/internal/tables"
 	"github.com/gin-gonic/gin"
 )
@@ -18,6 +21,9 @@ import (
 type Handlers struct {
 	Auth           *auth.AuthHandler
 	Hotel          *hotel.HotelHandler
+	BillingType    *billingtypes.BillingTypeHandler
+	Section        *sections.SectionHandler
+	SubMenu        *submenus.SubMenuHandler
 	RoomType       *roomtypes.RoomTypeHandler
 	Room           *rooms.RoomHandler
 	Cabin          *cabins.CabinHandler
@@ -77,6 +83,33 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 		hotels.DELETE("/:id", h.Hotel.Delete)
 		scoped := hotels.Group("/slug/:slug", h.ValidateHotel, h.ValidateMember)
 		{
+			billingTypes := scoped.Group("/billing-types")
+			{
+				billingTypes.POST("", h.BillingType.Create)
+				billingTypes.GET("", h.BillingType.GetAll)
+				billingTypes.GET("/:billingTypeId", h.BillingType.Get)
+				billingTypes.PATCH("/:billingTypeId", h.BillingType.Update)
+				billingTypes.DELETE("/:billingTypeId", h.BillingType.Delete)
+			}
+
+			sectionsGroup := scoped.Group("/sections")
+			{
+				sectionsGroup.POST("", h.Section.Create)
+				sectionsGroup.GET("", h.Section.GetAll)
+				sectionsGroup.GET("/:sectionId", h.Section.Get)
+				sectionsGroup.PATCH("/:sectionId", h.Section.Update)
+				sectionsGroup.DELETE("/:sectionId", h.Section.Delete)
+			}
+
+			subMenusGroup := scoped.Group("/sub-menus")
+			{
+				subMenusGroup.POST("", h.SubMenu.Create)
+				subMenusGroup.GET("", h.SubMenu.GetAll)
+				subMenusGroup.GET("/:subMenuId", h.SubMenu.Get)
+				subMenusGroup.PATCH("/:subMenuId", h.SubMenu.Update)
+				subMenusGroup.DELETE("/:subMenuId", h.SubMenu.Delete)
+			}
+
 			roomTypes := scoped.Group("/room-types")
 			{
 				roomTypes.POST("", h.RoomType.Create)

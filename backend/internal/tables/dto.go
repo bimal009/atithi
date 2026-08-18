@@ -10,17 +10,17 @@ const (
 )
 
 type CreateTableRequest struct {
-	Name     string   `json:"name" validate:"required,min=1,max=50"`
-	Capacity int      `json:"capacity" validate:"required,gt=0"`
-	Section  string   `json:"section" validate:"required,oneof=indoor outdoor rooftop"`
-	Images   []string `json:"images,omitempty" validate:"omitempty,max=3,dive,url"`
+	Name      string   `json:"name" validate:"required,min=1,max=50"`
+	Capacity  int      `json:"capacity" validate:"required,gt=0"`
+	SectionID string   `json:"sectionId" validate:"required,uuid"`
+	Images    []string `json:"images,omitempty" validate:"omitempty,max=3,dive,url"`
 }
 
 type UpdateTableRequest struct {
-	Name     *string  `json:"name,omitempty" validate:"omitempty,min=1,max=50"`
-	Capacity *int     `json:"capacity,omitempty" validate:"omitempty,gt=0"`
-	Section  *string  `json:"section,omitempty" validate:"omitempty,oneof=indoor outdoor rooftop"`
-	Images   []string `json:"images,omitempty" validate:"omitempty,max=3,dive,url"`
+	Name      *string  `json:"name,omitempty" validate:"omitempty,min=1,max=50"`
+	Capacity  *int     `json:"capacity,omitempty" validate:"omitempty,gt=0"`
+	SectionID *string  `json:"sectionId,omitempty" validate:"omitempty,uuid"`
+	Images    []string `json:"images,omitempty" validate:"omitempty,max=3,dive,url"`
 }
 
 type UpdateTableStatusRequest struct {

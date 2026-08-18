@@ -12,6 +12,7 @@ import (
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	"github.com/bimal009/atithi/internal/auth"
+	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
@@ -24,7 +25,9 @@ import (
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
 	"github.com/bimal009/atithi/internal/rooms"
 	"github.com/bimal009/atithi/internal/routes"
+	"github.com/bimal009/atithi/internal/sections"
 	"github.com/bimal009/atithi/internal/session"
+	submenus "github.com/bimal009/atithi/internal/submenus"
 	"github.com/bimal009/atithi/internal/tables"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/pkg/db"
@@ -70,6 +73,9 @@ func main() {
 	memberRepo := member.NewMemberRepo(pool)
 	roleRepo := role.NewRoleRepo(pool)
 	permissionRepo := permission.NewPermissionRepo(pool)
+	billingTypeRepo := billingtypes.NewBillingTypeRepo(pool)
+	sectionRepo := sections.NewSectionRepo(pool)
+	subMenuRepo := submenus.NewSubMenuRepo(pool)
 	roomTypeRepo := roomtypes.NewRoomTypeRepo(pool)
 	roomRepo := rooms.NewRoomRepo(pool)
 	cabinRepo := cabins.NewCabinRepo(pool)
@@ -84,6 +90,15 @@ func main() {
 
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
+
+	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo)
+	billingTypeHandler := billingtypes.NewBillingTypeHandler(slog, billingTypeService)
+
+	sectionService := sections.NewSectionService(slog, sectionRepo)
+	sectionHandler := sections.NewSectionHandler(slog, sectionService)
+
+	subMenuService := submenus.NewSubMenuService(slog, subMenuRepo)
+	subMenuHandler := submenus.NewSubMenuHandler(slog, subMenuService)
 
 	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
 	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
@@ -135,6 +150,9 @@ func main() {
 	routes.Register(r, &routes.Handlers{
 		Auth:           authHandler,
 		Hotel:          hotelHandler,
+		BillingType:    billingTypeHandler,
+		Section:        sectionHandler,
+		SubMenu:        subMenuHandler,
 		RoomType:       roomTypeHandler,
 		Room:           roomHandler,
 		Cabin:          cabinHandler,

@@ -76,6 +76,18 @@ var (
 	ErrReservationNotFound = New(http.StatusNotFound, "not_found", "Reservation not found")
 	ErrReservationOverlaps = New(http.StatusConflict, "conflict", "Table already reserved for that time")
 	ErrTableInvalid        = New(http.StatusBadRequest, "invalid_input", "Table does not exist")
+
+	ErrBillingTypeNotFound   = New(http.StatusNotFound, "not_found", "Billing type not found")
+	ErrBillingTypeNameExists = New(http.StatusConflict, "conflict", "Billing type name already exists")
+	ErrBillingTypeInUse      = New(http.StatusConflict, "conflict", "Billing type is still in use")
+
+	ErrSectionNotFound   = New(http.StatusNotFound, "not_found", "Section not found")
+	ErrSectionNameExists = New(http.StatusConflict, "conflict", "Section name already exists")
+	ErrSectionInUse      = New(http.StatusConflict, "conflict", "Section is still in use")
+
+	ErrSubMenuNotFound   = New(http.StatusNotFound, "not_found", "Sub-menu not found")
+	ErrSubMenuNameExists = New(http.StatusConflict, "conflict", "Sub-menu name already exists")
+	ErrSubMenuInUse      = New(http.StatusConflict, "conflict", "Sub-menu is still in use")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

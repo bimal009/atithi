@@ -519,43 +519,47 @@ export const SUB_MENUS: SubMenu[] = [
   { id: "sm03", name: "Dessert Menu", description: "Sweets served after meals." },
 ]
 
-const CATEGORY_TO_SUB_MENU: Record<string, string> = {
-  Starters: "Restaurant Menu",
-  "Main Course": "Restaurant Menu",
-  "Nepali Specials": "Restaurant Menu",
-  Beverages: "Bar Menu",
-  Desserts: "Dessert Menu",
+// A category can belong to more than one sub-menu (many-to-many). A dish only
+// ever references a category — which sub-menu(s) it shows up under is derived
+// from here, not stored on the dish itself.
+export const CATEGORY_SUB_MENUS: Record<string, string[]> = {
+  Starters: ["Restaurant Menu"],
+  "Main Course": ["Restaurant Menu"],
+  "Nepali Specials": ["Restaurant Menu"],
+  Beverages: ["Restaurant Menu", "Bar Menu"],
+  Desserts: ["Dessert Menu"],
 }
 
-const MENU_ITEMS_BASE: Omit<MenuItem, "subMenu">[] = [
-  { id: "m01", name: "Veg Momo", category: "Starters", price: 220, isVeg: true, available: true },
-  { id: "m02", name: "Chicken Momo", category: "Starters", price: 260, isVeg: false, available: true },
-  { id: "m03", name: "Buff Sekuwa", category: "Starters", price: 380, isVeg: false, available: true },
-  { id: "m04", name: "Chicken Chilli", category: "Starters", price: 340, isVeg: false, available: true },
-  { id: "m05", name: "Paneer Tikka", category: "Starters", price: 300, isVeg: true, available: false },
-  { id: "m06", name: "Dal Bhat Set", category: "Main Course", price: 420, isVeg: true, available: true },
-  { id: "m07", name: "Chicken Curry Set", category: "Main Course", price: 520, isVeg: false, available: true },
-  { id: "m08", name: "Mutton Curry Set", category: "Main Course", price: 620, isVeg: false, available: true },
-  { id: "m09", name: "Veg Thukpa", category: "Main Course", price: 280, isVeg: true, available: true },
-  { id: "m10", name: "Chicken Thukpa", category: "Main Course", price: 320, isVeg: false, available: true },
-  { id: "m11", name: "Chicken Chowmein", category: "Main Course", price: 300, isVeg: false, available: true },
-  { id: "m12", name: "Veg Chowmein", category: "Main Course", price: 260, isVeg: true, available: true },
-  { id: "m13", name: "Newari Khaja Set", category: "Nepali Specials", price: 450, isVeg: false, available: true },
-  { id: "m14", name: "Gundruk Soup", category: "Nepali Specials", price: 180, isVeg: true, available: true },
-  { id: "m15", name: "Aloo Tama", category: "Nepali Specials", price: 260, isVeg: true, available: true },
-  { id: "m16", name: "Masu Bhat", category: "Nepali Specials", price: 480, isVeg: false, available: true },
-  { id: "m17", name: "Masala Tea", category: "Beverages", price: 60, isVeg: true, available: true },
-  { id: "m18", name: "Black Coffee", category: "Beverages", price: 90, isVeg: true, available: true },
-  { id: "m19", name: "Sweet Lassi", category: "Beverages", price: 150, isVeg: true, available: true },
-  { id: "m20", name: "Fresh Lime Soda", category: "Beverages", price: 120, isVeg: true, available: true },
-  { id: "m21", name: "Gulab Jamun", category: "Desserts", price: 140, isVeg: true, available: true },
-  { id: "m22", name: "Kheer", category: "Desserts", price: 160, isVeg: true, available: true },
+export function getSubMenusForCategory(category: string): string[] {
+  return CATEGORY_SUB_MENUS[category] ?? []
+}
+
+const MENU_ITEMS_BASE: MenuItem[] = [
+  { id: "m01", name: "Veg Momo", category: "Starters", price: 220, foodType: "veg", available: true },
+  { id: "m02", name: "Chicken Momo", category: "Starters", price: 260, foodType: "non-veg", available: true },
+  { id: "m03", name: "Buff Sekuwa", category: "Starters", price: 380, foodType: "non-veg", available: true },
+  { id: "m04", name: "Chicken Chilli", category: "Starters", price: 340, foodType: "non-veg", available: true },
+  { id: "m05", name: "Paneer Tikka", category: "Starters", price: 300, foodType: "veg", available: false },
+  { id: "m06", name: "Dal Bhat Set", category: "Main Course", price: 420, foodType: "veg", available: true },
+  { id: "m07", name: "Chicken Curry Set", category: "Main Course", price: 520, foodType: "non-veg", available: true },
+  { id: "m08", name: "Mutton Curry Set", category: "Main Course", price: 620, foodType: "non-veg", available: true },
+  { id: "m09", name: "Veg Thukpa", category: "Main Course", price: 280, foodType: "veg", available: true },
+  { id: "m10", name: "Chicken Thukpa", category: "Main Course", price: 320, foodType: "non-veg", available: true },
+  { id: "m11", name: "Chicken Chowmein", category: "Main Course", price: 300, foodType: "non-veg", available: true },
+  { id: "m12", name: "Veg Chowmein", category: "Main Course", price: 260, foodType: "vegan", available: true },
+  { id: "m13", name: "Newari Khaja Set", category: "Nepali Specials", price: 450, foodType: "non-veg", available: true },
+  { id: "m14", name: "Gundruk Soup", category: "Nepali Specials", price: 180, foodType: "vegan", available: true },
+  { id: "m15", name: "Aloo Tama", category: "Nepali Specials", price: 260, foodType: "vegan", available: true },
+  { id: "m16", name: "Masu Bhat", category: "Nepali Specials", price: 480, foodType: "non-veg", available: true },
+  { id: "m17", name: "Masala Tea", category: "Beverages", price: 60, foodType: "veg", available: true },
+  { id: "m18", name: "Black Coffee", category: "Beverages", price: 90, foodType: "vegan", available: true },
+  { id: "m19", name: "Sweet Lassi", category: "Beverages", price: 150, foodType: "veg", available: true },
+  { id: "m20", name: "Fresh Lime Soda", category: "Beverages", price: 120, foodType: "vegan", available: true },
+  { id: "m21", name: "Gulab Jamun", category: "Desserts", price: 140, foodType: "veg", available: true },
+  { id: "m22", name: "Kheer", category: "Desserts", price: 160, foodType: "veg", available: true },
 ]
 
-export const MENU_ITEMS: MenuItem[] = MENU_ITEMS_BASE.map((item) => ({
-  ...item,
-  subMenu: CATEGORY_TO_SUB_MENU[item.category] ?? SUB_MENUS[0].name,
-}))
+export const MENU_ITEMS: MenuItem[] = MENU_ITEMS_BASE
 
 export const ADD_ONS: AddOn[] = [
   { id: "ad01", name: "Extra Cheese", price: 60, available: true },
@@ -777,19 +781,6 @@ export function getTodayRevenue() {
   ).reduce((sum, b) => sum + b.totalAmount, 0)
   const kotRevenue = KOT_ORDERS.reduce((sum, o) => sum + orderTotal(o.items), 0)
   return roomRevenue + kotRevenue
-}
-
-export function getBookingsByChannel() {
-  return BOOKING_CHANNELS.map((channel) => {
-    const bookings = BOOKINGS.filter(
-      (b) => b.channel === channel.value && b.status !== "cancelled"
-    )
-    return {
-      ...channel,
-      bookingCount: bookings.length,
-      revenue: bookings.reduce((sum, b) => sum + b.totalAmount, 0),
-    }
-  })
 }
 
 export const MENU_CATEGORIES = Array.from(

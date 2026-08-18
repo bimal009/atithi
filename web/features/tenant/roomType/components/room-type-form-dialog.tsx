@@ -30,9 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { PRICING_LABEL_PLACEHOLDER, PRICING_UNIT_OPTIONS } from "@/lib/pricing";
-import type { PricingUnit } from "@/types";
 
+import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useCreateRoomType, useUpdateRoomType } from "../client/useRoomTypes";
 import { roomTypeSchema, type RoomTypeInput, type RoomTypeValues } from "../schema";
 import type { RoomType } from "../types";
@@ -41,20 +40,20 @@ const emptyValues: RoomTypeInput = {
   name: "",
   description: "",
   basePrice: 0,
-  pricingUnit: "night",
+  billingTypeId: "",
   pricingLabel: "",
   capacity: 2,
   amenities: "",
   restrictions: "",
 };
 
-function valuesOf(roomType?: RoomType): RoomTypeInput {
-  if (!roomType) return emptyValues;
+function valuesOf(roomType?: RoomType, defaultBillingTypeId?: string): RoomTypeInput {
+  if (!roomType) return { ...emptyValues, billingTypeId: defaultBillingTypeId ?? "" };
   return {
     name: roomType.name,
     description: roomType.description ?? "",
     basePrice: roomType.basePrice,
-    pricingUnit: roomType.pricingUnit,
+    billingTypeId: roomType.billingTypeId,
     pricingLabel: roomType.pricingLabel ?? "",
     capacity: roomType.capacity,
     amenities: roomType.amenities.join(", "),
@@ -79,6 +78,11 @@ export function RoomTypeFormDialog({
   const create = useCreateRoomType(tenant);
   const update = useUpdateRoomType(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
+  const billingTypesQuery = useBillingTypesQuery(tenant);
+  const billingTypes = React.useMemo(
+    () => billingTypesQuery.data ?? [],
+    [billingTypesQuery.data],
+  );
 
   const {
     register,
@@ -92,19 +96,18 @@ export function RoomTypeFormDialog({
     defaultValues: emptyValues,
   });
 
-  const pricingUnit = watch("pricingUnit") ?? "night";
-  const labelPlaceholder = PRICING_LABEL_PLACEHOLDER[pricingUnit as PricingUnit];
+  const billingTypeId = watch("billingTypeId");
 
   React.useEffect(() => {
     if (!open) return;
-    reset(valuesOf(roomType));
-  }, [open, roomType, reset]);
+    reset(valuesOf(roomType, billingTypes[0]?.id));
+  }, [open, roomType, reset, billingTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
     const payload = {
       name: values.name,
       basePrice: values.basePrice,
-      pricingUnit: values.pricingUnit,
+      billingTypeId: values.billingTypeId,
       pricingLabel: values.pricingLabel || undefined,
       capacity: values.capacity,
       description: values.description || undefined,
@@ -139,7 +142,7 @@ export function RoomTypeFormDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none py-4">
+          <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="type-name">Name</FieldLabel>
               <Input
@@ -165,49 +168,51 @@ export function RoomTypeFormDialog({
                 />
                 <FieldError errors={[errors.basePrice]} />
               </Field>
-              <Field data-invalid={!!errors.pricingUnit}>
-                <FieldLabel htmlFor="type-pricing-unit">Billed</FieldLabel>
+              <Field data-invalid={!!errors.billingTypeId}>
+                <FieldLabel htmlFor="type-billing-type">Billed</FieldLabel>
                 <Select
-                  items={Object.fromEntries(
-                    PRICING_UNIT_OPTIONS.map((o) => [o.value, o.label]),
-                  )}
-                  value={pricingUnit}
+                  items={Object.fromEntries(billingTypes.map((b) => [b.id, b.name]))}
+                  value={billingTypeId}
                   onValueChange={(value) =>
-                    setValue("pricingUnit", (value ?? "night") as PricingUnit, {
+                    setValue("billingTypeId", value ?? "", {
                       shouldValidate: true,
                     })
                   }
                 >
-                  <SelectTrigger id="type-pricing-unit" className="w-full">
-                    <SelectValue />
+                  <SelectTrigger id="type-billing-type" className="w-full">
+                    <SelectValue placeholder="Select a billing type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRICING_UNIT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {billingTypes.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError errors={[errors.pricingUnit]} />
+                <FieldError errors={[errors.billingTypeId]} />
+                {billingTypes.length === 0 && (
+                  <FieldDescription>
+                    No billing types yet. Add one under Billing Types first.
+                  </FieldDescription>
+                )}
               </Field>
             </Field>
 
-            {labelPlaceholder && (
-              <Field data-invalid={!!errors.pricingLabel}>
-                <FieldLabel htmlFor="type-pricing-label">
-                  {pricingUnit === "daycation" ? "Time window" : "Package name"}{" "}
-                  <span className="text-muted-foreground">(optional)</span>
-                </FieldLabel>
-                <Input
-                  id="type-pricing-label"
-                  aria-invalid={!!errors.pricingLabel}
-                  {...register("pricingLabel")}
-                  placeholder={labelPlaceholder}
-                />
-                <FieldError errors={[errors.pricingLabel]} />
-              </Field>
-            )}
+            <Field data-invalid={!!errors.pricingLabel}>
+              <FieldLabel htmlFor="type-pricing-label">
+                Notes <span className="text-muted-foreground">(optional)</span>
+              </FieldLabel>
+              <Textarea
+                id="type-pricing-label"
+                aria-invalid={!!errors.pricingLabel}
+                {...register("pricingLabel")}
+                placeholder="10 AM – 6 PM, 2 nights minimum"
+                rows={2}
+              />
+              <FieldDescription>Comma-separated.</FieldDescription>
+              <FieldError errors={[errors.pricingLabel]} />
+            </Field>
 
             <Field data-invalid={!!errors.capacity}>
               <FieldLabel htmlFor="type-capacity">Capacity</FieldLabel>

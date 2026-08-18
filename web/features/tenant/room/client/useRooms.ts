@@ -20,10 +20,16 @@ export const roomKeys = {
 
 export const useRoomsQuery = (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ) =>
   useQuery({
-    queryKey: [...roomKeys.all(tenant), params?.search ?? "", params?.status ?? ""],
+    queryKey: [
+      ...roomKeys.all(tenant),
+      params?.search ?? "",
+      params?.status ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 12,
+    ],
     queryFn: async () => (await listRooms(tenant, params)).data,
   });
 

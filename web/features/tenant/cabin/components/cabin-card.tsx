@@ -25,7 +25,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatPricingUnit } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 import type { RoomStatus } from "@/types";
 
@@ -49,11 +48,13 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
 
 export function CabinCard({
   cabin,
+  billingLabel,
   onEdit,
   onDelete,
   onStatusChange,
 }: {
   cabin: Cabin;
+  billingLabel: string;
   onEdit: (cabin: Cabin) => void;
   onDelete: (cabin: Cabin) => void;
   onStatusChange: (cabin: Cabin, status: RoomStatus) => void;
@@ -64,7 +65,7 @@ export function CabinCard({
 
   return (
     <Card className="flex h-full flex-col overflow-hidden py-0">
-      <div className="group/gallery relative aspect-[4/3] bg-muted">
+      <div className="group/gallery relative h-56 w-full shrink-0 overflow-hidden bg-muted">
         {cabin.images.length > 0 ? (
           <Carousel className="size-full" opts={{ loop: cabin.images.length > 1 }}>
             <CarouselContent className="ml-0 size-full">
@@ -95,36 +96,37 @@ export function CabinCard({
             <span className="text-xs">No photos</span>
           </div>
         )}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button type="button" className="absolute top-2 left-2 cursor-pointer">
-                <Badge className={`font-normal ${STATUS_BADGE[cabin.status]}`}>
-                  {STATUS_LABEL[cabin.status]}
-                </Badge>
-              </button>
-            }
-          />
-          <DropdownMenuContent align="start">
-            {STATUS_OPTIONS.map((status) => (
-              <DropdownMenuItem
-                key={status}
-                disabled={status === cabin.status}
-                className="cursor-pointer"
-                onClick={() => onStatusChange(cabin, status)}
-              >
-                {STATUS_LABEL[status]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <CardHeader className="grid-cols-[1fr_auto] pt-4">
         <div>
           <CardTitle>{cabin.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">Cabin {cabin.number}</p>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <p className="text-sm text-muted-foreground">Cabin {cabin.number}</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button type="button" className="cursor-pointer">
+                    <Badge className={`font-normal ${STATUS_BADGE[cabin.status]}`}>
+                      {STATUS_LABEL[cabin.status]}
+                    </Badge>
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="start">
+                {STATUS_OPTIONS.map((status) => (
+                  <DropdownMenuItem
+                    key={status}
+                    disabled={status === cabin.status}
+                    className="cursor-pointer"
+                    onClick={() => onStatusChange(cabin, status)}
+                  >
+                    {STATUS_LABEL[status]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           {cabin.description && (
             <CardDescription className="line-clamp-2">{cabin.description}</CardDescription>
           )}
@@ -165,14 +167,12 @@ export function CabinCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col gap-3">
+      <CardContent className="flex flex-1 flex-col gap-4 pb-4">
         <div className="flex items-baseline justify-between">
           <span className="text-2xl font-semibold tabular-nums">
             {formatCurrency(cabin.basePrice)}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {formatPricingUnit(cabin.pricingUnit, cabin.pricingLabel)}
-          </span>
+          <span className="text-xs text-muted-foreground">{billingLabel}</span>
         </div>
 
         {cabin.amenities.length > 0 && (
@@ -190,7 +190,7 @@ export function CabinCard({
           </div>
         )}
 
-        <div className="mt-auto flex items-center gap-4 border-t pt-3 text-sm text-muted-foreground">
+        <div className="mt-auto flex items-center gap-4 border-t pt-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <UsersIcon className="size-3.5" aria-hidden />
             Sleeps {cabin.capacity}

@@ -5,11 +5,18 @@ import { CreateRoomInput, ListRoomsResponse, Room, UpdateRoomInput } from "../ty
 
 export const listRooms = async (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListRoomsResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListRoomsResponse>>(
     `/hotels/slug/${tenant}/rooms`,
-    { params: { search: params?.search || undefined, status: params?.status || undefined, limit: 100 } },
+    {
+      params: {
+        search: params?.search || undefined,
+        status: params?.status || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 12,
+      },
+    },
   );
   return data;
 };
