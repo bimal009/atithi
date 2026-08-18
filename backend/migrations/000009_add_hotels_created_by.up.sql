@@ -1,1 +1,0 @@
-ALTER TABLE hotels ADD COLUMN created_by UUID REFERENCES users(id) ON DELETE SET NULL;

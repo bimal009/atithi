@@ -40,7 +40,7 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
 const dishSchema = z.object({
-  foodType: z.enum(["veg", "non-veg", "vegan", "egg", "jain"]),
+  foodType: z.enum(["veg", "non-veg", "vegan", "egg"]),
   name: z.string().trim().min(2, "Enter a dish name").max(150),
   category: z.string().min(1, "Select a category"),
   price: z.coerce.number().min(0, "Enter a valid price"),

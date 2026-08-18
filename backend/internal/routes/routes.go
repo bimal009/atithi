@@ -8,6 +8,7 @@ import (
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
+	"github.com/bimal009/atithi/internal/menuitems"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
@@ -24,6 +25,7 @@ type Handlers struct {
 	BillingType    *billingtypes.BillingTypeHandler
 	Section        *sections.SectionHandler
 	SubMenu        *submenus.SubMenuHandler
+	MenuItem       *menuitems.MenuItemHandler
 	RoomType       *roomtypes.RoomTypeHandler
 	Room           *rooms.RoomHandler
 	Cabin          *cabins.CabinHandler
@@ -44,6 +46,8 @@ func Register(r *gin.Engine, h *Handlers) {
 	registerAuthRoutes(api, h.Auth, h.RequireAuth)
 	registerHotelRoutes(api, h)
 	registerUploadRoutes(api, h.Image, h.RequireAuth)
+
+	api.GET("/dishes", h.RequireAuth, h.MenuItem.SearchDishes)
 }
 
 func registerUploadRoutes(
@@ -108,6 +112,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				subMenusGroup.GET("/:subMenuId", h.SubMenu.Get)
 				subMenusGroup.PATCH("/:subMenuId", h.SubMenu.Update)
 				subMenusGroup.DELETE("/:subMenuId", h.SubMenu.Delete)
+			}
+
+			menuItemsGroup := scoped.Group("/menu-items")
+			{
+				menuItemsGroup.POST("", h.MenuItem.Create)
+				menuItemsGroup.GET("", h.MenuItem.GetAll)
+				menuItemsGroup.GET("/:menuItemId", h.MenuItem.Get)
+				menuItemsGroup.PATCH("/:menuItemId", h.MenuItem.Update)
+				menuItemsGroup.DELETE("/:menuItemId", h.MenuItem.Delete)
 			}
 
 			roomTypes := scoped.Group("/room-types")

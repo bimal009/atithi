@@ -88,6 +88,9 @@ var (
 	ErrSubMenuNotFound   = New(http.StatusNotFound, "not_found", "Sub-menu not found")
 	ErrSubMenuNameExists = New(http.StatusConflict, "conflict", "Sub-menu name already exists")
 	ErrSubMenuInUse      = New(http.StatusConflict, "conflict", "Sub-menu is still in use")
+
+	ErrMenuItemNotFound = New(http.StatusNotFound, "not_found", "Menu item not found")
+	ErrMenuItemExists   = New(http.StatusConflict, "conflict", "This dish is already on your menu")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

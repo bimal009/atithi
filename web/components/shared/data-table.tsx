@@ -46,6 +46,9 @@ export function DataTable<T>({
   onSearchChange,
   toolbar,
   pageSize = 8,
+  page: serverPage,
+  pageCount: serverPageCount,
+  onPageChange,
 }: {
   columns: DataTableColumn<T>[]
   data: T[]
@@ -61,6 +64,10 @@ export function DataTable<T>({
   onSearchChange?: (value: string) => void
   toolbar?: React.ReactNode
   pageSize?: number
+  /** 1-indexed current page. Pass alongside onPageChange to paginate server-side. */
+  page?: number
+  pageCount?: number
+  onPageChange?: (page: number) => void
 }) {
   const controlled = onSearchChange !== undefined
   const [internalQuery, setInternalQuery] = React.useState("")
@@ -68,26 +75,39 @@ export function DataTable<T>({
   const setQuery = onSearchChange ?? setInternalQuery
   const showSearch = controlled || !!searchFn
 
+  const serverPaginated = onPageChange !== undefined
+
   const [pageIndex, setPageIndex] = React.useState(0)
 
   const [resetKey, setResetKey] = React.useState(query)
   if (resetKey !== query) {
     setResetKey(query)
-    setPageIndex(0)
+    if (!serverPaginated) setPageIndex(0)
   }
 
   const filtered = React.useMemo(() => {
-    if (controlled) return data
+    if (controlled || serverPaginated) return data
     if (!searchFn || !query.trim()) return data
     return data.filter((row) => searchFn(row, query.trim().toLowerCase()))
-  }, [controlled, data, query, searchFn])
+  }, [controlled, serverPaginated, data, query, searchFn])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const safePageIndex = Math.min(pageIndex, pageCount - 1)
-  const page = filtered.slice(
-    safePageIndex * pageSize,
-    safePageIndex * pageSize + pageSize
-  )
+  const pageCount = serverPaginated
+    ? Math.max(1, serverPageCount ?? 1)
+    : Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePageIndex = serverPaginated
+    ? Math.max(0, (serverPage ?? 1) - 1)
+    : Math.min(pageIndex, pageCount - 1)
+  const page = serverPaginated
+    ? filtered
+    : filtered.slice(safePageIndex * pageSize, safePageIndex * pageSize + pageSize)
+
+  const goToPage = (nextIndex: number) => {
+    if (serverPaginated) {
+      onPageChange(nextIndex + 1)
+    } else {
+      setPageIndex(nextIndex)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -158,7 +178,7 @@ export function DataTable<T>({
                     variant="outline"
                     size="icon-sm"
                     disabled={safePageIndex === 0}
-                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    onClick={() => goToPage(Math.max(0, safePageIndex - 1))}
                   >
                     <ChevronLeftIcon />
                   </Button>
@@ -166,9 +186,7 @@ export function DataTable<T>({
                     variant="outline"
                     size="icon-sm"
                     disabled={safePageIndex >= pageCount - 1}
-                    onClick={() =>
-                      setPageIndex((p) => Math.min(pageCount - 1, p + 1))
-                    }
+                    onClick={() => goToPage(Math.min(pageCount - 1, safePageIndex + 1))}
                   >
                     <ChevronRightIcon />
                   </Button>
