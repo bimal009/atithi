@@ -13,19 +13,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useSubMenusQuery } from "@/features/tenant/subMenu/client/useSubMenus";
 
 import { useCreateCategory, useUpdateCategory } from "../client/useCategories";
 import { categorySchema, type CategoryInput, type CategoryValues } from "../schema";
 import type { Category } from "../types";
 
-const emptyValues: CategoryInput = { name: "" };
+const emptyValues: CategoryInput = { name: "", subMenuId: "" };
 
 function valuesOf(category?: Category): CategoryInput {
   if (!category) return emptyValues;
-  return { name: category.name };
+  return { name: category.name, subMenuId: category.subMenuId ?? "" };
 }
 
 export function CategoryFormDialog({
@@ -46,15 +54,22 @@ export function CategoryFormDialog({
   const update = useUpdateCategory(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
 
+  const subMenusQuery = useSubMenusQuery(tenant);
+  const subMenus = subMenusQuery.data ?? [];
+
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CategoryInput, unknown, CategoryValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: emptyValues,
   });
+
+  const subMenuId = watch("subMenuId");
 
   React.useEffect(() => {
     if (!open) return;
@@ -92,6 +107,31 @@ export function CategoryFormDialog({
                 placeholder="Starters"
               />
               <FieldError errors={[errors.name]} />
+            </Field>
+
+            <Field data-invalid={!!errors.subMenuId}>
+              <FieldLabel htmlFor="category-sub-menu">Sub-menu</FieldLabel>
+              <Select
+                items={Object.fromEntries(subMenus.map((sm) => [sm.id, sm.name]))}
+                value={subMenuId}
+                onValueChange={(v) => setValue("subMenuId", v ?? "", { shouldValidate: true })}
+                disabled={subMenus.length === 0}
+              >
+                <SelectTrigger id="category-sub-menu" className="w-full">
+                  <SelectValue placeholder="Select sub-menu" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subMenus.map((sm) => (
+                    <SelectItem key={sm.id} value={sm.id}>
+                      {sm.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {subMenus.length === 0 && (
+                <FieldDescription>Add a sub-menu first under Sub Menu.</FieldDescription>
+              )}
+              <FieldError errors={[errors.subMenuId]} />
             </Field>
           </FieldGroup>
 

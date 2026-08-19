@@ -32,9 +32,10 @@ func (s *categoryService) Create(ctx context.Context, hotelID, userID string, re
 	}
 
 	newCategory := &model.Category{
-		ID:      uuid.NewString(),
-		HotelID: hotelID,
-		Name:    req.Name,
+		ID:        uuid.NewString(),
+		HotelID:   hotelID,
+		Name:      req.Name,
+		SubMenuID: &req.SubMenuID,
 	}
 
 	created, err := s.repo.Create(ctx, newCategory, userID)
@@ -68,6 +69,9 @@ func (s *categoryService) Update(ctx context.Context, id, hotelID, userID string
 
 	if req.Name != nil {
 		existing.Name = *req.Name
+	}
+	if req.SubMenuID != nil {
+		existing.SubMenuID = req.SubMenuID
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)
