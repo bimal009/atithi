@@ -205,6 +205,57 @@ export function MenuItemFormDialog({
           </DialogHeader>
 
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
+            <Field data-invalid={!!errors.name} className="relative">
+              <FieldLabel htmlFor="item-name">Dish name</FieldLabel>
+              <Input
+                id="item-name"
+                autoFocus
+                autoComplete="off"
+                aria-invalid={!!errors.name}
+                disabled={isEdit}
+                {...register("name")}
+                placeholder="Chicken Sekuwa"
+                onFocus={() => setSuggestionsOpen(true)}
+                onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+              />
+              {!isEdit && (
+                <FieldDescription>
+                  Start typing to reuse a dish already on Atithi, name and photo included.
+                </FieldDescription>
+              )}
+              <FieldError errors={[errors.name]} />
+              {!isEdit && suggestionsOpen && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 z-10 mt-1 w-full overflow-hidden rounded-lg border bg-popover shadow-md">
+                  <ul className="max-h-56 overflow-y-auto py-1">
+                    {suggestions.map((dish) => (
+                      <li key={dish.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickSuggestion(dish)}
+                        >
+                          {dish.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                            <img
+                              src={dish.imageUrl}
+                              alt=""
+                              className="size-8 shrink-0 rounded object-cover"
+                            />
+                          ) : (
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                              <ImagePlusIcon className="size-4" />
+                            </span>
+                          )}
+                          <span className="truncate">{dish.name}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Field>
+
             <Field>
               <FieldLabel>Dish photo</FieldLabel>
               <input
@@ -240,50 +291,15 @@ export function MenuItemFormDialog({
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field data-invalid={!!errors.name} className="relative">
-                <FieldLabel htmlFor="item-name">Dish name</FieldLabel>
+              <Field data-invalid={!!errors.category}>
+                <FieldLabel htmlFor="item-category">Category</FieldLabel>
                 <Input
-                  id="item-name"
-                  autoFocus
-                  autoComplete="off"
-                  aria-invalid={!!errors.name}
-                  disabled={isEdit}
-                  {...register("name")}
-                  placeholder="Chicken Sekuwa"
-                  onFocus={() => setSuggestionsOpen(true)}
-                  onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+                  id="item-category"
+                  aria-invalid={!!errors.category}
+                  {...register("category")}
+                  placeholder="Starters"
                 />
-                <FieldError errors={[errors.name]} />
-                {!isEdit && suggestionsOpen && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 z-10 mt-1 w-full overflow-hidden rounded-lg border bg-popover shadow-md">
-                    <ul className="max-h-56 overflow-y-auto py-1">
-                      {suggestions.map((dish) => (
-                        <li key={dish.id}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => pickSuggestion(dish)}
-                          >
-                            {dish.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                              <img
-                                src={dish.imageUrl}
-                                alt=""
-                                className="size-8 shrink-0 rounded object-cover"
-                              />
-                            ) : (
-                              <span className="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-                                <ImagePlusIcon className="size-4" />
-                              </span>
-                            )}
-                            <span className="truncate">{dish.name}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <FieldError errors={[errors.category]} />
               </Field>
               <Field data-invalid={!!errors.foodType}>
                 <FieldLabel htmlFor="item-type">Type</FieldLabel>
@@ -307,17 +323,6 @@ export function MenuItemFormDialog({
                 </Select>
                 <FieldError errors={[errors.foodType]} />
               </Field>
-            </Field>
-
-            <Field data-invalid={!!errors.category}>
-              <FieldLabel htmlFor="item-category">Category</FieldLabel>
-              <Input
-                id="item-category"
-                aria-invalid={!!errors.category}
-                {...register("category")}
-                placeholder="Starters"
-              />
-              <FieldError errors={[errors.category]} />
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">

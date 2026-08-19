@@ -1,4 +1,3 @@
-
 CREATE TABLE dishes (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL,
@@ -8,6 +7,7 @@ CREATE TABLE dishes (
 );
 
 CREATE UNIQUE INDEX uq_dishes_name ON dishes (lower(name));
+
 CREATE TABLE menu_items (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hotel_id    UUID NOT NULL REFERENCES hotels(id) ON DELETE CASCADE,

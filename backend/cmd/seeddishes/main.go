@@ -1,9 +1,14 @@
-// seeddishes bulk-populates the shared, global dishes catalog from a CSV
-// export of real restaurant menu data. It re-hosts each dish photo on
-// ImageKit (never linking to the original source) and writes a CSV record
-// of what got uploaded.
+// seeddishes bulk-populates the shared, global dishes catalog from a CSV of
+// dish names and image URLs. It re-hosts each dish photo on ImageKit (never
+// linking to the original source) and writes a CSV record of what got
+// uploaded.
 //
-// Usage: go run ./cmd/seeddishes -csv data/restaurantmenuchanges.csv
+// The source CSV can use either "name"/"image_url" columns (the curated
+// Nepali food database) or "menuItemName"/"menuItemImageUrl" columns (a raw
+// restaurant menu export), in which case a cuisine filter using
+// restaurantName/restaurantDescription is also applied.
+//
+// Usage: go run ./cmd/seeddishes -csv data/nepali_food_database_1.csv
 package main
 
 import (
@@ -90,7 +95,8 @@ func includeRow(dishName, restaurantName, restaurantDescription string) bool {
 }
 
 func main() {
-	csvPath := flag.String("csv", "data/restaurantmenuchanges.csv", "path to the source CSV")
+	csvPath := flag.String("csv", "data/nepali_food_database_1.csv", "path to the source CSV")
+	mergePath := flag.String("merge-csv", "data/uploaded_dishes.csv", "path to a prior uploaded-dish report to merge in; a dish already hosted on ImageKit there is reused instead of re-uploaded")
 	outPath := flag.String("out", "data/uploaded_dishes.csv", "path to write the uploaded-dish CSV report to")
 	clean := flag.Bool("clean", true, "truncate dishes and menu_items before seeding")
 	flag.Parse()
@@ -123,9 +129,17 @@ func main() {
 	}
 	fmt.Printf("found %d unique dishes (%d with a source photo)\n", len(rows), countWithImage(rows))
 
-	ikClient := imagekit.NewClient(option.WithPrivateKey(cfg.ImageKit.PrivateKey))
-	repo := menuitems.NewMenuItemRepo(pool)
+	if *mergePath != "" && *mergePath != *csvPath {
+		merged, err := mergeAlreadyUploaded(rows, *mergePath)
+		if err != nil {
+			log.Printf("no prior report to merge from %s: %v", *mergePath, err)
+		} else {
+			rows = merged
+		}
+	}
 
+	repo := menuitems.NewMenuItemRepo(pool)
+	ikClient := imagekit.NewClient(option.WithPrivateKey(cfg.ImageKit.PrivateKey))
 	httpClient := &http.Client{Timeout: 20 * time.Second}
 
 	outFile, err := os.Create(*outPath)
@@ -136,16 +150,27 @@ func main() {
 
 	writer := csv.NewWriter(outFile)
 	defer writer.Flush()
-	if err := writer.Write([]string{"name", "imagekit_url"}); err != nil {
+	if err := writer.Write([]string{"name", "image_url"}); err != nil {
 		log.Fatalf("failed to write csv header: %v", err)
 	}
 
-	uploaded, skipped, failed := 0, 0, 0
+	reused, uploaded, skipped, failed := 0, 0, 0, 0
 
 	for i, row := range rows {
 		var imageURL *string
 
-		if row.imageURL != "" {
+		switch {
+		case row.imageURL == "":
+			skipped++
+		case isImageKitURL(row.imageURL):
+			url := row.imageURL
+			imageURL = &url
+			reused++
+			if err := writer.Write([]string{row.name, url}); err != nil {
+				log.Fatalf("failed to write csv row: %v", err)
+			}
+			writer.Flush()
+		default:
 			url, err := uploadDishPhoto(ctx, httpClient, ikClient, row.name, row.imageURL)
 			if err != nil {
 				fmt.Printf("[%d/%d] %-40s failed to upload photo: %v\n", i+1, len(rows), row.name, err)
@@ -158,8 +183,6 @@ func main() {
 				}
 				writer.Flush()
 			}
-		} else {
-			skipped++
 		}
 
 		if _, err := repo.FindOrCreateDish(ctx, row.name, imageURL); err != nil {
@@ -170,8 +193,40 @@ func main() {
 		fmt.Printf("[%d/%d] %s\n", i+1, len(rows), row.name)
 	}
 
-	fmt.Printf("\ndone: %d dishes with photos uploaded, %d without a source photo, %d photo uploads failed\n", uploaded, skipped, failed)
+	fmt.Printf("\ndone: %d already on ImageKit (reused), %d newly uploaded, %d without a source photo, %d photo uploads failed\n", reused, uploaded, skipped, failed)
 	fmt.Printf("report written to %s\n", *outPath)
+}
+
+// isImageKitURL reports whether a URL already points at our ImageKit account,
+// meaning it never needs to be re-downloaded and re-uploaded.
+func isImageKitURL(url string) bool {
+	return strings.Contains(url, "imagekit.io")
+}
+
+// mergeAlreadyUploaded overlays image URLs from a prior uploaded-dish report
+// onto rows, so a dish already hosted on ImageKit is reused instead of
+// re-uploaded on this run.
+func mergeAlreadyUploaded(rows []sourceRow, reportPath string) ([]sourceRow, error) {
+	report, err := readSourceRows(reportPath)
+	if err != nil {
+		return nil, err
+	}
+
+	byName := map[string]string{}
+	for _, r := range report {
+		if isImageKitURL(r.imageURL) {
+			byName[strings.ToLower(r.name)] = r.imageURL
+		}
+	}
+
+	merged := make([]sourceRow, len(rows))
+	copy(merged, rows)
+	for i, row := range merged {
+		if url, ok := byName[strings.ToLower(row.name)]; ok {
+			merged[i].imageURL = url
+		}
+	}
+	return merged, nil
 }
 
 // readSourceRows parses the CSV and dedupes by lowercased dish name, keeping
@@ -191,9 +246,22 @@ func readSourceRows(path string) ([]sourceRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	header[0] = strings.TrimPrefix(header[0], string([]byte{0xEF, 0xBB, 0xBF}))
 	idx := map[string]int{}
 	for i, h := range header {
 		idx[h] = i
+	}
+
+	nameCol, imageCol, hasNameCol := "name", "image_url", true
+	applyCuisineFilter := false
+	if _, ok := idx["menuItemName"]; ok {
+		nameCol, imageCol = "menuItemName", "menuItemImageUrl"
+		applyCuisineFilter = true
+	} else if _, ok := idx["name"]; !ok {
+		hasNameCol = false
+	}
+	if !hasNameCol {
+		return nil, fmt.Errorf("csv has neither a %q nor a %q column", "name", "menuItemName")
 	}
 
 	byName := map[string]sourceRow{}
@@ -207,23 +275,31 @@ func readSourceRows(path string) ([]sourceRow, error) {
 		if err != nil {
 			continue
 		}
-		if idx["menuItemName"] >= len(record) || idx["restaurantName"] >= len(record) || idx["restaurantDescription"] >= len(record) || idx["menuItemImageUrl"] >= len(record) {
+		if idx[nameCol] >= len(record) || idx[imageCol] >= len(record) {
 			continue
 		}
 
-		name := strings.TrimSpace(record[idx["menuItemName"]])
+		name := strings.TrimSpace(record[idx[nameCol]])
 		if name == "" {
 			continue
 		}
 
-		restaurantName := strings.TrimSpace(record[idx["restaurantName"]])
-		restaurantDescription := strings.TrimSpace(record[idx["restaurantDescription"]])
-		if !includeRow(name, restaurantName, restaurantDescription) {
-			continue
+		if applyCuisineFilter {
+			restaurantName := ""
+			restaurantDescription := ""
+			if i, ok := idx["restaurantName"]; ok && i < len(record) {
+				restaurantName = strings.TrimSpace(record[i])
+			}
+			if i, ok := idx["restaurantDescription"]; ok && i < len(record) {
+				restaurantDescription = strings.TrimSpace(record[i])
+			}
+			if !includeRow(name, restaurantName, restaurantDescription) {
+				continue
+			}
 		}
 
 		key := strings.ToLower(name)
-		imageURL := strings.TrimSpace(record[idx["menuItemImageUrl"]])
+		imageURL := strings.TrimSpace(record[idx[imageCol]])
 
 		existing, ok := byName[key]
 		if !ok {
@@ -271,6 +347,7 @@ func uploadDishPhoto(ctx context.Context, httpClient *http.Client, ikClient imag
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("User-Agent", "Atithi-DishCatalog/1.0 (https://github.com/bimal009/atithi; internal data enrichment tool for a hotel menu catalog)")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

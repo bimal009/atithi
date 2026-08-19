@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS sub_menus;
+DROP TABLE IF EXISTS sections;
+DROP TABLE IF EXISTS billing_types;
