@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useSubMenusQuery } from "@/features/tenant/subMenu/client/useSubMenus";
 
@@ -29,11 +23,11 @@ import { useCreateCategory, useUpdateCategory } from "../client/useCategories";
 import { categorySchema, type CategoryInput, type CategoryValues } from "../schema";
 import type { Category } from "../types";
 
-const emptyValues: CategoryInput = { name: "", subMenuId: "" };
+const emptyValues: CategoryInput = { name: "", subMenuIds: [] };
 
 function valuesOf(category?: Category): CategoryInput {
   if (!category) return emptyValues;
-  return { name: category.name, subMenuId: category.subMenuId ?? "" };
+  return { name: category.name, subMenuIds: category.subMenus.map((sm) => sm.id) };
 }
 
 export function CategoryFormDialog({
@@ -69,12 +63,19 @@ export function CategoryFormDialog({
     defaultValues: emptyValues,
   });
 
-  const subMenuId = watch("subMenuId");
+  const selectedSubMenuIds = watch("subMenuIds");
 
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(category));
   }, [open, category, reset]);
+
+  function toggleSubMenu(id: string) {
+    const next = selectedSubMenuIds.includes(id)
+      ? selectedSubMenuIds.filter((s) => s !== id)
+      : [...selectedSubMenuIds, id];
+    setValue("subMenuIds", next, { shouldValidate: true });
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     const response = category
@@ -109,29 +110,29 @@ export function CategoryFormDialog({
               <FieldError errors={[errors.name]} />
             </Field>
 
-            <Field data-invalid={!!errors.subMenuId}>
-              <FieldLabel htmlFor="category-sub-menu">Sub-menu</FieldLabel>
-              <Select
-                items={Object.fromEntries(subMenus.map((sm) => [sm.id, sm.name]))}
-                value={subMenuId}
-                onValueChange={(v) => setValue("subMenuId", v ?? "", { shouldValidate: true })}
-                disabled={subMenus.length === 0}
-              >
-                <SelectTrigger id="category-sub-menu" className="w-full">
-                  <SelectValue placeholder="Select sub-menu" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subMenus.map((sm) => (
-                    <SelectItem key={sm.id} value={sm.id}>
+            <Field data-invalid={!!errors.subMenuIds}>
+              <FieldLabel>Sub-menus</FieldLabel>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                {subMenus.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No sub-menus yet. Add one under Sub Menu first.
+                  </p>
+                ) : (
+                  subMenus.map((sm) => (
+                    <label
+                      key={sm.id}
+                      className="flex cursor-pointer items-center gap-2.5 text-sm"
+                    >
+                      <Checkbox
+                        checked={selectedSubMenuIds.includes(sm.id)}
+                        onCheckedChange={() => toggleSubMenu(sm.id)}
+                      />
                       {sm.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {subMenus.length === 0 && (
-                <FieldDescription>Add a sub-menu first under Sub Menu.</FieldDescription>
-              )}
-              <FieldError errors={[errors.subMenuId]} />
+                    </label>
+                  ))
+                )}
+              </div>
+              <FieldError errors={[errors.subMenuIds]} />
             </Field>
           </FieldGroup>
 

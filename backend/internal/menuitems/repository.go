@@ -2,8 +2,10 @@ package menuitems
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
+	"github.com/bimal009/atithi/internal/dishes"
 	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/jackc/pgx/v5"
@@ -13,10 +15,10 @@ import (
 type MenuItemRepo interface {
 	SearchDishes(ctx context.Context, search string, limit int) ([]model.Dish, error)
 	FindOrCreateDish(ctx context.Context, name string, imageURL *string) (model.Dish, error)
-	Create(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error)
+	CreateWithDish(ctx context.Context, name string, imageURL *string, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.MenuItem, error)
 	ListForHotel(ctx context.Context, hotelID, userID, categoryID, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error)
-	Update(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error)
+	Update(ctx context.Context, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
 
@@ -26,6 +28,79 @@ type menuItemRepo struct {
 
 func NewMenuItemRepo(db *pgxpool.Pool) MenuItemRepo {
 	return &menuItemRepo{DB: db}
+}
+
+const menuItemSelect = `
+	SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
+	       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
+	       mi.created_at, mi.updated_at,
+	       COALESCE(
+	         json_agg(json_build_object('id', ao.id, 'name', ad.name, 'price', ao.price))
+	           FILTER (WHERE ao.id IS NOT NULL),
+	         '[]'
+	       ) AS add_ons
+	FROM menu_items mi
+	JOIN dishes d ON d.id = mi.dish_id
+	JOIN categories c ON c.id = mi.category_id
+	LEFT JOIN menu_item_add_ons miao ON miao.menu_item_id = mi.id
+	LEFT JOIN add_ons ao ON ao.id = miao.add_on_id
+	LEFT JOIN dishes ad ON ad.id = ao.dish_id
+`
+
+func scanMenuItem(row pgx.Row) (model.MenuItem, error) {
+	var item model.MenuItem
+	var addOnsJSON []byte
+
+	if err := row.Scan(
+		&item.ID,
+		&item.HotelID,
+		&item.DishID,
+		&item.Name,
+		&item.ImageURL,
+		&item.CategoryID,
+		&item.CategoryName,
+		&item.FoodType,
+		&item.Price,
+		&item.Discount,
+		&item.Description,
+		&item.Ingredients,
+		&item.Available,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+		&addOnsJSON,
+	); err != nil {
+		return model.MenuItem{}, err
+	}
+
+	if err := json.Unmarshal(addOnsJSON, &item.AddOns); err != nil {
+		return model.MenuItem{}, err
+	}
+	if item.AddOns == nil {
+		item.AddOns = []model.AddOnRef{}
+	}
+
+	return item, nil
+}
+
+// linkAddOns replaces the set of add-ons offered with a menu item, scoping
+// the insert to add-ons that belong to the same hotel.
+func linkAddOns(ctx context.Context, tx pgx.Tx, menuItemID, hotelID string, addOnIDs []string) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM menu_item_add_ons WHERE menu_item_id = $1::uuid`, menuItemID); err != nil {
+		return err
+	}
+	if len(addOnIDs) == 0 {
+		return nil
+	}
+
+	_, err := tx.Exec(ctx, `
+		INSERT INTO menu_item_add_ons (menu_item_id, add_on_id)
+		SELECT $1::uuid, ao.id
+		FROM add_ons ao
+		WHERE ao.id = ANY($2::uuid[]) AND ao.hotel_id = $3::uuid
+		ON CONFLICT DO NOTHING
+	`, menuItemID, addOnIDs, hotelID)
+
+	return err
 }
 
 func (r *menuItemRepo) SearchDishes(ctx context.Context, search string, limit int) ([]model.Dish, error) {
@@ -67,32 +142,24 @@ func (r *menuItemRepo) SearchDishes(ctx context.Context, search string, limit in
 }
 
 func (r *menuItemRepo) FindOrCreateDish(ctx context.Context, name string, imageURL *string) (model.Dish, error) {
-	query := `
-		INSERT INTO dishes (id, name, image_url)
-		VALUES (gen_random_uuid(), $1, $2)
-		ON CONFLICT (lower(name)) DO UPDATE
-			SET image_url = COALESCE(EXCLUDED.image_url, dishes.image_url),
-			    updated_at = now()
-		RETURNING id, name, image_url, created_at, updated_at
-	`
-
-	var dish model.Dish
-
-	err := r.DB.QueryRow(ctx, query, name, imageURL).Scan(
-		&dish.ID,
-		&dish.Name,
-		&dish.ImageURL,
-		&dish.CreatedAt,
-		&dish.UpdatedAt,
-	)
-	if err != nil {
-		return model.Dish{}, err
-	}
-
-	return dish, nil
+	return dishes.FindOrCreate(ctx, r.DB, name, imageURL)
 }
 
-func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error) {
+// CreateWithDish finds-or-creates the shared dish, inserts the hotel's menu
+// item, and links its add-ons, all in a single transaction.
+func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL *string, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error) {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return model.MenuItem{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	dish, err := dishes.FindOrCreate(ctx, tx, name, imageURL)
+	if err != nil {
+		return model.MenuItem{}, err
+	}
+	item.DishID = dish.ID
+
 	query := `
 		INSERT INTO menu_items (id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available)
 		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8, $9, $10
@@ -100,12 +167,12 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $11::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id
 	`
 
-	var created model.MenuItem
+	var newID string
 
-	err := r.DB.QueryRow(
+	err = tx.QueryRow(
 		ctx, query,
 		item.ID,
 		item.HotelID,
@@ -118,20 +185,7 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 		item.Ingredients,
 		item.Available,
 		userID,
-	).Scan(
-		&created.ID,
-		&created.HotelID,
-		&created.DishID,
-		&created.CategoryID,
-		&created.FoodType,
-		&created.Price,
-		&created.Discount,
-		&created.Description,
-		&created.Ingredients,
-		&created.Available,
-		&created.CreatedAt,
-		&created.UpdatedAt,
-	)
+	).Scan(&newID)
 
 	if err != nil {
 		if apperr.IsUniqueViolation(err) {
@@ -146,48 +200,39 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 		return model.MenuItem{}, err
 	}
 
-	created.Name = item.Name
-	created.ImageURL = item.ImageURL
-	created.CategoryName = item.CategoryName
+	if err := linkAddOns(ctx, tx, newID, item.HotelID, addOnIDs); err != nil {
+		if apperr.IsForeignKeyViolation(err) {
+			return model.MenuItem{}, apperr.ErrAddOnNotFound
+		}
+		return model.MenuItem{}, err
+	}
+
+	created, err := scanMenuItem(tx.QueryRow(ctx, menuItemSelect+`
+		WHERE mi.id = $1::uuid
+		GROUP BY mi.id, d.id, c.id
+	`, newID))
+	if err != nil {
+		return model.MenuItem{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.MenuItem{}, err
+	}
 
 	return created, nil
 }
 
 func (r *menuItemRepo) Get(ctx context.Context, id, hotelID, userID string) (model.MenuItem, error) {
-	query := `
-		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
-		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
-		       mi.created_at, mi.updated_at
-		FROM menu_items mi
-		JOIN dishes d ON d.id = mi.dish_id
-		JOIN categories c ON c.id = mi.category_id
+	query := menuItemSelect + `
 		WHERE mi.id = $1::uuid AND mi.hotel_id = $2::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = mi.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
+		GROUP BY mi.id, d.id, c.id
 	`
 
-	var item model.MenuItem
-
-	err := r.DB.QueryRow(ctx, query, id, hotelID, userID).Scan(
-		&item.ID,
-		&item.HotelID,
-		&item.DishID,
-		&item.Name,
-		&item.ImageURL,
-		&item.CategoryID,
-		&item.CategoryName,
-		&item.FoodType,
-		&item.Price,
-		&item.Discount,
-		&item.Description,
-		&item.Ingredients,
-		&item.Available,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
-
+	item, err := scanMenuItem(r.DB.QueryRow(ctx, query, id, hotelID, userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.MenuItem{}, apperr.ErrMenuItemNotFound
@@ -203,10 +248,18 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
 		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
 		       mi.created_at, mi.updated_at,
+		       COALESCE(
+		         json_agg(json_build_object('id', ao.id, 'name', ad.name, 'price', ao.price))
+		           FILTER (WHERE ao.id IS NOT NULL),
+		         '[]'
+		       ) AS add_ons,
 		       COUNT(*) OVER() AS total
 		FROM menu_items mi
 		JOIN dishes d ON d.id = mi.dish_id
 		JOIN categories c ON c.id = mi.category_id
+		LEFT JOIN menu_item_add_ons miao ON miao.menu_item_id = mi.id
+		LEFT JOIN add_ons ao ON ao.id = miao.add_on_id
+		LEFT JOIN dishes ad ON ad.id = ao.dish_id
 		WHERE mi.hotel_id = $1::uuid
 		  AND ($2 = '' OR d.name ILIKE '%' || $2 || '%')
 		  AND (NULLIF($6, '') IS NULL OR mi.category_id = NULLIF($6, '')::uuid)
@@ -215,6 +268,7 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = mi.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
+		GROUP BY mi.id, d.id, c.id
 		ORDER BY d.name
 		LIMIT $4 OFFSET $5
 	`
@@ -230,6 +284,7 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 
 	for rows.Next() {
 		var item model.MenuItem
+		var addOnsJSON []byte
 		if err := rows.Scan(
 			&item.ID,
 			&item.HotelID,
@@ -246,9 +301,16 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 			&item.Available,
 			&item.CreatedAt,
 			&item.UpdatedAt,
+			&addOnsJSON,
 			&total,
 		); err != nil {
 			return nil, 0, err
+		}
+		if err := json.Unmarshal(addOnsJSON, &item.AddOns); err != nil {
+			return nil, 0, err
+		}
+		if item.AddOns == nil {
+			item.AddOns = []model.AddOnRef{}
 		}
 		list = append(list, item)
 	}
@@ -260,7 +322,13 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 	return list, total, nil
 }
 
-func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error) {
+func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error) {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return model.MenuItem{}, err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		UPDATE menu_items
 		SET
@@ -277,12 +345,12 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = menu_items.hotel_id AND m.user_id = $10::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id
 	`
 
-	var updated model.MenuItem
+	var updatedID string
 
-	err := r.DB.QueryRow(
+	err = tx.QueryRow(
 		ctx, query,
 		item.CategoryID,
 		item.FoodType,
@@ -294,20 +362,7 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 		item.ID,
 		item.HotelID,
 		userID,
-	).Scan(
-		&updated.ID,
-		&updated.HotelID,
-		&updated.DishID,
-		&updated.CategoryID,
-		&updated.FoodType,
-		&updated.Price,
-		&updated.Discount,
-		&updated.Description,
-		&updated.Ingredients,
-		&updated.Available,
-		&updated.CreatedAt,
-		&updated.UpdatedAt,
-	)
+	).Scan(&updatedID)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -319,8 +374,26 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 		return model.MenuItem{}, err
 	}
 
-	updated.Name = item.Name
-	updated.ImageURL = item.ImageURL
+	if addOnIDs != nil {
+		if err := linkAddOns(ctx, tx, updatedID, item.HotelID, addOnIDs); err != nil {
+			if apperr.IsForeignKeyViolation(err) {
+				return model.MenuItem{}, apperr.ErrAddOnNotFound
+			}
+			return model.MenuItem{}, err
+		}
+	}
+
+	updated, err := scanMenuItem(tx.QueryRow(ctx, menuItemSelect+`
+		WHERE mi.id = $1::uuid
+		GROUP BY mi.id, d.id, c.id
+	`, updatedID))
+	if err != nil {
+		return model.MenuItem{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.MenuItem{}, err
+	}
 
 	return updated, nil
 }

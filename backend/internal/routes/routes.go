@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/bimal009/atithi/internal/addons"
 	"github.com/bimal009/atithi/internal/auth"
 	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
@@ -10,6 +11,7 @@ import (
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
+	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
@@ -25,9 +27,11 @@ type Handlers struct {
 	Hotel          *hotel.HotelHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
+	AddOn          *addons.AddOnHandler
 	Section        *sections.SectionHandler
 	SubMenu        *submenus.SubMenuHandler
 	MenuItem       *menuitems.MenuItemHandler
+	MenuSet        *menusets.MenuSetHandler
 	RoomType       *roomtypes.RoomTypeHandler
 	Room           *rooms.RoomHandler
 	Cabin          *cabins.CabinHandler
@@ -125,6 +129,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				subMenusGroup.DELETE("/:subMenuId", h.SubMenu.Delete)
 			}
 
+			addOnsGroup := scoped.Group("/add-ons")
+			{
+				addOnsGroup.POST("", h.AddOn.Create)
+				addOnsGroup.GET("", h.AddOn.GetAll)
+				addOnsGroup.GET("/:addOnId", h.AddOn.Get)
+				addOnsGroup.PATCH("/:addOnId", h.AddOn.Update)
+				addOnsGroup.DELETE("/:addOnId", h.AddOn.Delete)
+			}
+
 			menuItemsGroup := scoped.Group("/menu-items")
 			{
 				menuItemsGroup.POST("", h.MenuItem.Create)
@@ -132,6 +145,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				menuItemsGroup.GET("/:menuItemId", h.MenuItem.Get)
 				menuItemsGroup.PATCH("/:menuItemId", h.MenuItem.Update)
 				menuItemsGroup.DELETE("/:menuItemId", h.MenuItem.Delete)
+			}
+
+			menuSetsGroup := scoped.Group("/menu-sets")
+			{
+				menuSetsGroup.POST("", h.MenuSet.Create)
+				menuSetsGroup.GET("", h.MenuSet.GetAll)
+				menuSetsGroup.GET("/:menuSetId", h.MenuSet.Get)
+				menuSetsGroup.PATCH("/:menuSetId", h.MenuSet.Update)
+				menuSetsGroup.DELETE("/:menuSetId", h.MenuSet.Delete)
 			}
 
 			roomTypes := scoped.Group("/room-types")

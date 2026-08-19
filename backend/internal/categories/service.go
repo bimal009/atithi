@@ -32,13 +32,12 @@ func (s *categoryService) Create(ctx context.Context, hotelID, userID string, re
 	}
 
 	newCategory := &model.Category{
-		ID:        uuid.NewString(),
-		HotelID:   hotelID,
-		Name:      req.Name,
-		SubMenuID: &req.SubMenuID,
+		ID:      uuid.NewString(),
+		HotelID: hotelID,
+		Name:    req.Name,
 	}
 
-	created, err := s.repo.Create(ctx, newCategory, userID)
+	created, err := s.repo.Create(ctx, newCategory, req.SubMenuIDs, userID)
 	if err != nil {
 		s.slog.Error("failed to create category", "hotel_id", hotelID, "error", err)
 		return model.Category{}, err
@@ -62,19 +61,7 @@ func (s *categoryService) Update(ctx context.Context, id, hotelID, userID string
 		return model.Category{}, err
 	}
 
-	existing, err := s.repo.Get(ctx, id, hotelID, userID)
-	if err != nil {
-		return model.Category{}, err
-	}
-
-	if req.Name != nil {
-		existing.Name = *req.Name
-	}
-	if req.SubMenuID != nil {
-		existing.SubMenuID = req.SubMenuID
-	}
-
-	updated, err := s.repo.Update(ctx, &existing, userID)
+	updated, err := s.repo.Update(ctx, id, hotelID, userID, req.Name, req.SubMenuIDs)
 	if err != nil {
 		s.slog.Error("failed to update category", "category_id", id, "error", err)
 		return model.Category{}, err

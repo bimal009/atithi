@@ -1,16 +1,20 @@
+export type SubMenuRef = {
+  id: string;
+  name: string;
+};
+
 export type Category = {
   id: string;
   hotelId: string;
   name: string;
-  subMenuId?: string;
-  subMenuName?: string;
+  subMenus: SubMenuRef[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type CreateCategoryInput = {
   name: string;
-  subMenuId: string;
+  subMenuIds: string[];
 };
 
 export type UpdateCategoryInput = Partial<CreateCategoryInput>;

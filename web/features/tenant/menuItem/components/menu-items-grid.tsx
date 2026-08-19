@@ -91,14 +91,16 @@ export function MenuItemsGrid({ tenant }: { tenant: string }) {
       cellClassName: "pl-5",
       cell: (item) =>
         item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            className="size-10 rounded-md object-cover"
-          />
+          <span className="block size-10 shrink-0 overflow-hidden rounded-full">
+            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="size-full object-cover"
+            />
+          </span>
         ) : (
-          <span className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <UtensilsCrossedIcon className="size-4" />
           </span>
         ),

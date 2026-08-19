@@ -6,6 +6,12 @@ export type Dish = {
   imageUrl?: string;
 };
 
+export type AddOnRef = {
+  id: string;
+  name: string;
+  price: number;
+};
+
 export type MenuItem = {
   id: string;
   hotelId: string;
@@ -20,6 +26,7 @@ export type MenuItem = {
   description?: string;
   ingredients?: string;
   available: boolean;
+  addOns: AddOnRef[];
   createdAt: string;
   updatedAt: string;
 };
@@ -34,6 +41,7 @@ export type CreateMenuItemInput = {
   description?: string;
   ingredients?: string;
   available?: boolean;
+  addOnIds?: string[];
 };
 
 export type UpdateMenuItemInput = Partial<

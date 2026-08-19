@@ -20,9 +20,6 @@ func NewMenuItemHandler(slog *slog.Logger, service MenuItemService) *MenuItemHan
 	return &MenuItemHandler{slog: slog, service: service}
 }
 
-// SearchDishes is not hotel-scoped: it searches the shared catalog across
-// every hotel on the platform, so any signed-in staff member can reuse an
-// existing dish instead of creating a duplicate.
 func (h *MenuItemHandler) SearchDishes(c *gin.Context) {
 	search := c.Query("search")
 

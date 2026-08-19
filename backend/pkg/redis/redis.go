@@ -15,7 +15,7 @@ func ConnectRedis(ctx context.Context, url string) (*redis.Client, error) {
 
 	client := redis.NewClient(opt)
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	if err := client.Ping(pingCtx).Err(); err != nil {

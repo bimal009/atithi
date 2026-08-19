@@ -11,6 +11,7 @@ import (
 
 	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
+	"github.com/bimal009/atithi/internal/addons"
 	"github.com/bimal009/atithi/internal/auth"
 	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
@@ -20,6 +21,7 @@ import (
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
+	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/internal/reservations"
@@ -77,9 +79,11 @@ func main() {
 	permissionRepo := permission.NewPermissionRepo(pool)
 	billingTypeRepo := billingtypes.NewBillingTypeRepo(pool)
 	categoryRepo := categories.NewCategoryRepo(pool)
+	addOnRepo := addons.NewAddOnRepo(pool)
 	sectionRepo := sections.NewSectionRepo(pool)
 	subMenuRepo := submenus.NewSubMenuRepo(pool)
 	menuItemRepo := menuitems.NewMenuItemRepo(pool)
+	menuSetRepo := menusets.NewMenuSetRepo(pool)
 	roomTypeRepo := roomtypes.NewRoomTypeRepo(pool)
 	roomRepo := rooms.NewRoomRepo(pool)
 	cabinRepo := cabins.NewCabinRepo(pool)
@@ -101,6 +105,9 @@ func main() {
 	categoryService := categories.NewCategoryService(slog, categoryRepo)
 	categoryHandler := categories.NewCategoryHandler(slog, categoryService)
 
+	addOnService := addons.NewAddOnService(slog, addOnRepo)
+	addOnHandler := addons.NewAddOnHandler(slog, addOnService)
+
 	sectionService := sections.NewSectionService(slog, sectionRepo)
 	sectionHandler := sections.NewSectionHandler(slog, sectionService)
 
@@ -109,6 +116,9 @@ func main() {
 
 	menuItemService := menuitems.NewMenuItemService(slog, menuItemRepo)
 	menuItemHandler := menuitems.NewMenuItemHandler(slog, menuItemService)
+
+	menuSetService := menusets.NewMenuSetService(slog, menuSetRepo)
+	menuSetHandler := menusets.NewMenuSetHandler(slog, menuSetService)
 
 	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
 	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
@@ -162,9 +172,11 @@ func main() {
 		Hotel:          hotelHandler,
 		BillingType:    billingTypeHandler,
 		Category:       categoryHandler,
+		AddOn:          addOnHandler,
 		Section:        sectionHandler,
 		SubMenu:        subMenuHandler,
 		MenuItem:       menuItemHandler,
+		MenuSet:        menuSetHandler,
 		RoomType:       roomTypeHandler,
 		Room:           roomHandler,
 		Cabin:          cabinHandler,

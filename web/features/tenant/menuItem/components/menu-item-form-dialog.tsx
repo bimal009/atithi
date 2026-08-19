@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImagePlusIcon } from "lucide-react";
+import { ImagePlusIcon, SearchIcon } from "lucide-react";
+import { debounce, parseAsString, useQueryState } from "nuqs";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,7 +38,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { uploadImage } from "@/features/upload/api/upload";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/features/upload/types";
 import { useCategoriesQuery } from "@/features/tenant/category/client/useCategories";
+import { useAddOnsQuery } from "@/features/tenant/addOn/client/useAddOns";
 import { FOOD_TYPE_OPTIONS } from "@/lib/food-type";
+import { formatCurrency } from "@/lib/utils";
 import type { FoodType } from "@/types";
 
 import {
@@ -46,6 +50,11 @@ import {
 } from "../client/useMenuItems";
 import { menuItemSchema, type MenuItemInput, type MenuItemValues } from "../schema";
 import type { Dish, MenuItem } from "../types";
+
+const addOnSearchParser = parseAsString.withDefault("").withOptions({
+  limitUrlUpdates: debounce(300),
+  history: "replace",
+});
 
 const emptyValues: MenuItemInput = {
   name: "",
@@ -57,6 +66,7 @@ const emptyValues: MenuItemInput = {
   description: "",
   ingredients: "",
   available: true,
+  addOnIds: [],
 };
 
 function valuesOf(item?: MenuItem): MenuItemInput {
@@ -71,6 +81,7 @@ function valuesOf(item?: MenuItem): MenuItemInput {
     description: item.description ?? "",
     ingredients: item.ingredients ?? "",
     available: item.available,
+    addOnIds: item.addOns.map((a) => a.id),
   };
 }
 
@@ -95,6 +106,11 @@ export function MenuItemFormDialog({
   const categoriesQuery = useCategoriesQuery(tenant);
   const categories = categoriesQuery.data ?? [];
 
+  const [addOnSearch, setAddOnSearch] = useQueryState("addOnQuery", addOnSearchParser);
+
+  const addOnsQuery = useAddOnsQuery(tenant, { search: addOnSearch, limit: 20 });
+  const availableAddOns = addOnsQuery.data?.addOns ?? [];
+
   const [uploading, setUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -115,6 +131,14 @@ export function MenuItemFormDialog({
   const imageUrl = watch("imageUrl");
   const available = watch("available");
   const name = watch("name");
+  const addOnIds = watch("addOnIds");
+
+  function toggleAddOn(id: string) {
+    const next = addOnIds.includes(id)
+      ? addOnIds.filter((a) => a !== id)
+      : [...addOnIds, id];
+    setValue("addOnIds", next, { shouldValidate: true });
+  }
 
   const [debouncedName, setDebouncedName] = React.useState("");
   const [suggestionsOpen, setSuggestionsOpen] = React.useState(false);
@@ -178,6 +202,7 @@ export function MenuItemFormDialog({
             description: values.description || undefined,
             ingredients: values.ingredients || undefined,
             available: values.available,
+            addOnIds: values.addOnIds,
           },
         })
       : await create.mutateAsync({
@@ -190,6 +215,7 @@ export function MenuItemFormDialog({
           description: values.description || undefined,
           ingredients: values.ingredients || undefined,
           available: values.available,
+          addOnIds: values.addOnIds,
         });
 
     onSaved?.(response.data);
@@ -417,6 +443,50 @@ export function MenuItemFormDialog({
                   setValue("available", checked, { shouldValidate: true })
                 }
               />
+            </Field>
+
+            <Field>
+              <FieldLabel>Add-ons</FieldLabel>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                {availableAddOns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No add-ons yet. Add one under Menu &gt; Add-ons.
+                  </p>
+                ) : (
+                  availableAddOns.map((addOn) => (
+                    <label
+                      key={addOn.id}
+                      className="flex cursor-pointer items-center justify-between gap-2.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Checkbox
+                          checked={addOnIds.includes(addOn.id)}
+                          onCheckedChange={() => toggleAddOn(addOn.id)}
+                        />
+                        {addOn.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                          <img
+                            src={addOn.imageUrl}
+                            alt=""
+                            className="size-6 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <ImagePlusIcon className="size-3" />
+                          </span>
+                        )}
+                        {addOn.name}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {addOn.price === 0 ? "Free" : formatCurrency(addOn.price)}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <FieldDescription>
+                Extras guests can add to this dish when ordering.
+              </FieldDescription>
             </Field>
           </FieldGroup>
 

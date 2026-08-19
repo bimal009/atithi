@@ -93,6 +93,12 @@ var (
 	ErrCategoryNameExists = New(http.StatusConflict, "conflict", "Category name already exists")
 	ErrCategoryInUse      = New(http.StatusConflict, "conflict", "Category is still in use")
 
+	ErrAddOnNotFound = New(http.StatusNotFound, "not_found", "Add-on not found")
+	ErrAddOnExists   = New(http.StatusConflict, "conflict", "This add-on is already on your menu")
+
+	ErrMenuSetNotFound   = New(http.StatusNotFound, "not_found", "Menu set not found")
+	ErrMenuSetNameExists = New(http.StatusConflict, "conflict", "Menu set name already exists")
+
 	ErrMenuItemNotFound = New(http.StatusNotFound, "not_found", "Menu item not found")
 	ErrMenuItemExists   = New(http.StatusConflict, "conflict", "This dish is already on your menu")
 )

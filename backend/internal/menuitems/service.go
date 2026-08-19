@@ -42,12 +42,6 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 		return model.MenuItem{}, err
 	}
 
-	dish, err := s.repo.FindOrCreateDish(ctx, req.Name, req.ImageURL)
-	if err != nil {
-		s.slog.Error("failed to find or create dish", "name", req.Name, "error", err)
-		return model.MenuItem{}, err
-	}
-
 	available := true
 	if req.Available != nil {
 		available = *req.Available
@@ -56,9 +50,6 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 	newItem := &model.MenuItem{
 		ID:          uuid.NewString(),
 		HotelID:     hotelID,
-		DishID:      dish.ID,
-		Name:        dish.Name,
-		ImageURL:    dish.ImageURL,
 		CategoryID:  req.CategoryID,
 		FoodType:    req.FoodType,
 		Price:       req.Price,
@@ -68,13 +59,13 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 		Available:   available,
 	}
 
-	created, err := s.repo.Create(ctx, newItem, userID)
+	created, err := s.repo.CreateWithDish(ctx, req.Name, req.ImageURL, newItem, req.AddOnIDs, userID)
 	if err != nil {
 		s.slog.Error("failed to create menu item", "hotel_id", hotelID, "error", err)
 		return model.MenuItem{}, err
 	}
 
-	s.slog.Info("menu item created", "menu_item_id", created.ID, "hotel_id", hotelID, "dish_id", dish.ID)
+	s.slog.Info("menu item created", "menu_item_id", created.ID, "hotel_id", hotelID, "dish_id", created.DishID)
 
 	return created, nil
 }
@@ -136,7 +127,7 @@ func (s *menuItemService) Update(ctx context.Context, id, hotelID, userID string
 		existing.Available = *req.Available
 	}
 
-	updated, err := s.repo.Update(ctx, &existing, userID)
+	updated, err := s.repo.Update(ctx, &existing, req.AddOnIDs, userID)
 	if err != nil {
 		s.slog.Error("failed to update menu item", "menu_item_id", id, "error", err)
 		return model.MenuItem{}, err

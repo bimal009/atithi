@@ -43,7 +43,7 @@ export function CategoriesGrid({
   const subMenusQuery = useSubMenusQuery(tenant);
   const subMenus = subMenusQuery.data ?? [];
 
-  const unassigned = categories.filter((c) => !c.subMenuId).length;
+  const unassigned = categories.filter((c) => c.subMenus.length === 0).length;
 
   const filtered = search.trim()
     ? categories.filter((c) => c.name.toLowerCase().includes(search.trim().toLowerCase()))
@@ -129,13 +129,17 @@ export function CategoriesGrid({
                     </Tooltip>
                   </div>
                 </div>
-                {category.subMenuName ? (
-                  <Badge variant="outline" className="w-fit font-normal">
-                    {category.subMenuName}
-                  </Badge>
-                ) : (
-                  <span className="text-xs text-muted-foreground">No sub-menu assigned</span>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {category.subMenus.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">No sub-menus assigned</span>
+                  ) : (
+                    category.subMenus.map((sm) => (
+                      <Badge key={sm.id} variant="outline" className="font-normal">
+                        {sm.name}
+                      </Badge>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
