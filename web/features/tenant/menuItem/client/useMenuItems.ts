@@ -29,7 +29,7 @@ export const useMenuItemsQuery = (
   tenant: string,
   params?: {
     search?: string;
-    category?: string;
+    categoryId?: string;
     foodType?: string;
     page?: number;
     limit?: number;
@@ -39,7 +39,7 @@ export const useMenuItemsQuery = (
     queryKey: [
       ...menuItemKeys.all(tenant),
       params?.search ?? "",
-      params?.category ?? "",
+      params?.categoryId ?? "",
       params?.foodType ?? "",
       params?.page ?? 1,
       params?.limit ?? 12,

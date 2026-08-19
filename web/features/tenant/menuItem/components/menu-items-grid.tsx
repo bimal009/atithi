@@ -117,7 +117,7 @@ export function MenuItemsGrid({ tenant }: { tenant: string }) {
         </div>
       ),
     },
-    { key: "category", header: "Category", cell: (item) => item.category },
+    { key: "category", header: "Category", cell: (item) => item.categoryName },
     {
       key: "price",
       header: "Price",

@@ -12,7 +12,8 @@ export type MenuItem = {
   dishId: string;
   name: string;
   imageUrl?: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   foodType: FoodType;
   price: number;
   discount?: number;
@@ -26,7 +27,7 @@ export type MenuItem = {
 export type CreateMenuItemInput = {
   name: string;
   imageUrl?: string;
-  category: string;
+  categoryId: string;
   foodType: FoodType;
   price: number;
   discount?: number;

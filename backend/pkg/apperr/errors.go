@@ -89,6 +89,10 @@ var (
 	ErrSubMenuNameExists = New(http.StatusConflict, "conflict", "Sub-menu name already exists")
 	ErrSubMenuInUse      = New(http.StatusConflict, "conflict", "Sub-menu is still in use")
 
+	ErrCategoryNotFound   = New(http.StatusNotFound, "not_found", "Category not found")
+	ErrCategoryNameExists = New(http.StatusConflict, "conflict", "Category name already exists")
+	ErrCategoryInUse      = New(http.StatusConflict, "conflict", "Category is still in use")
+
 	ErrMenuItemNotFound = New(http.StatusNotFound, "not_found", "Menu item not found")
 	ErrMenuItemExists   = New(http.StatusConflict, "conflict", "This dish is already on your menu")
 )

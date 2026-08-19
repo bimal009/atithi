@@ -14,6 +14,7 @@ import (
 	"github.com/bimal009/atithi/internal/auth"
 	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
+	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
@@ -75,6 +76,7 @@ func main() {
 	roleRepo := role.NewRoleRepo(pool)
 	permissionRepo := permission.NewPermissionRepo(pool)
 	billingTypeRepo := billingtypes.NewBillingTypeRepo(pool)
+	categoryRepo := categories.NewCategoryRepo(pool)
 	sectionRepo := sections.NewSectionRepo(pool)
 	subMenuRepo := submenus.NewSubMenuRepo(pool)
 	menuItemRepo := menuitems.NewMenuItemRepo(pool)
@@ -95,6 +97,9 @@ func main() {
 
 	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo)
 	billingTypeHandler := billingtypes.NewBillingTypeHandler(slog, billingTypeService)
+
+	categoryService := categories.NewCategoryService(slog, categoryRepo)
+	categoryHandler := categories.NewCategoryHandler(slog, categoryService)
 
 	sectionService := sections.NewSectionService(slog, sectionRepo)
 	sectionHandler := sections.NewSectionHandler(slog, sectionService)
@@ -156,6 +161,7 @@ func main() {
 		Auth:           authHandler,
 		Hotel:          hotelHandler,
 		BillingType:    billingTypeHandler,
+		Category:       categoryHandler,
 		Section:        sectionHandler,
 		SubMenu:        subMenuHandler,
 		MenuItem:       menuItemHandler,

@@ -59,7 +59,7 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 		DishID:      dish.ID,
 		Name:        dish.Name,
 		ImageURL:    dish.ImageURL,
-		Category:    req.Category,
+		CategoryID:  req.CategoryID,
 		FoodType:    req.FoodType,
 		Price:       req.Price,
 		Discount:    req.Discount,
@@ -91,7 +91,7 @@ func (s *menuItemService) GetAll(ctx context.Context, hotelID, userID string, qu
 		return ListMenuItemsResponse{}, err
 	}
 
-	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, query.Category, query.FoodType, query.Pagination)
+	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, query.CategoryID, query.FoodType, query.Pagination)
 	if err != nil {
 		return ListMenuItemsResponse{}, err
 	}
@@ -114,8 +114,8 @@ func (s *menuItemService) Update(ctx context.Context, id, hotelID, userID string
 		return model.MenuItem{}, err
 	}
 
-	if req.Category != nil {
-		existing.Category = *req.Category
+	if req.CategoryID != nil {
+		existing.CategoryID = *req.CategoryID
 	}
 	if req.FoodType != nil {
 		existing.FoodType = *req.FoodType

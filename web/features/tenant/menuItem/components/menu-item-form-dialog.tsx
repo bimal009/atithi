@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadImage } from "@/features/upload/api/upload";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/features/upload/types";
+import { useCategoriesQuery } from "@/features/tenant/category/client/useCategories";
 import { FOOD_TYPE_OPTIONS } from "@/lib/food-type";
 import type { FoodType } from "@/types";
 
@@ -49,7 +50,7 @@ import type { Dish, MenuItem } from "../types";
 const emptyValues: MenuItemInput = {
   name: "",
   imageUrl: "",
-  category: "",
+  categoryId: "",
   foodType: "veg",
   price: 0,
   discount: undefined,
@@ -63,7 +64,7 @@ function valuesOf(item?: MenuItem): MenuItemInput {
   return {
     name: item.name,
     imageUrl: item.imageUrl ?? "",
-    category: item.category,
+    categoryId: item.categoryId,
     foodType: item.foodType,
     price: item.price,
     discount: item.discount,
@@ -91,6 +92,9 @@ export function MenuItemFormDialog({
   const update = useUpdateMenuItem(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
 
+  const categoriesQuery = useCategoriesQuery(tenant);
+  const categories = categoriesQuery.data ?? [];
+
   const [uploading, setUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -107,6 +111,7 @@ export function MenuItemFormDialog({
   });
 
   const foodType = watch("foodType");
+  const categoryId = watch("categoryId");
   const imageUrl = watch("imageUrl");
   const available = watch("available");
   const name = watch("name");
@@ -166,7 +171,7 @@ export function MenuItemFormDialog({
       ? await update.mutateAsync({
           id: menuItem.id,
           input: {
-            category: values.category,
+            categoryId: values.categoryId,
             foodType: values.foodType,
             price: values.price,
             discount: values.discount ?? undefined,
@@ -178,7 +183,7 @@ export function MenuItemFormDialog({
       : await create.mutateAsync({
           name: values.name,
           imageUrl: values.imageUrl || undefined,
-          category: values.category,
+          categoryId: values.categoryId,
           foodType: values.foodType,
           price: values.price,
           discount: values.discount ?? undefined,
@@ -291,15 +296,33 @@ export function MenuItemFormDialog({
             </Field>
 
             <Field className="grid grid-cols-2 gap-3">
-              <Field data-invalid={!!errors.category}>
+              <Field data-invalid={!!errors.categoryId}>
                 <FieldLabel htmlFor="item-category">Category</FieldLabel>
-                <Input
-                  id="item-category"
-                  aria-invalid={!!errors.category}
-                  {...register("category")}
-                  placeholder="Starters"
-                />
-                <FieldError errors={[errors.category]} />
+                <Select
+                  items={Object.fromEntries(categories.map((c) => [c.id, c.name]))}
+                  value={categoryId}
+                  onValueChange={(v) =>
+                    setValue("categoryId", v ?? "", { shouldValidate: true })
+                  }
+                  disabled={categories.length === 0}
+                >
+                  <SelectTrigger id="item-category" className="w-full">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {categories.length === 0 && (
+                  <FieldDescription>
+                    Add a category first under Menu &gt; Categories.
+                  </FieldDescription>
+                )}
+                <FieldError errors={[errors.categoryId]} />
               </Field>
               <Field data-invalid={!!errors.foodType}>
                 <FieldLabel htmlFor="item-type">Type</FieldLabel>

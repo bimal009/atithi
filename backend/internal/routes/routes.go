@@ -4,6 +4,7 @@ import (
 	"github.com/bimal009/atithi/internal/auth"
 	billingtypes "github.com/bimal009/atithi/internal/billingTypes"
 	"github.com/bimal009/atithi/internal/cabins"
+	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
@@ -23,6 +24,7 @@ type Handlers struct {
 	Auth           *auth.AuthHandler
 	Hotel          *hotel.HotelHandler
 	BillingType    *billingtypes.BillingTypeHandler
+	Category       *categories.CategoryHandler
 	Section        *sections.SectionHandler
 	SubMenu        *submenus.SubMenuHandler
 	MenuItem       *menuitems.MenuItemHandler
@@ -94,6 +96,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				billingTypes.GET("/:billingTypeId", h.BillingType.Get)
 				billingTypes.PATCH("/:billingTypeId", h.BillingType.Update)
 				billingTypes.DELETE("/:billingTypeId", h.BillingType.Delete)
+			}
+
+			categoriesGroup := scoped.Group("/categories")
+			{
+				categoriesGroup.POST("", h.Category.Create)
+				categoriesGroup.GET("", h.Category.GetAll)
+				categoriesGroup.GET("/:categoryId", h.Category.Get)
+				categoriesGroup.PATCH("/:categoryId", h.Category.Update)
+				categoriesGroup.DELETE("/:categoryId", h.Category.Delete)
 			}
 
 			sectionsGroup := scoped.Group("/sections")

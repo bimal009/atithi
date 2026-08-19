@@ -22,7 +22,7 @@ export const listMenuItems = async (
   tenant: string,
   params?: {
     search?: string;
-    category?: string;
+    categoryId?: string;
     foodType?: string;
     page?: number;
     limit?: number;
@@ -33,7 +33,7 @@ export const listMenuItems = async (
     {
       params: {
         search: params?.search || undefined,
-        category: params?.category || undefined,
+        categoryId: params?.categoryId || undefined,
         foodType: params?.foodType || undefined,
         page: params?.page ?? 1,
         limit: params?.limit ?? 12,

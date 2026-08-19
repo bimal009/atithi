@@ -15,7 +15,7 @@ type MenuItemRepo interface {
 	FindOrCreateDish(ctx context.Context, name string, imageURL *string) (model.Dish, error)
 	Create(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.MenuItem, error)
-	ListForHotel(ctx context.Context, hotelID, userID, category, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error)
+	ListForHotel(ctx context.Context, hotelID, userID, categoryID, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error)
 	Update(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -94,13 +94,13 @@ func (r *menuItemRepo) FindOrCreateDish(ctx context.Context, name string, imageU
 
 func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID string) (model.MenuItem, error) {
 	query := `
-		INSERT INTO menu_items (id, hotel_id, dish_id, category, food_type, price, discount, description, ingredients, available)
-		SELECT $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, $10
+		INSERT INTO menu_items (id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available)
+		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8, $9, $10
 		WHERE EXISTS (
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $11::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, dish_id, category, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
 	`
 
 	var created model.MenuItem
@@ -110,7 +110,7 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 		item.ID,
 		item.HotelID,
 		item.DishID,
-		item.Category,
+		item.CategoryID,
 		item.FoodType,
 		item.Price,
 		item.Discount,
@@ -122,7 +122,7 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 		&created.ID,
 		&created.HotelID,
 		&created.DishID,
-		&created.Category,
+		&created.CategoryID,
 		&created.FoodType,
 		&created.Price,
 		&created.Discount,
@@ -137,6 +137,9 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 		if apperr.IsUniqueViolation(err) {
 			return model.MenuItem{}, apperr.ErrMenuItemExists
 		}
+		if apperr.IsForeignKeyViolation(err) {
+			return model.MenuItem{}, apperr.ErrCategoryNotFound
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.MenuItem{}, apperr.ErrHotelNotFound
 		}
@@ -145,17 +148,19 @@ func (r *menuItemRepo) Create(ctx context.Context, item *model.MenuItem, userID 
 
 	created.Name = item.Name
 	created.ImageURL = item.ImageURL
+	created.CategoryName = item.CategoryName
 
 	return created, nil
 }
 
 func (r *menuItemRepo) Get(ctx context.Context, id, hotelID, userID string) (model.MenuItem, error) {
 	query := `
-		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category, mi.food_type,
+		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
 		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
 		       mi.created_at, mi.updated_at
 		FROM menu_items mi
 		JOIN dishes d ON d.id = mi.dish_id
+		JOIN categories c ON c.id = mi.category_id
 		WHERE mi.id = $1::uuid AND mi.hotel_id = $2::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
@@ -171,7 +176,8 @@ func (r *menuItemRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 		&item.DishID,
 		&item.Name,
 		&item.ImageURL,
-		&item.Category,
+		&item.CategoryID,
+		&item.CategoryName,
 		&item.FoodType,
 		&item.Price,
 		&item.Discount,
@@ -192,17 +198,18 @@ func (r *menuItemRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 	return item, nil
 }
 
-func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, category, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error) {
+func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, categoryID, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error) {
 	query := `
-		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category, mi.food_type,
+		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
 		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
 		       mi.created_at, mi.updated_at,
 		       COUNT(*) OVER() AS total
 		FROM menu_items mi
 		JOIN dishes d ON d.id = mi.dish_id
+		JOIN categories c ON c.id = mi.category_id
 		WHERE mi.hotel_id = $1::uuid
 		  AND ($2 = '' OR d.name ILIKE '%' || $2 || '%')
-		  AND ($6 = '' OR mi.category = $6)
+		  AND (NULLIF($6, '') IS NULL OR mi.category_id = NULLIF($6, '')::uuid)
 		  AND ($7 = '' OR mi.food_type = $7)
 		  AND EXISTS (
 			SELECT 1 FROM members m
@@ -212,7 +219,7 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 		LIMIT $4 OFFSET $5
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset(), category, foodType)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset(), categoryID, foodType)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -229,7 +236,8 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 			&item.DishID,
 			&item.Name,
 			&item.ImageURL,
-			&item.Category,
+			&item.CategoryID,
+			&item.CategoryName,
 			&item.FoodType,
 			&item.Price,
 			&item.Discount,
@@ -256,7 +264,7 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 	query := `
 		UPDATE menu_items
 		SET
-			category = $1,
+			category_id = $1,
 			food_type = $2,
 			price = $3,
 			discount = $4,
@@ -269,14 +277,14 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = menu_items.hotel_id AND m.user_id = $10::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, dish_id, category, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
 	`
 
 	var updated model.MenuItem
 
 	err := r.DB.QueryRow(
 		ctx, query,
-		item.Category,
+		item.CategoryID,
 		item.FoodType,
 		item.Price,
 		item.Discount,
@@ -290,7 +298,7 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 		&updated.ID,
 		&updated.HotelID,
 		&updated.DishID,
-		&updated.Category,
+		&updated.CategoryID,
 		&updated.FoodType,
 		&updated.Price,
 		&updated.Discount,
@@ -304,6 +312,9 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, userID 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.MenuItem{}, apperr.ErrMenuItemNotFound
+		}
+		if apperr.IsForeignKeyViolation(err) {
+			return model.MenuItem{}, apperr.ErrCategoryNotFound
 		}
 		return model.MenuItem{}, err
 	}

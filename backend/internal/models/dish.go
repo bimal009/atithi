@@ -11,13 +11,14 @@ type Dish struct {
 }
 
 type MenuItem struct {
-	ID          string    `db:"id" json:"id"`
-	HotelID     string    `db:"hotel_id" json:"hotelId"`
-	DishID      string    `db:"dish_id" json:"dishId"`
-	Name        string    `db:"name" json:"name"`
-	ImageURL    *string   `db:"image_url" json:"imageUrl,omitempty"`
-	Category    string    `db:"category" json:"category"`
-	FoodType    string    `db:"food_type" json:"foodType"`
+	ID           string    `db:"id" json:"id"`
+	HotelID      string    `db:"hotel_id" json:"hotelId"`
+	DishID       string    `db:"dish_id" json:"dishId"`
+	Name         string    `db:"name" json:"name"`
+	ImageURL     *string   `db:"image_url" json:"imageUrl,omitempty"`
+	CategoryID   string    `db:"category_id" json:"categoryId"`
+	CategoryName string    `db:"category_name" json:"categoryName"`
+	FoodType     string    `db:"food_type" json:"foodType"`
 	Price       float64   `db:"price" json:"price"`
 	Discount    *float64  `db:"discount" json:"discount,omitempty"`
 	Description *string   `db:"description" json:"description,omitempty"`
