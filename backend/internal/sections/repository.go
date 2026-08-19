@@ -13,7 +13,7 @@ import (
 type SectionRepo interface {
 	Create(ctx context.Context, section *model.Section, userID string) (model.Section, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.Section, error)
-	ListForHotel(ctx context.Context, hotelID, userID string) ([]model.Section, error)
+	ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.Section, int, error)
 	Update(ctx context.Context, section *model.Section, userID string) (model.Section, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -97,25 +97,29 @@ func (r *sectionRepo) Get(ctx context.Context, id, hotelID, userID string) (mode
 	return section, nil
 }
 
-func (r *sectionRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.Section, error) {
+func (r *sectionRepo) ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.Section, int, error) {
 	query := `
-		SELECT id, hotel_id, name, created_at, updated_at
+		SELECT id, hotel_id, name, created_at, updated_at,
+		       COUNT(*) OVER() AS total
 		FROM sections
 		WHERE hotel_id = $1::uuid
+		  AND ($2 = '' OR name ILIKE '%' || $2 || '%')
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = sections.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+			WHERE m.hotel_id = sections.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
 		ORDER BY name
+		LIMIT $4 OFFSET $5
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, userID)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	list := make([]model.Section, 0)
+	var total int
 
 	for rows.Next() {
 		var section model.Section
@@ -125,17 +129,18 @@ func (r *sectionRepo) ListForHotel(ctx context.Context, hotelID, userID string) 
 			&section.Name,
 			&section.CreatedAt,
 			&section.UpdatedAt,
+			&total,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		list = append(list, section)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return list, nil
+	return list, total, nil
 }
 
 func (r *sectionRepo) Update(ctx context.Context, section *model.Section, userID string) (model.Section, error) {

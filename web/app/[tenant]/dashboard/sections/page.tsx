@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SectionsPageClient } from "@/features/tenant/section/components/sections-page-client";
+import { SectionsGrid } from "@/features/tenant/section/components/sections-grid";
 
 export const metadata: Metadata = {
   title: "Sections · Atithi",
@@ -13,5 +13,5 @@ export default async function SectionsPage({
 }) {
   const { tenant } = await params;
 
-  return <SectionsPageClient tenant={tenant} />;
+  return <SectionsGrid tenant={tenant} />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -17,10 +17,19 @@ export const subMenuKeys = {
   all: (tenant: string) => ["subMenus", tenant] as const,
 };
 
-export const useSubMenusQuery = (tenant: string) =>
+export const useSubMenusQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: subMenuKeys.all(tenant),
-    queryFn: async () => (await listSubMenus(tenant)).data,
+    queryKey: [
+      ...subMenuKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 20,
+    ],
+    queryFn: async () => (await listSubMenus(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateSubMenu = (tenant: string) => {

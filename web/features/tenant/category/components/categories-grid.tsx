@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { PaginationFooter } from "@/components/shared/pagination-footer";
 import { SectionCards } from "@/components/shared/section-cards";
 import { useSubMenusQuery } from "@/features/tenant/subMenu/client/useSubMenus";
 
@@ -30,30 +31,37 @@ import { CategoryFormDialog } from "./category-form-dialog";
 export function CategoriesGrid({
   tenant,
   categories,
+  total,
+  search,
+  onSearchChange,
+  page,
+  pageCount,
+  onPageChange,
 }: {
   tenant: string;
   categories: Category[];
+  total: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
-  const [search, setSearch] = React.useState("");
   const [creating, setCreating] = React.useState(false);
   const [editing, setEditing] = React.useState<Category | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Category | null>(null);
   const remove = useRemoveCategory(tenant);
 
-  const subMenusQuery = useSubMenusQuery(tenant);
-  const subMenus = subMenusQuery.data ?? [];
+  const subMenusQuery = useSubMenusQuery(tenant, { limit: 100 });
+  const subMenus = subMenusQuery.data?.subMenus ?? [];
 
   const unassigned = categories.filter((c) => c.subMenus.length === 0).length;
-
-  const filtered = search.trim()
-    ? categories.filter((c) => c.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : categories;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Categories"
-        description={`${categories.length} menu categories across ${subMenus.length} sub-menus`}
+        description={`${total} menu categories across ${subMenus.length} sub-menus`}
         actions={
           <Button className="cursor-pointer" onClick={() => setCreating(true)}>
             <PlusIcon data-icon="inline-start" aria-hidden />
@@ -64,32 +72,40 @@ export function CategoriesGrid({
 
       <SectionCards
         stats={[
-          { label: "Categories", value: String(categories.length) },
+          { label: "Categories", value: String(total) },
           { label: "Sub-menus", value: String(subMenus.length) },
-          { label: "Unassigned", value: String(unassigned), description: "No sub-menu set" },
+          {
+            label: "Unassigned",
+            value: String(unassigned),
+            description: "No sub-menu set, on this page",
+          },
         ]}
       />
 
       <Input
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => onSearchChange(e.target.value)}
         placeholder="Search categories…"
         className="sm:max-w-xs"
       />
 
-      {filtered.length === 0 ? (
+      {categories.length === 0 ? (
         <Card className="py-2">
           <CardContent>
             <EmptyState
               icon={FolderPlusIcon}
               title="No categories yet"
-              description="Add your first category to start organizing dishes."
+              description={
+                search
+                  ? "No categories match your search."
+                  : "Add your first category to start organizing dishes."
+              }
             />
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((category) => (
+          {categories.map((category) => (
             <Card key={category.id} className="gap-2">
               <CardContent className="flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
@@ -145,6 +161,8 @@ export function CategoriesGrid({
           ))}
         </div>
       )}
+
+      <PaginationFooter page={page} pageCount={pageCount} onPageChange={onPageChange} />
 
       <CategoryFormDialog tenant={tenant} open={creating} onOpenChange={setCreating} />
 

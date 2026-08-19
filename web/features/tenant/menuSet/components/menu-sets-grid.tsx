@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, PackageOpenIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { formatCurrency } from "@/lib/utils";
 
@@ -35,7 +36,6 @@ function itemsSummary(menuSet: MenuSet) {
 }
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -50,7 +50,8 @@ export function MenuSetsGrid({ tenant }: { tenant: string }) {
   const [editingMenuSet, setEditingMenuSet] = React.useState<MenuSet | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<MenuSet | null>(null);
 
-  const menuSetsQuery = useMenuSetsQuery(tenant, { search, page, limit: PAGE_SIZE });
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const menuSetsQuery = useMenuSetsQuery(tenant, { search: debouncedSearch, page, limit: PAGE_SIZE });
 
   const update = useUpdateMenuSet(tenant);
   const remove = useRemoveMenuSet(tenant);

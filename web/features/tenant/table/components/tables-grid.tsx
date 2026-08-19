@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, UtensilsIcon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { sectionName } from "@/lib/section";
 import type { RoomStatus } from "@/types";
@@ -49,7 +50,6 @@ const STATUS_FILTERS: Array<{ value: "all" | RoomStatus; label: string }> = [
 const STATUS_ITEMS = Object.fromEntries(STATUS_FILTERS.map((o) => [o.value, o.label]));
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -75,8 +75,9 @@ export function TablesGrid({ tenant }: { tenant: string }) {
   const [editingTable, setEditingTable] = React.useState<DiningTable | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<DiningTable | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
   const tablesQuery = useTablesQuery(tenant, {
-    search,
+    search: debouncedSearch,
     status: status === "all" ? undefined : status,
     page,
     limit: PAGE_SIZE,
@@ -84,8 +85,8 @@ export function TablesGrid({ tenant }: { tenant: string }) {
 
   const updateStatus = useUpdateTableStatus(tenant);
   const remove = useRemoveTable(tenant);
-  const sectionsQuery = useSectionsQuery(tenant);
-  const sections = sectionsQuery.data ?? [];
+  const sectionsQuery = useSectionsQuery(tenant, { limit: 100 });
+  const sections = sectionsQuery.data?.sections ?? [];
 
   const tables = tablesQuery.data?.tables ?? [];
   const total = tablesQuery.data?.total ?? 0;

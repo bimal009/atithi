@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { LayoutIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { AlertCircleIcon, LayoutIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -13,26 +14,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { getErrorMessage } from "@/lib/axios";
 
-import { useRemoveSection } from "../client/useSections";
+import { useRemoveSection, useSectionsQuery } from "../client/useSections";
 import type { Section } from "../types";
 import { SectionFormDialog } from "./section-form-dialog";
 
-export function SectionsGrid({
-  tenant,
-  sections,
-}: {
-  tenant: string;
-  sections: Section[];
-}) {
+const searchParser = parseAsString.withDefault("").withOptions({
+  history: "replace",
+});
+
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 12;
+
+export function SectionsGrid({ tenant }: { tenant: string }) {
+  const [search, setSearch] = useQueryState("q", searchParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editing, setEditing] = React.useState<Section | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Section | null>(null);
   const remove = useRemoveSection(tenant);
+
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const sectionsQuery = useSectionsQuery(tenant, { search: debouncedSearch, page, limit: PAGE_SIZE });
+
+  const sections = sectionsQuery.data?.sections ?? [];
+  const total = sectionsQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   const columns: DataTableColumn<Section>[] = [
     {
@@ -86,6 +105,22 @@ export function SectionsGrid({
     },
   ];
 
+  if (sectionsQuery.isError) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Sections"
+          description="The seating areas your dining tables get grouped under."
+        />
+        <Alert variant="destructive">
+          <AlertCircleIcon aria-hidden />
+          <AlertTitle>Could not load sections</AlertTitle>
+          <AlertDescription>{getErrorMessage(sectionsQuery.error)}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -103,8 +138,16 @@ export function SectionsGrid({
         columns={columns}
         data={sections}
         getRowId={(s) => s.id}
+        loading={sectionsQuery.isPending}
         searchPlaceholder="Search sections…"
-        searchFn={(s, q) => s.name.toLowerCase().includes(q)}
+        searchValue={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          resetToFirstPage();
+        }}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={setPage}
         emptyIcon={LayoutIcon}
         emptyTitle="No sections yet"
         emptyDescription="Add one to start grouping your dining tables."

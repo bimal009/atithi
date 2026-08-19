@@ -14,7 +14,7 @@ import (
 type CategoryRepo interface {
 	Create(ctx context.Context, category *model.Category, subMenuIDs []string, userID string) (model.Category, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.Category, error)
-	ListForHotel(ctx context.Context, hotelID, userID string) ([]model.Category, error)
+	ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.Category, int, error)
 	Update(ctx context.Context, id, hotelID, userID string, name *string, subMenuIDs []string) (model.Category, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -130,38 +130,69 @@ func (r *categoryRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 	return category, nil
 }
 
-func (r *categoryRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.Category, error) {
-	query := categorySelect + `
+func (r *categoryRepo) ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.Category, int, error) {
+	query := `
+		SELECT c.id, c.hotel_id, c.name, c.created_at, c.updated_at,
+		       COALESCE(
+		         json_agg(json_build_object('id', sm.id, 'name', sm.name) ORDER BY sm.name)
+		           FILTER (WHERE sm.id IS NOT NULL),
+		         '[]'
+		       ) AS sub_menus,
+		       COUNT(*) OVER() AS total
+		FROM categories c
+		LEFT JOIN category_sub_menus csm ON csm.category_id = c.id
+		LEFT JOIN sub_menus sm ON sm.id = csm.sub_menu_id
 		WHERE c.hotel_id = $1::uuid
+		  AND ($2 = '' OR c.name ILIKE '%' || $2 || '%')
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = c.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+			WHERE m.hotel_id = c.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
 		GROUP BY c.id
 		ORDER BY c.name
+		LIMIT $4 OFFSET $5
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, userID)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	list := make([]model.Category, 0)
+	var total int
 
 	for rows.Next() {
-		category, err := scanCategory(rows)
-		if err != nil {
-			return nil, err
+		var category model.Category
+		var subMenusJSON []byte
+
+		if err := rows.Scan(
+			&category.ID,
+			&category.HotelID,
+			&category.Name,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+			&subMenusJSON,
+			&total,
+		); err != nil {
+			return nil, 0, err
 		}
+
+		if err := json.Unmarshal(subMenusJSON, &category.SubMenus); err != nil {
+			return nil, 0, err
+		}
+		if category.SubMenus == nil {
+			category.SubMenus = []model.SubMenuRef{}
+		}
+
 		list = append(list, category)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return list, nil
+	return list, total, nil
 }
 
 func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, name *string, subMenuIDs []string) (model.Category, error) {

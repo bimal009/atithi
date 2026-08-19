@@ -12,4 +12,7 @@ type UpdateSectionRequest struct {
 
 type ListSectionsResponse struct {
 	Sections []model.Section `json:"sections"`
+	Page     int             `json:"page"`
+	Limit    int             `json:"limit"`
+	Total    int             `json:"total"`
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -31,6 +31,7 @@ export const useRoomsQuery = (
       params?.limit ?? 12,
     ],
     queryFn: async () => (await listRooms(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateRoom = (tenant: string) => {

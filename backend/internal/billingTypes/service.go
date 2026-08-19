@@ -12,7 +12,7 @@ import (
 type BillingTypeService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateBillingTypeRequest) (model.BillingType, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.BillingType, error)
-	GetAll(ctx context.Context, hotelID, userID string) ([]model.BillingType, error)
+	GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListBillingTypesResponse, error)
 	Update(ctx context.Context, id, hotelID, userID string, req *UpdateBillingTypeRequest) (model.BillingType, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -52,8 +52,22 @@ func (s *billingTypeService) Get(ctx context.Context, id, hotelID, userID string
 	return s.repo.Get(ctx, id, hotelID, userID)
 }
 
-func (s *billingTypeService) GetAll(ctx context.Context, hotelID, userID string) ([]model.BillingType, error) {
-	return s.repo.ListForHotel(ctx, hotelID, userID)
+func (s *billingTypeService) GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListBillingTypesResponse, error) {
+	if err := pagination.Validate(); err != nil {
+		return ListBillingTypesResponse{}, err
+	}
+
+	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, pagination)
+	if err != nil {
+		return ListBillingTypesResponse{}, err
+	}
+
+	return ListBillingTypesResponse{
+		BillingTypes: list,
+		Page:         pagination.Page,
+		Limit:        pagination.Limit,
+		Total:        total,
+	}, nil
 }
 
 func (s *billingTypeService) Update(ctx context.Context, id, hotelID, userID string, req *UpdateBillingTypeRequest) (model.BillingType, error) {

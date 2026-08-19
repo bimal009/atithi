@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -17,10 +17,19 @@ export const billingTypeKeys = {
   all: (tenant: string) => ["billingTypes", tenant] as const,
 };
 
-export const useBillingTypesQuery = (tenant: string) =>
+export const useBillingTypesQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: billingTypeKeys.all(tenant),
-    queryFn: async () => (await listBillingTypes(tenant)).data,
+    queryKey: [
+      ...billingTypeKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 20,
+    ],
+    queryFn: async () => (await listBillingTypes(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateBillingType = (tenant: string) => {

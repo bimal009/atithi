@@ -1,13 +1,26 @@
 import { axiosInstance } from "@/lib/axios";
 import { ApiResponse } from "@/lib/types/responses";
 
-import { CreateSectionInput, Section, UpdateSectionInput } from "../types";
+import {
+  CreateSectionInput,
+  ListSectionsResponse,
+  Section,
+  UpdateSectionInput,
+} from "../types";
 
 export const listSections = async (
   tenant: string,
-): Promise<ApiResponse<Section[]>> => {
-  const { data } = await axiosInstance.get<ApiResponse<Section[]>>(
+  params?: { search?: string; page?: number; limit?: number },
+): Promise<ApiResponse<ListSectionsResponse>> => {
+  const { data } = await axiosInstance.get<ApiResponse<ListSectionsResponse>>(
     `/hotels/slug/${tenant}/sections`,
+    {
+      params: {
+        search: params?.search || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+      },
+    },
   );
   return data;
 };

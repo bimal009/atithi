@@ -2,18 +2,18 @@
 
 import * as React from "react";
 import { AlertCircleIcon } from "lucide-react";
-import { debounce, parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryState } from "nuqs";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 
 import { useCustomersQuery } from "../client/useCustomers";
 import { CustomersTable } from "./customers-table";
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -42,7 +42,8 @@ function CustomersSkeleton() {
 
 export function CustomersPageClient({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
-  const customersQuery = useCustomersQuery(tenant, search);
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const customersQuery = useCustomersQuery(tenant, debouncedSearch);
 
   if (customersQuery.isPending) {
     return <CustomersSkeleton />;

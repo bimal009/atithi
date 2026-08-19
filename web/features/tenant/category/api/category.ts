@@ -1,13 +1,26 @@
 import { axiosInstance } from "@/lib/axios";
 import { ApiResponse } from "@/lib/types/responses";
 
-import { Category, CreateCategoryInput, UpdateCategoryInput } from "../types";
+import {
+  Category,
+  CreateCategoryInput,
+  ListCategoriesResponse,
+  UpdateCategoryInput,
+} from "../types";
 
 export const listCategories = async (
   tenant: string,
-): Promise<ApiResponse<Category[]>> => {
-  const { data } = await axiosInstance.get<ApiResponse<Category[]>>(
+  params?: { search?: string; page?: number; limit?: number },
+): Promise<ApiResponse<ListCategoriesResponse>> => {
+  const { data } = await axiosInstance.get<ApiResponse<ListCategoriesResponse>>(
     `/hotels/slug/${tenant}/categories`,
+    {
+      params: {
+        search: params?.search || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+      },
+    },
   );
   return data;
 };

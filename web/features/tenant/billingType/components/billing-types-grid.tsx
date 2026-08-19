@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { PencilIcon, PlusIcon, ReceiptTextIcon, Trash2Icon } from "lucide-react";
+import { AlertCircleIcon, PencilIcon, PlusIcon, ReceiptTextIcon, Trash2Icon } from "lucide-react";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -13,26 +14,48 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { getErrorMessage } from "@/lib/axios";
 
-import { useRemoveBillingType } from "../client/useBillingTypes";
+import { useBillingTypesQuery, useRemoveBillingType } from "../client/useBillingTypes";
 import type { BillingType } from "../types";
 import { BillingTypeFormDialog } from "./billing-type-form-dialog";
 
-export function BillingTypesGrid({
-  tenant,
-  billingTypes,
-}: {
-  tenant: string;
-  billingTypes: BillingType[];
-}) {
+const searchParser = parseAsString.withDefault("").withOptions({
+  history: "replace",
+});
+
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 12;
+
+export function BillingTypesGrid({ tenant }: { tenant: string }) {
+  const [search, setSearch] = useQueryState("q", searchParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editing, setEditing] = React.useState<BillingType | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<BillingType | null>(null);
   const remove = useRemoveBillingType(tenant);
+
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const billingTypesQuery = useBillingTypesQuery(tenant, {
+    search: debouncedSearch,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
+  const total = billingTypesQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   const columns: DataTableColumn<BillingType>[] = [
     {
@@ -86,6 +109,22 @@ export function BillingTypesGrid({
     },
   ];
 
+  if (billingTypesQuery.isError) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Billing Types"
+          description="How cabins and room types get billed."
+        />
+        <Alert variant="destructive">
+          <AlertCircleIcon aria-hidden />
+          <AlertTitle>Could not load billing types</AlertTitle>
+          <AlertDescription>{getErrorMessage(billingTypesQuery.error)}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -103,8 +142,16 @@ export function BillingTypesGrid({
         columns={columns}
         data={billingTypes}
         getRowId={(b) => b.id}
+        loading={billingTypesQuery.isPending}
         searchPlaceholder="Search billing types…"
-        searchFn={(b, q) => b.name.toLowerCase().includes(q)}
+        searchValue={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          resetToFirstPage();
+        }}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={setPage}
         emptyIcon={ReceiptTextIcon}
         emptyTitle="No billing types yet"
         emptyDescription="Add one to start pricing cabins and room types."

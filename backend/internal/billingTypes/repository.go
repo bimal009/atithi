@@ -13,7 +13,7 @@ import (
 type BillingTypeRepo interface {
 	Create(ctx context.Context, billingType *model.BillingType, userID string) (model.BillingType, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.BillingType, error)
-	ListForHotel(ctx context.Context, hotelID, userID string) ([]model.BillingType, error)
+	ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.BillingType, int, error)
 	Update(ctx context.Context, billingType *model.BillingType, userID string) (model.BillingType, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -97,25 +97,29 @@ func (r *billingTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (
 	return billingType, nil
 }
 
-func (r *billingTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.BillingType, error) {
+func (r *billingTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.BillingType, int, error) {
 	query := `
-		SELECT id, hotel_id, name, created_at, updated_at
+		SELECT id, hotel_id, name, created_at, updated_at,
+		       COUNT(*) OVER() AS total
 		FROM billing_types
 		WHERE hotel_id = $1::uuid
+		  AND ($2 = '' OR name ILIKE '%' || $2 || '%')
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = billing_types.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+			WHERE m.hotel_id = billing_types.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
 		ORDER BY name
+		LIMIT $4 OFFSET $5
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, userID)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	billingTypes := make([]model.BillingType, 0)
+	var total int
 
 	for rows.Next() {
 		var billingType model.BillingType
@@ -125,17 +129,18 @@ func (r *billingTypeRepo) ListForHotel(ctx context.Context, hotelID, userID stri
 			&billingType.Name,
 			&billingType.CreatedAt,
 			&billingType.UpdatedAt,
+			&total,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		billingTypes = append(billingTypes, billingType)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return billingTypes, nil
+	return billingTypes, total, nil
 }
 
 func (r *billingTypeRepo) Update(ctx context.Context, billingType *model.BillingType, userID string) (model.BillingType, error) {

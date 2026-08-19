@@ -1,13 +1,26 @@
 import { axiosInstance } from "@/lib/axios";
 import { ApiResponse } from "@/lib/types/responses";
 
-import { CreateSubMenuInput, SubMenu, UpdateSubMenuInput } from "../types";
+import {
+  CreateSubMenuInput,
+  ListSubMenusResponse,
+  SubMenu,
+  UpdateSubMenuInput,
+} from "../types";
 
 export const listSubMenus = async (
   tenant: string,
-): Promise<ApiResponse<SubMenu[]>> => {
-  const { data } = await axiosInstance.get<ApiResponse<SubMenu[]>>(
+  params?: { search?: string; page?: number; limit?: number },
+): Promise<ApiResponse<ListSubMenusResponse>> => {
+  const { data } = await axiosInstance.get<ApiResponse<ListSubMenusResponse>>(
     `/hotels/slug/${tenant}/sub-menus`,
+    {
+      params: {
+        search: params?.search || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+      },
+    },
   );
   return data;
 };

@@ -12,4 +12,7 @@ type UpdateBillingTypeRequest struct {
 
 type ListBillingTypesResponse struct {
 	BillingTypes []model.BillingType `json:"billingTypes"`
+	Page         int                 `json:"page"`
+	Limit        int                 `json:"limit"`
+	Total        int                 `json:"total"`
 }

@@ -68,8 +68,11 @@ export function TableFormDialog({
   const create = useCreateTable(tenant);
   const update = useUpdateTable(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
-  const sectionsQuery = useSectionsQuery(tenant);
-  const sections = React.useMemo(() => sectionsQuery.data ?? [], [sectionsQuery.data]);
+  const sectionsQuery = useSectionsQuery(tenant, { limit: 100 });
+  const sections = React.useMemo(
+    () => sectionsQuery.data?.sections ?? [],
+    [sectionsQuery.data],
+  );
 
   const [images, setImages] = React.useState<string[]>([]);
 

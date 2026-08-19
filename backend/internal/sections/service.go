@@ -12,7 +12,7 @@ import (
 type SectionService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateSectionRequest) (model.Section, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.Section, error)
-	GetAll(ctx context.Context, hotelID, userID string) ([]model.Section, error)
+	GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListSectionsResponse, error)
 	Update(ctx context.Context, id, hotelID, userID string, req *UpdateSectionRequest) (model.Section, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -52,8 +52,22 @@ func (s *sectionService) Get(ctx context.Context, id, hotelID, userID string) (m
 	return s.repo.Get(ctx, id, hotelID, userID)
 }
 
-func (s *sectionService) GetAll(ctx context.Context, hotelID, userID string) ([]model.Section, error) {
-	return s.repo.ListForHotel(ctx, hotelID, userID)
+func (s *sectionService) GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListSectionsResponse, error) {
+	if err := pagination.Validate(); err != nil {
+		return ListSectionsResponse{}, err
+	}
+
+	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, pagination)
+	if err != nil {
+		return ListSectionsResponse{}, err
+	}
+
+	return ListSectionsResponse{
+		Sections: list,
+		Page:     pagination.Page,
+		Limit:    pagination.Limit,
+		Total:    total,
+	}, nil
 }
 
 func (s *sectionService) Update(ctx context.Context, id, hotelID, userID string, req *UpdateSectionRequest) (model.Section, error) {

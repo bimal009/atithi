@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon } from "lucide-react";
-import { debounce, parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryState } from "nuqs";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,13 +11,13 @@ import {
   useAssignableRolesQuery,
   useRolesQuery,
 } from "@/features/tenant/role/client/useRoles";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 
 import { useMembersQuery } from "../client/useMembers";
 import { StaffTable } from "./staff-table";
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -48,7 +48,8 @@ export function StaffPageClient({ tenant }: { tenant: string }) {
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [search, setSearch] = useQueryState("q", searchParser);
 
-  const membersQuery = useMembersQuery(tenant, roleFilter, search);
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const membersQuery = useMembersQuery(tenant, roleFilter, debouncedSearch);
   const rolesQuery = useRolesQuery(tenant);
   const assignableRolesQuery = useAssignableRolesQuery(tenant);
 

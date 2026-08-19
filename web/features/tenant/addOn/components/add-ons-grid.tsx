@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, PencilIcon, PlusIcon, SparkleIcon, Trash2Icon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { formatCurrency } from "@/lib/utils";
 
@@ -29,7 +30,6 @@ import type { AddOn } from "../types";
 import { AddOnFormDialog } from "./add-on-form-dialog";
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -44,7 +44,8 @@ export function AddOnsGrid({ tenant }: { tenant: string }) {
   const [editingAddOn, setEditingAddOn] = React.useState<AddOn | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<AddOn | null>(null);
 
-  const addOnsQuery = useAddOnsQuery(tenant, { search, page, limit: PAGE_SIZE });
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const addOnsQuery = useAddOnsQuery(tenant, { search: debouncedSearch, page, limit: PAGE_SIZE });
 
   const update = useUpdateAddOn(tenant);
   const remove = useRemoveAddOn(tenant);

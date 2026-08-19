@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, PencilIcon, PlusIcon, Trash2Icon, UtensilsCrossedIcon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { cn, formatCurrency } from "@/lib/utils";
 import { FOOD_TYPE_DOT_CLASS, FOOD_TYPE_LABEL, FOOD_TYPE_OPTIONS } from "@/lib/food-type";
@@ -43,7 +44,6 @@ const FOOD_TYPE_FILTERS: Array<{ value: "all" | FoodType; label: string }> = [
 ];
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -63,8 +63,9 @@ export function MenuItemsGrid({ tenant }: { tenant: string }) {
   const [editingItem, setEditingItem] = React.useState<MenuItem | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<MenuItem | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
   const menuItemsQuery = useMenuItemsQuery(tenant, {
-    search,
+    search: debouncedSearch,
     foodType: foodType === "all" ? undefined : foodType,
     page,
     limit: PAGE_SIZE,

@@ -9,7 +9,7 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -41,6 +41,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useTablesQuery } from "@/features/tenant/table/client/useTables";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 
 import {
@@ -71,7 +72,6 @@ const STATUS_FILTERS: Array<{ value: "all" | ReservationStatus; label: string }>
 const STATUS_ITEMS = Object.fromEntries(STATUS_FILTERS.map((o) => [o.value, o.label]));
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -93,8 +93,9 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
   const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Reservation | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
   const reservationsQuery = useReservationsQuery(tenant, {
-    search,
+    search: debouncedSearch,
     status: status === "all" ? undefined : status,
   });
   const tablesQuery = useTablesQuery(tenant);

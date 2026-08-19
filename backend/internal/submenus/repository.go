@@ -13,7 +13,7 @@ import (
 type SubMenuRepo interface {
 	Create(ctx context.Context, subMenu *model.SubMenu, userID string) (model.SubMenu, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.SubMenu, error)
-	ListForHotel(ctx context.Context, hotelID, userID string) ([]model.SubMenu, error)
+	ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.SubMenu, int, error)
 	Update(ctx context.Context, subMenu *model.SubMenu, userID string) (model.SubMenu, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -100,25 +100,29 @@ func (r *subMenuRepo) Get(ctx context.Context, id, hotelID, userID string) (mode
 	return subMenu, nil
 }
 
-func (r *subMenuRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.SubMenu, error) {
+func (r *subMenuRepo) ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.SubMenu, int, error) {
 	query := `
-		SELECT id, hotel_id, name, description, created_at, updated_at
+		SELECT id, hotel_id, name, description, created_at, updated_at,
+		       COUNT(*) OVER() AS total
 		FROM sub_menus
 		WHERE hotel_id = $1::uuid
+		  AND ($2 = '' OR name ILIKE '%' || $2 || '%')
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = sub_menus.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+			WHERE m.hotel_id = sub_menus.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
 		ORDER BY name
+		LIMIT $4 OFFSET $5
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, userID)
+	rows, err := r.DB.Query(ctx, query, hotelID, pagination.Search, userID, pagination.Limit, pagination.Offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	list := make([]model.SubMenu, 0)
+	var total int
 
 	for rows.Next() {
 		var subMenu model.SubMenu
@@ -129,17 +133,18 @@ func (r *subMenuRepo) ListForHotel(ctx context.Context, hotelID, userID string) 
 			&subMenu.Description,
 			&subMenu.CreatedAt,
 			&subMenu.UpdatedAt,
+			&total,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		list = append(list, subMenu)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return list, nil
+	return list, total, nil
 }
 
 func (r *subMenuRepo) Update(ctx context.Context, subMenu *model.SubMenu, userID string) (model.SubMenu, error) {

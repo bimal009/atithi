@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/bimal009/atithi/internal/middleware"
+	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/responses"
 	"github.com/bimal009/atithi/pkg/validator"
@@ -55,7 +56,13 @@ func (h *SectionHandler) Get(c *gin.Context) {
 }
 
 func (h *SectionHandler) GetAll(c *gin.Context) {
-	sections, err := h.service.GetAll(c.Request.Context(), middleware.HotelID(c), middleware.UserID(c))
+	var pagination model.Pagination
+	if err := c.ShouldBindQuery(&pagination); err != nil {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid query parameters"))
+		return
+	}
+
+	sections, err := h.service.GetAll(c.Request.Context(), middleware.HotelID(c), middleware.UserID(c), pagination)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return

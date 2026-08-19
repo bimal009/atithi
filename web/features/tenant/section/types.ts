@@ -11,3 +11,10 @@ export type CreateSectionInput = {
 };
 
 export type UpdateSectionInput = Partial<CreateSectionInput>;
+
+export type ListSectionsResponse = {
+  sections: Section[];
+  page: number;
+  limit: number;
+  total: number;
+};

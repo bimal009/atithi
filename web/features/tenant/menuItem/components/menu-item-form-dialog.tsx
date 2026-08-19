@@ -3,7 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlusIcon, SearchIcon } from "lucide-react";
-import { debounce, parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryState } from "nuqs";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -39,6 +39,7 @@ import { uploadImage } from "@/features/upload/api/upload";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/features/upload/types";
 import { useCategoriesQuery } from "@/features/tenant/category/client/useCategories";
 import { useAddOnsQuery } from "@/features/tenant/addOn/client/useAddOns";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { FOOD_TYPE_OPTIONS } from "@/lib/food-type";
 import { formatCurrency } from "@/lib/utils";
 import type { FoodType } from "@/types";
@@ -52,7 +53,6 @@ import { menuItemSchema, type MenuItemInput, type MenuItemValues } from "../sche
 import type { Dish, MenuItem } from "../types";
 
 const addOnSearchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(300),
   history: "replace",
 });
 
@@ -103,12 +103,13 @@ export function MenuItemFormDialog({
   const update = useUpdateMenuItem(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
 
-  const categoriesQuery = useCategoriesQuery(tenant);
-  const categories = categoriesQuery.data ?? [];
+  const categoriesQuery = useCategoriesQuery(tenant, { limit: 100 });
+  const categories = categoriesQuery.data?.categories ?? [];
 
   const [addOnSearch, setAddOnSearch] = useQueryState("addOnQuery", addOnSearchParser);
 
-  const addOnsQuery = useAddOnsQuery(tenant, { search: addOnSearch, limit: 20 });
+  const debouncedAddOnSearch = useDebouncedValue(addOnSearch, 300);
+  const addOnsQuery = useAddOnsQuery(tenant, { search: debouncedAddOnSearch, limit: 20 });
   const availableAddOns = addOnsQuery.data?.addOns ?? [];
 
   const [uploading, setUploading] = React.useState(false);
@@ -163,7 +164,8 @@ export function MenuItemFormDialog({
     reset(valuesOf(menuItem));
     setDebouncedName("");
     setSuggestionsOpen(false);
-  }, [open, menuItem, reset]);
+    setAddOnSearch("");
+  }, [open, menuItem, reset, setAddOnSearch]);
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -447,10 +449,21 @@ export function MenuItemFormDialog({
 
             <Field>
               <FieldLabel>Add-ons</FieldLabel>
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={addOnSearch}
+                  onChange={(e) => setAddOnSearch(e.target.value)}
+                  placeholder="Search add-ons…"
+                  className="pl-8"
+                />
+              </div>
               <div className="flex flex-col gap-2 rounded-lg border p-3">
                 {availableAddOns.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No add-ons yet. Add one under Menu &gt; Add-ons.
+                    {addOnSearch
+                      ? "No add-ons match your search."
+                      : "No add-ons yet. Add one under Menu > Add-ons."}
                   </p>
                 ) : (
                   availableAddOns.map((addOn) => (

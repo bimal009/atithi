@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, BedIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
@@ -51,7 +52,6 @@ const STATUS_FILTERS: Array<{ value: "all" | RoomStatus; label: string }> = [
 const STATUS_ITEMS = Object.fromEntries(STATUS_FILTERS.map((o) => [o.value, o.label]));
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -77,16 +77,17 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
   const [editingRoom, setEditingRoom] = React.useState<Room | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Room | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
   const roomsQuery = useRoomsQuery(tenant, {
-    search,
+    search: debouncedSearch,
     status: status === "all" ? undefined : status,
     page,
     limit: PAGE_SIZE,
   });
   const roomTypesQuery = useRoomTypesQuery(tenant);
   const roomTypesById = new Map((roomTypesQuery.data ?? []).map((rt) => [rt.id, rt]));
-  const billingTypesQuery = useBillingTypesQuery(tenant);
-  const billingTypes = billingTypesQuery.data ?? [];
+  const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
+  const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
 
   const updateStatus = useUpdateRoomStatus(tenant);
   const remove = useRemoveRoom(tenant);

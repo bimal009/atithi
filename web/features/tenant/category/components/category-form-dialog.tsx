@@ -48,8 +48,8 @@ export function CategoryFormDialog({
   const update = useUpdateCategory(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
 
-  const subMenusQuery = useSubMenusQuery(tenant);
-  const subMenus = subMenusQuery.data ?? [];
+  const subMenusQuery = useSubMenusQuery(tenant, { limit: 100 });
+  const subMenus = subMenusQuery.data?.subMenus ?? [];
 
   const {
     register,

@@ -18,3 +18,10 @@ export type CreateCategoryInput = {
 };
 
 export type UpdateCategoryInput = Partial<CreateCategoryInput>;
+
+export type ListCategoriesResponse = {
+  categories: Category[];
+  page: number;
+  limit: number;
+  total: number;
+};

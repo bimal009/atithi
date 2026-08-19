@@ -13,3 +13,10 @@ export type CreateSubMenuInput = {
 };
 
 export type UpdateSubMenuInput = Partial<CreateSubMenuInput>;
+
+export type ListSubMenusResponse = {
+  subMenus: SubMenu[];
+  page: number;
+  limit: number;
+  total: number;
+};

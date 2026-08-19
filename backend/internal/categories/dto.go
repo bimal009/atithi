@@ -14,4 +14,7 @@ type UpdateCategoryRequest struct {
 
 type ListCategoriesResponse struct {
 	Categories []model.Category `json:"categories"`
+	Page       int              `json:"page"`
+	Limit      int              `json:"limit"`
+	Total      int              `json:"total"`
 }

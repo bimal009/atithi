@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TreePineIcon } from "lucide-react";
-import { debounce, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
@@ -50,7 +51,6 @@ const STATUS_FILTERS: Array<{ value: "all" | RoomStatus; label: string }> = [
 const STATUS_ITEMS = Object.fromEntries(STATUS_FILTERS.map((o) => [o.value, o.label]));
 
 const searchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(400),
   history: "replace",
 });
 
@@ -76,8 +76,9 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
   const [editingCabin, setEditingCabin] = React.useState<Cabin | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Cabin | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search, 400);
   const cabinsQuery = useCabinsQuery(tenant, {
-    search,
+    search: debouncedSearch,
     status: status === "all" ? undefined : status,
     page,
     limit: PAGE_SIZE,
@@ -85,8 +86,8 @@ export function CabinsGrid({ tenant }: { tenant: string }) {
 
   const updateStatus = useUpdateCabinStatus(tenant);
   const remove = useRemoveCabin(tenant);
-  const billingTypesQuery = useBillingTypesQuery(tenant);
-  const billingTypes = billingTypesQuery.data ?? [];
+  const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
+  const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
 
   const cabins = cabinsQuery.data?.cabins ?? [];
   const total = cabinsQuery.data?.total ?? 0;

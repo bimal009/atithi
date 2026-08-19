@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -17,10 +17,19 @@ export const sectionKeys = {
   all: (tenant: string) => ["sections", tenant] as const,
 };
 
-export const useSectionsQuery = (tenant: string) =>
+export const useSectionsQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: sectionKeys.all(tenant),
-    queryFn: async () => (await listSections(tenant)).data,
+    queryKey: [
+      ...sectionKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 20,
+    ],
+    queryFn: async () => (await listSections(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateSection = (tenant: string) => {

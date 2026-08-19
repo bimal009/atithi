@@ -55,7 +55,7 @@ function NavCollapsibleItem({
             <SidebarMenuButton
               tooltip={item.title}
               isActive={isSubActive}
-              className="group data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary"
+              className="group data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
             />
           }
         >
@@ -71,7 +71,7 @@ function NavCollapsibleItem({
                 <SidebarMenuSubItem key={sub.title}>
                   <SidebarMenuSubButton
                     isActive={pathname === subHref}
-                    className="data-active:bg-primary/5 data-active:font-medium data-active:text-primary"
+                    className="data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground"
                     render={<Link href={subHref} />}
                   >
                     <span>{sub.title}</span>
@@ -136,7 +136,7 @@ export function AppSidebar({
                         <SidebarMenuButton
                           tooltip={item.title}
                           isActive={isActive}
-                          className="data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/10 data-active:hover:text-primary"
+                          className="data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                           render={<Link href={href} />}
                         >
                           <item.icon />
@@ -177,7 +177,7 @@ export function AppSidebar({
             <SidebarMenuButton
               tooltip="Settings"
               isActive={pathname === `${basePath}/settings`}
-              className="data-active:bg-primary/5 data-active:text-primary data-active:hover:bg-primary/10 data-active:hover:text-primary"
+              className="data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
               render={<Link href={`${basePath}/settings`} />}
             >
               <SettingsIcon />

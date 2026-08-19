@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { BillingTypesPageClient } from "@/features/tenant/billingType/components/billing-types-page-client";
+import { BillingTypesGrid } from "@/features/tenant/billingType/components/billing-types-grid";
 
 export const metadata: Metadata = {
   title: "Billing Types · Atithi",
@@ -13,5 +13,5 @@ export default async function BillingTypesPage({
 }) {
   const { tenant } = await params;
 
-  return <BillingTypesPageClient tenant={tenant} />;
+  return <BillingTypesGrid tenant={tenant} />;
 }

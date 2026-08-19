@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { PaginationFooter } from "@/components/shared/pagination-footer";
 import { SectionCards } from "@/components/shared/section-cards";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -27,9 +29,21 @@ import { SubMenuFormDialog } from "./sub-menu-form-dialog";
 export function SubMenusGrid({
   tenant,
   subMenus,
+  total,
+  search,
+  onSearchChange,
+  page,
+  pageCount,
+  onPageChange,
 }: {
   tenant: string;
   subMenus: SubMenu[];
+  total: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
   const [creating, setCreating] = React.useState(false);
   const [editing, setEditing] = React.useState<SubMenu | null>(null);
@@ -49,7 +63,14 @@ export function SubMenusGrid({
         }
       />
 
-      <SectionCards stats={[{ label: "Sub-menus", value: String(subMenus.length) }]} />
+      <SectionCards stats={[{ label: "Sub-menus", value: String(total) }]} />
+
+      <Input
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search sub-menus…"
+        className="sm:max-w-xs"
+      />
 
       {subMenus.length === 0 ? (
         <Card>
@@ -57,7 +78,11 @@ export function SubMenusGrid({
             <EmptyState
               icon={LayersIcon}
               title="No sub-menus yet"
-              description="Add your first sub-menu to start grouping categories."
+              description={
+                search
+                  ? "No sub-menus match your search."
+                  : "Add your first sub-menu to start grouping categories."
+              }
             />
           </CardContent>
         </Card>
@@ -111,6 +136,8 @@ export function SubMenusGrid({
           ))}
         </div>
       )}
+
+      <PaginationFooter page={page} pageCount={pageCount} onPageChange={onPageChange} />
 
       <SubMenuFormDialog tenant={tenant} open={creating} onOpenChange={setCreating} />
 

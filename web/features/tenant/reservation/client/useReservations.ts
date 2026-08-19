@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -25,6 +25,7 @@ export const useReservationsQuery = (
   useQuery({
     queryKey: [...reservationKeys.all(tenant), params?.search ?? "", params?.status ?? ""],
     queryFn: async () => (await listReservations(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateReservation = (tenant: string) => {

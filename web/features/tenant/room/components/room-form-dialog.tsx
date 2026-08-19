@@ -71,8 +71,8 @@ export function RoomFormDialog({
   const isEdit = !!room;
   const roomTypesQuery = useRoomTypesQuery(tenant);
   const roomTypes = React.useMemo(() => roomTypesQuery.data ?? [], [roomTypesQuery.data]);
-  const billingTypesQuery = useBillingTypesQuery(tenant);
-  const billingTypes = billingTypesQuery.data ?? [];
+  const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
+  const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
   const create = useCreateRoom(tenant);
   const update = useUpdateRoom(tenant);
   const pending = isEdit ? update.isPending : create.isPending;

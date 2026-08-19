@@ -3,7 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SearchIcon, UtensilsCrossedIcon } from "lucide-react";
-import { debounce, parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryState } from "nuqs";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItems";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatCurrency } from "@/lib/utils";
 
 import { useCreateMenuSet, useUpdateMenuSet } from "../client/useMenuSets";
@@ -29,7 +30,6 @@ import { menuSetSchema, type MenuSetInput, type MenuSetValues } from "../schema"
 import type { MenuSet } from "../types";
 
 const itemSearchParser = parseAsString.withDefault("").withOptions({
-  limitUrlUpdates: debounce(300),
   history: "replace",
 });
 
@@ -72,7 +72,8 @@ export function MenuSetFormDialog({
 
   const [itemSearch, setItemSearch] = useQueryState("itemQuery", itemSearchParser);
 
-  const menuItemsQuery = useMenuItemsQuery(tenant, { search: itemSearch, limit: 20 });
+  const debouncedItemSearch = useDebouncedValue(itemSearch, 300);
+  const menuItemsQuery = useMenuItemsQuery(tenant, { search: debouncedItemSearch, limit: 20 });
   const availableItems = menuItemsQuery.data?.menuItems ?? [];
 
   const {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -17,10 +17,19 @@ export const categoryKeys = {
   all: (tenant: string) => ["categories", tenant] as const,
 };
 
-export const useCategoriesQuery = (tenant: string) =>
+export const useCategoriesQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: categoryKeys.all(tenant),
-    queryFn: async () => (await listCategories(tenant)).data,
+    queryKey: [
+      ...categoryKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 20,
+    ],
+    queryFn: async () => (await listCategories(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateCategory = (tenant: string) => {

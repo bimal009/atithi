@@ -12,7 +12,7 @@ import (
 type CategoryService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateCategoryRequest) (model.Category, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.Category, error)
-	GetAll(ctx context.Context, hotelID, userID string) ([]model.Category, error)
+	GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListCategoriesResponse, error)
 	Update(ctx context.Context, id, hotelID, userID string, req *UpdateCategoryRequest) (model.Category, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -52,8 +52,22 @@ func (s *categoryService) Get(ctx context.Context, id, hotelID, userID string) (
 	return s.repo.Get(ctx, id, hotelID, userID)
 }
 
-func (s *categoryService) GetAll(ctx context.Context, hotelID, userID string) ([]model.Category, error) {
-	return s.repo.ListForHotel(ctx, hotelID, userID)
+func (s *categoryService) GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListCategoriesResponse, error) {
+	if err := pagination.Validate(); err != nil {
+		return ListCategoriesResponse{}, err
+	}
+
+	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, pagination)
+	if err != nil {
+		return ListCategoriesResponse{}, err
+	}
+
+	return ListCategoriesResponse{
+		Categories: list,
+		Page:       pagination.Page,
+		Limit:      pagination.Limit,
+		Total:      total,
+	}, nil
 }
 
 func (s *categoryService) Update(ctx context.Context, id, hotelID, userID string, req *UpdateCategoryRequest) (model.Category, error) {

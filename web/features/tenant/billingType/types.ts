@@ -11,3 +11,10 @@ export type CreateBillingTypeInput = {
 };
 
 export type UpdateBillingTypeInput = Partial<CreateBillingTypeInput>;
+
+export type ListBillingTypesResponse = {
+  billingTypes: BillingType[];
+  page: number;
+  limit: number;
+  total: number;
+};

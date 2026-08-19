@@ -145,8 +145,8 @@ export function RoomTypesGrid({
     null,
   );
   const remove = useRemoveRoomType(tenant);
-  const billingTypesQuery = useBillingTypesQuery(tenant);
-  const billingTypes = billingTypesQuery.data ?? [];
+  const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
+  const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
 
   const avgPrice = roomTypes.length
     ? Math.round(

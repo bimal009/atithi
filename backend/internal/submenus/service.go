@@ -12,7 +12,7 @@ import (
 type SubMenuService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateSubMenuRequest) (model.SubMenu, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.SubMenu, error)
-	GetAll(ctx context.Context, hotelID, userID string) ([]model.SubMenu, error)
+	GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListSubMenusResponse, error)
 	Update(ctx context.Context, id, hotelID, userID string, req *UpdateSubMenuRequest) (model.SubMenu, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -53,8 +53,22 @@ func (s *subMenuService) Get(ctx context.Context, id, hotelID, userID string) (m
 	return s.repo.Get(ctx, id, hotelID, userID)
 }
 
-func (s *subMenuService) GetAll(ctx context.Context, hotelID, userID string) ([]model.SubMenu, error) {
-	return s.repo.ListForHotel(ctx, hotelID, userID)
+func (s *subMenuService) GetAll(ctx context.Context, hotelID, userID string, pagination model.Pagination) (ListSubMenusResponse, error) {
+	if err := pagination.Validate(); err != nil {
+		return ListSubMenusResponse{}, err
+	}
+
+	list, total, err := s.repo.ListForHotel(ctx, hotelID, userID, pagination)
+	if err != nil {
+		return ListSubMenusResponse{}, err
+	}
+
+	return ListSubMenusResponse{
+		SubMenus: list,
+		Page:     pagination.Page,
+		Limit:    pagination.Limit,
+		Total:    total,
+	}, nil
 }
 
 func (s *subMenuService) Update(ctx context.Context, id, hotelID, userID string, req *UpdateSubMenuRequest) (model.SubMenu, error) {

@@ -14,4 +14,7 @@ type UpdateSubMenuRequest struct {
 
 type ListSubMenusResponse struct {
 	SubMenus []model.SubMenu `json:"subMenus"`
+	Page     int             `json:"page"`
+	Limit    int             `json:"limit"`
+	Total    int             `json:"total"`
 }

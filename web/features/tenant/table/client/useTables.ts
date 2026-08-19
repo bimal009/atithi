@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -31,6 +31,7 @@ export const useTablesQuery = (
       params?.limit ?? 12,
     ],
     queryFn: async () => (await listTables(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateTable = (tenant: string) => {

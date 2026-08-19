@@ -1,13 +1,26 @@
 import { axiosInstance } from "@/lib/axios";
 import { ApiResponse } from "@/lib/types/responses";
 
-import { BillingType, CreateBillingTypeInput, UpdateBillingTypeInput } from "../types";
+import {
+  BillingType,
+  CreateBillingTypeInput,
+  ListBillingTypesResponse,
+  UpdateBillingTypeInput,
+} from "../types";
 
 export const listBillingTypes = async (
   tenant: string,
-): Promise<ApiResponse<BillingType[]>> => {
-  const { data } = await axiosInstance.get<ApiResponse<BillingType[]>>(
+  params?: { search?: string; page?: number; limit?: number },
+): Promise<ApiResponse<ListBillingTypesResponse>> => {
+  const { data } = await axiosInstance.get<ApiResponse<ListBillingTypesResponse>>(
     `/hotels/slug/${tenant}/billing-types`,
+    {
+      params: {
+        search: params?.search || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+      },
+    },
   );
   return data;
 };
