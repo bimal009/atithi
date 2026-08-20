@@ -71,7 +71,7 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 	}
 	defer tx.Rollback(ctx)
 
-	var newID string
+	var created model.Category
 	err = tx.QueryRow(ctx, `
 		INSERT INTO categories (id, hotel_id, name)
 		SELECT $1::uuid, $2::uuid, $3
@@ -79,8 +79,10 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $4::uuid AND m.status = 'active'
 		)
-		RETURNING id
-	`, category.ID, category.HotelID, category.Name, userID).Scan(&newID)
+		RETURNING id, hotel_id, name, created_at, updated_at
+	`, category.ID, category.HotelID, category.Name, userID).Scan(
+		&created.ID, &created.HotelID, &created.Name, &created.CreatedAt, &created.UpdatedAt,
+	)
 
 	if err != nil {
 		if apperr.IsUniqueViolation(err) {
@@ -91,11 +93,12 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 		}
 		return model.Category{}, err
 	}
+	created.SubMenus = []model.SubMenuRef{}
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO category_sub_menus (category_id, sub_menu_id)
 		SELECT $1::uuid, unnest($2::uuid[])
-	`, newID, subMenuIDs); err != nil {
+	`, created.ID, subMenuIDs); err != nil {
 		if apperr.IsForeignKeyViolation(err) {
 			return model.Category{}, apperr.ErrSubMenuNotFound
 		}
@@ -106,7 +109,7 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 		return model.Category{}, err
 	}
 
-	return r.Get(ctx, newID, category.HotelID, userID)
+	return created, nil
 }
 
 func (r *categoryRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Category, error) {
@@ -202,7 +205,8 @@ func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, n
 	}
 	defer tx.Rollback(ctx)
 
-	tag, err := tx.Exec(ctx, `
+	var updated model.Category
+	err = tx.QueryRow(ctx, `
 		UPDATE categories
 		SET name = COALESCE($1, name), updated_at = now()
 		WHERE id = $2::uuid AND hotel_id = $3::uuid
@@ -210,17 +214,21 @@ func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, n
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = categories.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-	`, name, id, hotelID, userID)
+		RETURNING id, hotel_id, name, created_at, updated_at
+	`, name, id, hotelID, userID).Scan(
+		&updated.ID, &updated.HotelID, &updated.Name, &updated.CreatedAt, &updated.UpdatedAt,
+	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Category{}, apperr.ErrCategoryNotFound
+		}
 		if apperr.IsUniqueViolation(err) {
 			return model.Category{}, apperr.ErrCategoryNameExists
 		}
 		return model.Category{}, err
 	}
-	if tag.RowsAffected() == 0 {
-		return model.Category{}, apperr.ErrCategoryNotFound
-	}
+	updated.SubMenus = []model.SubMenuRef{}
 
 	if subMenuIDs != nil {
 		if _, err := tx.Exec(ctx, `DELETE FROM category_sub_menus WHERE category_id = $1::uuid`, id); err != nil {
@@ -241,7 +249,7 @@ func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, n
 		return model.Category{}, err
 	}
 
-	return r.Get(ctx, id, hotelID, userID)
+	return updated, nil
 }
 
 func (r *categoryRepo) Delete(ctx context.Context, id, hotelID, userID string) error {

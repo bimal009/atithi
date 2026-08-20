@@ -165,14 +165,9 @@ func (s *roleService) Create(ctx context.Context, hotelID, userID string, req *C
 		return RoleResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	perms, err := s.permissions.ListByRole(ctx, created.ID)
-	if err != nil {
-		return RoleResponse{}, err
-	}
-
 	s.slog.Info("role created", "role_id", created.ID, "hotel_id", hotelID)
 
-	return toRoleResponse(created, perms), nil
+	return toRoleResponse(created, nil), nil
 }
 
 func (s *roleService) Update(ctx context.Context, id, hotelID string, req *UpdateRoleRequest) (RoleResponse, error) {
@@ -225,14 +220,9 @@ func (s *roleService) Update(ctx context.Context, id, hotelID string, req *Updat
 		}
 	}
 
-	perms, err := s.permissions.ListByRole(ctx, id)
-	if err != nil {
-		return RoleResponse{}, err
-	}
-
 	s.slog.Info("role updated", "role_id", id)
 
-	return toRoleResponse(updated, perms), nil
+	return toRoleResponse(updated, nil), nil
 }
 
 func (s *roleService) Delete(ctx context.Context, id, hotelID string) error {

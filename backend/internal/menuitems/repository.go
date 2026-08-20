@@ -167,10 +167,10 @@ func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $11::uuid AND m.status = 'active'
 		)
-		RETURNING id
+		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
 	`
 
-	var newID string
+	var created model.MenuItem
 
 	err = tx.QueryRow(
 		ctx, query,
@@ -185,7 +185,11 @@ func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL
 		item.Ingredients,
 		item.Available,
 		userID,
-	).Scan(&newID)
+	).Scan(
+		&created.ID, &created.HotelID, &created.DishID, &created.CategoryID, &created.FoodType,
+		&created.Price, &created.Discount, &created.Description, &created.Ingredients, &created.Available,
+		&created.CreatedAt, &created.UpdatedAt,
+	)
 
 	if err != nil {
 		if apperr.IsUniqueViolation(err) {
@@ -199,19 +203,14 @@ func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL
 		}
 		return model.MenuItem{}, err
 	}
+	created.Name = dish.Name
+	created.ImageURL = dish.ImageURL
+	created.AddOns = []model.AddOnRef{}
 
-	if err := linkAddOns(ctx, tx, newID, item.HotelID, addOnIDs); err != nil {
+	if err := linkAddOns(ctx, tx, created.ID, item.HotelID, addOnIDs); err != nil {
 		if apperr.IsForeignKeyViolation(err) {
 			return model.MenuItem{}, apperr.ErrAddOnNotFound
 		}
-		return model.MenuItem{}, err
-	}
-
-	created, err := scanMenuItem(tx.QueryRow(ctx, menuItemSelect+`
-		WHERE mi.id = $1::uuid
-		GROUP BY mi.id, d.id, c.id
-	`, newID))
-	if err != nil {
 		return model.MenuItem{}, err
 	}
 
@@ -345,10 +344,10 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnID
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = menu_items.hotel_id AND m.user_id = $10::uuid AND m.status = 'active'
 		  )
-		RETURNING id
+		RETURNING id, hotel_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
 	`
 
-	var updatedID string
+	updated := *item
 
 	err = tx.QueryRow(
 		ctx, query,
@@ -362,7 +361,11 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnID
 		item.ID,
 		item.HotelID,
 		userID,
-	).Scan(&updatedID)
+	).Scan(
+		&updated.ID, &updated.HotelID, &updated.CategoryID, &updated.FoodType, &updated.Price,
+		&updated.Discount, &updated.Description, &updated.Ingredients, &updated.Available,
+		&updated.CreatedAt, &updated.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -373,22 +376,16 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnID
 		}
 		return model.MenuItem{}, err
 	}
+	updated.CategoryName = ""
+	updated.AddOns = []model.AddOnRef{}
 
 	if addOnIDs != nil {
-		if err := linkAddOns(ctx, tx, updatedID, item.HotelID, addOnIDs); err != nil {
+		if err := linkAddOns(ctx, tx, updated.ID, item.HotelID, addOnIDs); err != nil {
 			if apperr.IsForeignKeyViolation(err) {
 				return model.MenuItem{}, apperr.ErrAddOnNotFound
 			}
 			return model.MenuItem{}, err
 		}
-	}
-
-	updated, err := scanMenuItem(tx.QueryRow(ctx, menuItemSelect+`
-		WHERE mi.id = $1::uuid
-		GROUP BY mi.id, d.id, c.id
-	`, updatedID))
-	if err != nil {
-		return model.MenuItem{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {

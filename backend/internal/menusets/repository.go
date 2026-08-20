@@ -110,10 +110,10 @@ func (r *menuSetRepo) Create(ctx context.Context, menuSet *model.MenuSet, items 
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = $2::uuid AND m.user_id = $7::uuid AND m.status = 'active'
 		)
-		RETURNING id
+		RETURNING id, hotel_id, name, description, price, available, created_at, updated_at
 	`
 
-	var newID string
+	var created model.MenuSet
 
 	err = tx.QueryRow(
 		ctx, query,
@@ -124,7 +124,10 @@ func (r *menuSetRepo) Create(ctx context.Context, menuSet *model.MenuSet, items 
 		menuSet.Price,
 		menuSet.Available,
 		userID,
-	).Scan(&newID)
+	).Scan(
+		&created.ID, &created.HotelID, &created.Name, &created.Description,
+		&created.Price, &created.Available, &created.CreatedAt, &created.UpdatedAt,
+	)
 
 	if err != nil {
 		if apperr.IsUniqueViolation(err) {
@@ -135,16 +138,9 @@ func (r *menuSetRepo) Create(ctx context.Context, menuSet *model.MenuSet, items 
 		}
 		return model.MenuSet{}, err
 	}
+	created.Items = []model.MenuSetItemRef{}
 
-	if err := linkItems(ctx, tx, newID, menuSet.HotelID, items); err != nil {
-		return model.MenuSet{}, err
-	}
-
-	created, err := scanMenuSet(tx.QueryRow(ctx, menuSetSelect+`
-		WHERE ms.id = $1::uuid
-		GROUP BY ms.id
-	`, newID))
-	if err != nil {
+	if err := linkItems(ctx, tx, created.ID, menuSet.HotelID, items); err != nil {
 		return model.MenuSet{}, err
 	}
 
@@ -263,10 +259,10 @@ func (r *menuSetRepo) Update(ctx context.Context, id, hotelID, userID string, na
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = menu_sets.hotel_id AND m.user_id = $8::uuid AND m.status = 'active'
 		  )
-		RETURNING id
+		RETURNING id, hotel_id, name, description, price, available, created_at, updated_at
 	`
 
-	var updatedID string
+	var updated model.MenuSet
 
 	err = tx.QueryRow(
 		ctx, query,
@@ -278,7 +274,10 @@ func (r *menuSetRepo) Update(ctx context.Context, id, hotelID, userID string, na
 		id,
 		hotelID,
 		userID,
-	).Scan(&updatedID)
+	).Scan(
+		&updated.ID, &updated.HotelID, &updated.Name, &updated.Description,
+		&updated.Price, &updated.Available, &updated.CreatedAt, &updated.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -289,19 +288,12 @@ func (r *menuSetRepo) Update(ctx context.Context, id, hotelID, userID string, na
 		}
 		return model.MenuSet{}, err
 	}
+	updated.Items = []model.MenuSetItemRef{}
 
 	if items != nil {
-		if err := linkItems(ctx, tx, updatedID, hotelID, items); err != nil {
+		if err := linkItems(ctx, tx, updated.ID, hotelID, items); err != nil {
 			return model.MenuSet{}, err
 		}
-	}
-
-	updated, err := scanMenuSet(tx.QueryRow(ctx, menuSetSelect+`
-		WHERE ms.id = $1::uuid
-		GROUP BY ms.id
-	`, updatedID))
-	if err != nil {
-		return model.MenuSet{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
