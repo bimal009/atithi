@@ -39,7 +39,7 @@ export const useCreateAddOn = (tenant: string) => {
     mutationFn: (input: CreateAddOnInput) => createAddOn(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: addOnKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the add-on"));
@@ -55,7 +55,7 @@ export const useUpdateAddOn = (tenant: string) => {
       updateAddOn(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: addOnKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the add-on"));
@@ -68,9 +68,9 @@ export const useRemoveAddOn = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeAddOn(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: addOnKeys.all(tenant) });
-      toast.success("Add-on removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the add-on"));

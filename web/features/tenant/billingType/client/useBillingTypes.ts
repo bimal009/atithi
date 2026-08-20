@@ -39,7 +39,7 @@ export const useCreateBillingType = (tenant: string) => {
     mutationFn: (input: CreateBillingTypeInput) => createBillingType(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: billingTypeKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the billing type"));
@@ -55,7 +55,7 @@ export const useUpdateBillingType = (tenant: string) => {
       updateBillingType(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: billingTypeKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the billing type"));
@@ -68,9 +68,9 @@ export const useRemoveBillingType = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeBillingType(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: billingTypeKeys.all(tenant) });
-      toast.success("Billing type removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the billing type"));

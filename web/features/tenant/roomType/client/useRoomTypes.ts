@@ -30,7 +30,7 @@ export const useCreateRoomType = (tenant: string) => {
     mutationFn: (input: CreateRoomTypeInput) => createRoomType(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomTypeKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the room type"));
@@ -46,7 +46,7 @@ export const useUpdateRoomType = (tenant: string) => {
       updateRoomType(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomTypeKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the room type"));
@@ -59,9 +59,9 @@ export const useRemoveRoomType = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeRoomType(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomTypeKeys.all(tenant) });
-      toast.success("Room type removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the room type"));

@@ -48,7 +48,7 @@ export const useCreateRole = (tenant: string) => {
     mutationFn: (input: CreateRoleInput) => createRole(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success(`${response.data.name} role created`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not create the role"));
@@ -64,7 +64,7 @@ export const useUpdateRole = (tenant: string) => {
       updateRole(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the role"));
@@ -77,9 +77,9 @@ export const useDeleteRole = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => deleteRole(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success("Role removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the role"));

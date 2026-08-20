@@ -41,7 +41,7 @@ export const useCreateTable = (tenant: string) => {
     mutationFn: (input: CreateTableInput) => createTable(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the table"));
@@ -57,7 +57,7 @@ export const useUpdateTable = (tenant: string) => {
       updateTable(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the table"));
@@ -85,9 +85,9 @@ export const useRemoveTable = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeTable(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all(tenant) });
-      toast.success("Table removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the table"));

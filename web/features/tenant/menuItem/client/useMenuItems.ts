@@ -55,7 +55,7 @@ export const useCreateMenuItem = (tenant: string) => {
     mutationFn: (input: CreateMenuItemInput) => createMenuItem(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuItemKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the dish"));
@@ -71,7 +71,7 @@ export const useUpdateMenuItem = (tenant: string) => {
       updateMenuItem(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuItemKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the dish"));
@@ -84,9 +84,9 @@ export const useRemoveMenuItem = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeMenuItem(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuItemKeys.all(tenant) });
-      toast.success("Dish removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the dish"));

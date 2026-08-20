@@ -38,7 +38,7 @@ export const useCreateCustomer = (tenant: string) => {
     mutationFn: (input: CreateCustomerInput) => createCustomer(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the customer"));
@@ -52,9 +52,9 @@ export const useUpdateCustomer = (tenant: string) => {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCustomerInput }) =>
       updateCustomer(tenant, id, input),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all(tenant) });
-      toast.success("Customer updated");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the customer"));
@@ -67,9 +67,9 @@ export const useRemoveCustomer = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeCustomer(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all(tenant) });
-      toast.success("Customer removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the customer"));

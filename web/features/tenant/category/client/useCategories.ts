@@ -39,7 +39,7 @@ export const useCreateCategory = (tenant: string) => {
     mutationFn: (input: CreateCategoryInput) => createCategory(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the category"));
@@ -55,7 +55,7 @@ export const useUpdateCategory = (tenant: string) => {
       updateCategory(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the category"));
@@ -68,9 +68,9 @@ export const useRemoveCategory = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeCategory(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all(tenant) });
-      toast.success("Category removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the category"));

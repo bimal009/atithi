@@ -36,7 +36,7 @@ export const useAddMember = (tenant: string) => {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all(tenant) });
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success(`${response.data.userName} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the staff member"));
@@ -50,10 +50,10 @@ export const useUpdateMember = (tenant: string) => {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateMemberInput }) =>
       updateMember(tenant, id, input),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all(tenant) });
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success("Staff member updated");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the staff member"));
@@ -66,10 +66,10 @@ export const useRemoveMember = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeMember(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all(tenant) });
       queryClient.invalidateQueries({ queryKey: roleKeys.all(tenant) });
-      toast.success("Staff member removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the staff member"));

@@ -39,7 +39,7 @@ export const useCreateSubMenu = (tenant: string) => {
     mutationFn: (input: CreateSubMenuInput) => createSubMenu(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: subMenuKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the sub-menu"));
@@ -55,7 +55,7 @@ export const useUpdateSubMenu = (tenant: string) => {
       updateSubMenu(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: subMenuKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the sub-menu"));
@@ -68,9 +68,9 @@ export const useRemoveSubMenu = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeSubMenu(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: subMenuKeys.all(tenant) });
-      toast.success("Sub-menu removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the sub-menu"));

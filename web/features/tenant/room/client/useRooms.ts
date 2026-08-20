@@ -41,7 +41,7 @@ export const useCreateRoom = (tenant: string) => {
     mutationFn: (input: CreateRoomInput) => createRoom(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.all(tenant) });
-      toast.success(`Room ${response.data.number} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the room"));
@@ -57,7 +57,7 @@ export const useUpdateRoom = (tenant: string) => {
       updateRoom(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.all(tenant) });
-      toast.success(`Room ${response.data.number} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the room"));
@@ -85,9 +85,9 @@ export const useRemoveRoom = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeRoom(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.all(tenant) });
-      toast.success("Room removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the room"));

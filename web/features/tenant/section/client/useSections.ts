@@ -39,7 +39,7 @@ export const useCreateSection = (tenant: string) => {
     mutationFn: (input: CreateSectionInput) => createSection(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: sectionKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the section"));
@@ -55,7 +55,7 @@ export const useUpdateSection = (tenant: string) => {
       updateSection(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: sectionKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the section"));
@@ -68,9 +68,9 @@ export const useRemoveSection = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeSection(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: sectionKeys.all(tenant) });
-      toast.success("Section removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the section"));

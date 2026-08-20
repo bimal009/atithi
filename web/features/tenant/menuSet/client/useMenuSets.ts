@@ -39,7 +39,7 @@ export const useCreateMenuSet = (tenant: string) => {
     mutationFn: (input: CreateMenuSetInput) => createMenuSet(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuSetKeys.all(tenant) });
-      toast.success(`${response.data.name} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the menu set"));
@@ -55,7 +55,7 @@ export const useUpdateMenuSet = (tenant: string) => {
       updateMenuSet(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuSetKeys.all(tenant) });
-      toast.success(`${response.data.name} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the menu set"));
@@ -68,9 +68,9 @@ export const useRemoveMenuSet = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeMenuSet(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: menuSetKeys.all(tenant) });
-      toast.success("Menu set removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the menu set"));

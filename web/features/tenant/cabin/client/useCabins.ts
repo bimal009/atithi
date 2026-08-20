@@ -41,7 +41,7 @@ export const useCreateCabin = (tenant: string) => {
     mutationFn: (input: CreateCabinInput) => createCabin(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: cabinKeys.all(tenant) });
-      toast.success(`Cabin ${response.data.number} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the cabin"));
@@ -57,7 +57,7 @@ export const useUpdateCabin = (tenant: string) => {
       updateCabin(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: cabinKeys.all(tenant) });
-      toast.success(`Cabin ${response.data.number} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the cabin"));
@@ -85,9 +85,9 @@ export const useRemoveCabin = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeCabin(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: cabinKeys.all(tenant) });
-      toast.success("Cabin removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the cabin"));

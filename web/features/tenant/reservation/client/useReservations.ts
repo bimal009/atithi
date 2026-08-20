@@ -35,7 +35,7 @@ export const useCreateReservation = (tenant: string) => {
     mutationFn: (input: CreateReservationInput) => createReservation(tenant, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all(tenant) });
-      toast.success(`Reservation for ${response.data.guestName} added`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not add the reservation"));
@@ -51,7 +51,7 @@ export const useUpdateReservation = (tenant: string) => {
       updateReservation(tenant, id, input),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all(tenant) });
-      toast.success(`Reservation for ${response.data.guestName} updated`);
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update the reservation"));
@@ -79,9 +79,9 @@ export const useRemoveReservation = (tenant: string) => {
 
   return useMutation({
     mutationFn: (id: string) => removeReservation(tenant, id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.all(tenant) });
-      toast.success("Reservation removed");
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not remove the reservation"));
