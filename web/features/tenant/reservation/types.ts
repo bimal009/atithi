@@ -1,27 +1,34 @@
 export type ReservationStatus = "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
 
+export type ReservationResourceRef = {
+  id: string;
+  name: string;
+};
+
 export type Reservation = {
   id: string;
   hotelId: string;
-  tableId: string;
   guestName: string;
   guestPhone: string;
   partySize: number;
   reservedAt: string;
   reservedBy: string;
+  reservedByName: string;
   status: ReservationStatus;
   notes?: string;
+  tables: ReservationResourceRef[];
+  cabins: ReservationResourceRef[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type CreateReservationInput = {
-  tableId: string;
+  tableIds?: string[];
+  cabinIds?: string[];
   guestName: string;
   guestPhone: string;
   partySize: number;
   reservedAt: string;
-  reservedBy: string;
   notes?: string;
 };
 

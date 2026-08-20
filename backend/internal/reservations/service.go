@@ -5,9 +5,23 @@ import (
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
+
+func dedupe(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
 
 type ReservationService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateReservationRequest) (model.Reservation, error)
@@ -35,17 +49,15 @@ func (s *reservationService) Create(ctx context.Context, hotelID, userID string,
 	newReservation := &model.Reservation{
 		ID:         uuid.NewString(),
 		HotelID:    hotelID,
-		TableID:    req.TableID,
 		GuestName:  req.GuestName,
 		GuestPhone: req.GuestPhone,
 		PartySize:  req.PartySize,
 		ReservedAt: req.ReservedAt,
-		ReservedBy: req.ReservedBy,
 		Status:     StatusConfirmed,
 		Notes:      req.Notes,
 	}
 
-	created, err := s.repo.Create(ctx, newReservation, userID)
+	created, err := s.repo.Create(ctx, newReservation, dedupe(req.TableIDs), dedupe(req.CabinIDs), userID)
 	if err != nil {
 		s.slog.Error("failed to create reservation", "hotel_id", hotelID, "error", err)
 		return model.Reservation{}, err
@@ -91,9 +103,18 @@ func (s *reservationService) Update(ctx context.Context, id, hotelID, userID str
 		return model.Reservation{}, err
 	}
 
-	if req.TableID != nil {
-		existing.TableID = *req.TableID
+	finalTableCount := len(existing.Tables)
+	if req.TableIDs != nil {
+		finalTableCount = len(dedupe(*req.TableIDs))
 	}
+	finalCabinCount := len(existing.Cabins)
+	if req.CabinIDs != nil {
+		finalCabinCount = len(dedupe(*req.CabinIDs))
+	}
+	if finalTableCount+finalCabinCount == 0 {
+		return model.Reservation{}, apperr.ErrReservationResourceRequired
+	}
+
 	if req.GuestName != nil {
 		existing.GuestName = *req.GuestName
 	}
@@ -106,14 +127,21 @@ func (s *reservationService) Update(ctx context.Context, id, hotelID, userID str
 	if req.ReservedAt != nil {
 		existing.ReservedAt = *req.ReservedAt
 	}
-	if req.ReservedBy != nil {
-		existing.ReservedBy = *req.ReservedBy
-	}
 	if req.Notes != nil {
 		existing.Notes = req.Notes
 	}
 
-	updated, err := s.repo.Update(ctx, &existing, userID)
+	var tableIDs, cabinIDs *[]string
+	if req.TableIDs != nil {
+		deduped := dedupe(*req.TableIDs)
+		tableIDs = &deduped
+	}
+	if req.CabinIDs != nil {
+		deduped := dedupe(*req.CabinIDs)
+		cabinIDs = &deduped
+	}
+
+	updated, err := s.repo.Update(ctx, &existing, tableIDs, cabinIDs, userID)
 	if err != nil {
 		s.slog.Error("failed to update reservation", "reservation_id", id, "error", err)
 		return model.Reservation{}, err

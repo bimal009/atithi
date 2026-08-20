@@ -15,22 +15,22 @@ const (
 )
 
 type CreateReservationRequest struct {
-	TableID    string    `json:"tableId" validate:"required,uuid"`
+	TableIDs   []string  `json:"tableIds,omitempty" validate:"required_without=CabinIDs,omitempty,dive,uuid"`
+	CabinIDs   []string  `json:"cabinIds,omitempty" validate:"required_without=TableIDs,omitempty,dive,uuid"`
 	GuestName  string    `json:"guestName" validate:"required,min=2,max=255"`
 	GuestPhone string    `json:"guestPhone" validate:"required,min=7,max=20"`
 	PartySize  int       `json:"partySize" validate:"required,gt=0"`
 	ReservedAt time.Time `json:"reservedAt" validate:"required"`
-	ReservedBy string    `json:"reservedBy" validate:"required,min=1,max=100"`
 	Notes      *string   `json:"notes,omitempty" validate:"omitempty,max=1000"`
 }
 
 type UpdateReservationRequest struct {
-	TableID    *string    `json:"tableId,omitempty" validate:"omitempty,uuid"`
+	TableIDs   *[]string  `json:"tableIds,omitempty" validate:"omitempty,dive,uuid"`
+	CabinIDs   *[]string  `json:"cabinIds,omitempty" validate:"omitempty,dive,uuid"`
 	GuestName  *string    `json:"guestName,omitempty" validate:"omitempty,min=2,max=255"`
 	GuestPhone *string    `json:"guestPhone,omitempty" validate:"omitempty,min=7,max=20"`
 	PartySize  *int       `json:"partySize,omitempty" validate:"omitempty,gt=0"`
 	ReservedAt *time.Time `json:"reservedAt,omitempty"`
-	ReservedBy *string    `json:"reservedBy,omitempty" validate:"omitempty,min=1,max=100"`
 	Notes      *string    `json:"notes,omitempty" validate:"omitempty,max=1000"`
 }
 

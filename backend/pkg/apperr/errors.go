@@ -71,11 +71,13 @@ var (
 	ErrCabinNotFound     = New(http.StatusNotFound, "not_found", "Cabin not found")
 	ErrCabinNumberExists = New(http.StatusConflict, "conflict", "Cabin number already exists")
 
-	ErrTableNotFound       = New(http.StatusNotFound, "not_found", "Table not found")
-	ErrTableNameExists     = New(http.StatusConflict, "conflict", "Table name already exists")
-	ErrReservationNotFound = New(http.StatusNotFound, "not_found", "Reservation not found")
-	ErrReservationOverlaps = New(http.StatusConflict, "conflict", "Table already reserved for that time")
-	ErrTableInvalid        = New(http.StatusBadRequest, "invalid_input", "Table does not exist")
+	ErrTableNotFound               = New(http.StatusNotFound, "not_found", "Table not found")
+	ErrTableNameExists             = New(http.StatusConflict, "conflict", "Table name already exists")
+	ErrReservationNotFound         = New(http.StatusNotFound, "not_found", "Reservation not found")
+	ErrReservationOverlaps         = New(http.StatusConflict, "conflict", "Table already reserved for that time")
+	ErrTableInvalid                = New(http.StatusBadRequest, "invalid_input", "Table does not exist")
+	ErrCabinInvalid                = New(http.StatusBadRequest, "invalid_input", "Cabin does not exist")
+	ErrReservationResourceRequired = New(http.StatusBadRequest, "invalid_input", "Select at least one table or cabin")
 
 	ErrBillingTypeNotFound   = New(http.StatusNotFound, "not_found", "Billing type not found")
 	ErrBillingTypeNameExists = New(http.StatusConflict, "conflict", "Billing type name already exists")

@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,21 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { useCabinsQuery } from "@/features/tenant/cabin/client/useCabins";
 import { useTablesQuery } from "@/features/tenant/table/client/useTables";
 
 import { useCreateReservation, useUpdateReservation } from "../client/useReservations";
@@ -45,24 +39,24 @@ function toLocalInputValue(iso?: string): string {
 }
 
 const emptyValues: ReservationInput = {
-  tableId: "",
+  tableIds: [],
+  cabinIds: [],
   guestName: "",
   guestPhone: "",
   partySize: 2,
   reservedAt: "",
-  reservedBy: "",
   notes: "",
 };
 
 function valuesOf(reservation?: Reservation): ReservationInput {
   if (!reservation) return emptyValues;
   return {
-    tableId: reservation.tableId,
+    tableIds: reservation.tables.map((t) => t.id),
+    cabinIds: reservation.cabins.map((c) => c.id),
     guestName: reservation.guestName,
     guestPhone: reservation.guestPhone,
     partySize: reservation.partySize,
     reservedAt: toLocalInputValue(reservation.reservedAt),
-    reservedBy: reservation.reservedBy,
     notes: reservation.notes ?? "",
   };
 }
@@ -83,6 +77,8 @@ export function ReservationFormDialog({
   const isEdit = !!reservation;
   const tablesQuery = useTablesQuery(tenant);
   const tables = tablesQuery.data?.tables ?? [];
+  const cabinsQuery = useCabinsQuery(tenant);
+  const cabins = cabinsQuery.data?.cabins ?? [];
   const create = useCreateReservation(tenant);
   const update = useUpdateReservation(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
@@ -99,21 +95,36 @@ export function ReservationFormDialog({
     defaultValues: emptyValues,
   });
 
-  const tableId = watch("tableId");
+  const tableIds = watch("tableIds") ?? [];
+  const cabinIds = watch("cabinIds") ?? [];
 
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(reservation));
   }, [open, reservation, reset]);
 
+  const toggleTable = (id: string) => {
+    const next = tableIds.includes(id)
+      ? tableIds.filter((t) => t !== id)
+      : [...tableIds, id];
+    setValue("tableIds", next, { shouldValidate: true });
+  };
+
+  const toggleCabin = (id: string) => {
+    const next = cabinIds.includes(id)
+      ? cabinIds.filter((c) => c !== id)
+      : [...cabinIds, id];
+    setValue("cabinIds", next, { shouldValidate: true });
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     const payload = {
-      tableId: values.tableId,
+      tableIds: values.tableIds,
+      cabinIds: values.cabinIds,
       guestName: values.guestName,
       guestPhone: values.guestPhone,
       partySize: values.partySize,
       reservedAt: new Date(values.reservedAt).toISOString(),
-      reservedBy: values.reservedBy,
       notes: values.notes || undefined,
     };
 
@@ -125,6 +136,8 @@ export function ReservationFormDialog({
     onOpenChange(false);
   });
 
+  const resourceError = errors.tableIds?.message ?? errors.cabinIds?.message;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -133,7 +146,7 @@ export function ReservationFormDialog({
             <DialogTitle>{isEdit ? "Edit reservation" : "Add a reservation"}</DialogTitle>
             <DialogDescription>
               {isEdit
-                ? "Update this table reservation."
+                ? "Update this reservation."
                 : "New reservations start out as confirmed."}
             </DialogDescription>
           </DialogHeader>
@@ -175,27 +188,55 @@ export function ReservationFormDialog({
               </Field>
             </Field>
 
-            <Field data-invalid={!!errors.tableId}>
-              <FieldLabel htmlFor="reservation-table">Table</FieldLabel>
-              <Select
-                items={Object.fromEntries(tables.map((t) => [t.id, t.name]))}
-                value={tableId}
-                onValueChange={(value) =>
-                  setValue("tableId", value ?? "", { shouldValidate: true })
-                }
-              >
-                <SelectTrigger id="reservation-table" className="w-full">
-                  <SelectValue placeholder="Select a table" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tables.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} · Seats {t.capacity}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError errors={[errors.tableId]} />
+            <Field data-invalid={!!resourceError}>
+              <FieldLabel>Tables</FieldLabel>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                {tables.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tables yet.</p>
+                ) : (
+                  tables.map((t) => (
+                    <label
+                      key={t.id}
+                      className="flex cursor-pointer items-center justify-between gap-2.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Checkbox
+                          checked={tableIds.includes(t.id)}
+                          onCheckedChange={() => toggleTable(t.id)}
+                        />
+                        {t.name}
+                      </span>
+                      <span className="text-muted-foreground">Seats {t.capacity}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </Field>
+
+            <Field data-invalid={!!resourceError}>
+              <FieldLabel>Cabins</FieldLabel>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                {cabins.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No cabins yet.</p>
+                ) : (
+                  cabins.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex cursor-pointer items-center justify-between gap-2.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Checkbox
+                          checked={cabinIds.includes(c.id)}
+                          onCheckedChange={() => toggleCabin(c.id)}
+                        />
+                        {c.name}
+                      </span>
+                      <span className="text-muted-foreground">Seats {c.capacity}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <FieldError errors={[resourceError ? { message: resourceError } : undefined]} />
             </Field>
 
             <Field data-invalid={!!errors.reservedAt}>
@@ -207,17 +248,6 @@ export function ReservationFormDialog({
                 {...register("reservedAt")}
               />
               <FieldError errors={[errors.reservedAt]} />
-            </Field>
-
-            <Field data-invalid={!!errors.reservedBy}>
-              <FieldLabel htmlFor="reservation-by">Reserved by</FieldLabel>
-              <Input
-                id="reservation-by"
-                aria-invalid={!!errors.reservedBy}
-                {...register("reservedBy")}
-                placeholder="Front desk"
-              />
-              <FieldError errors={[errors.reservedBy]} />
             </Field>
 
             <Field data-invalid={!!errors.notes}>

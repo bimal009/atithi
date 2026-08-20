@@ -40,7 +40,6 @@ import { DataTable, type DataTableColumn } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCards } from "@/components/shared/section-cards";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { useTablesQuery } from "@/features/tenant/table/client/useTables";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 
@@ -98,8 +97,6 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
     search: debouncedSearch,
     status: status === "all" ? undefined : status,
   });
-  const tablesQuery = useTablesQuery(tenant);
-  const tablesById = new Map((tablesQuery.data?.tables ?? []).map((t) => [t.id, t]));
 
   const updateStatus = useUpdateReservationStatus(tenant);
   const remove = useRemoveReservation(tenant);
@@ -137,11 +134,16 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
       ),
     },
     {
-      key: "table",
-      header: "Table",
-      cell: (r) => (
-        <span className="text-muted-foreground">{tablesById.get(r.tableId)?.name ?? "—"}</span>
-      ),
+      key: "resources",
+      header: "Table / Cabin",
+      cell: (r) => {
+        const names = [...r.tables.map((t) => t.name), ...r.cabins.map((c) => c.name)];
+        return (
+          <span className="text-muted-foreground">
+            {names.length > 0 ? names.join(", ") : "—"}
+          </span>
+        );
+      },
     },
     {
       key: "party",
@@ -165,7 +167,7 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
     {
       key: "reservedBy",
       header: "Reserved by",
-      cell: (r) => <span className="text-muted-foreground">{r.reservedBy}</span>,
+      cell: (r) => <span className="text-muted-foreground">{r.reservedByName}</span>,
     },
     {
       key: "status",

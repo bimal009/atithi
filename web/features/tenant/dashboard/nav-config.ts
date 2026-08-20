@@ -84,11 +84,11 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: CalendarCheckIcon,
         items: [
           { title: "Tables", href: "/tables" },
+          { title: "Cabins", href: "/cabins" },
           { title: "Sections", href: "/sections" },
           { title: "Reservations", href: "/reservations" },
         ],
       },
-      { title: "Cabins", href: "/cabins", icon: TreePineIcon },
     ],
   },
   {
