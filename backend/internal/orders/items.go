@@ -7,16 +7,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type OrderItemAddOnInput struct {
+	AddOnID  string `json:"addOnId" validate:"required,uuid"`
+	Quantity int    `json:"quantity" validate:"required,gt=0"`
+}
+
 type OrderItemInput struct {
-	MenuItemID string   `json:"menuItemId" validate:"required,uuid"`
-	Quantity   int      `json:"quantity" validate:"required,gt=0"`
-	AddOnIDs   []string `json:"addOnIds,omitempty" validate:"omitempty,dive,uuid"`
+	MenuItemID string                `json:"menuItemId" validate:"required,uuid"`
+	Quantity   int                   `json:"quantity" validate:"required,gt=0"`
+	AddOns     []OrderItemAddOnInput `json:"addOns,omitempty" validate:"omitempty,dive"`
 }
 
 const orderColumns = `
 	o.id, o.hotel_id, o.table_id, dt.name, o.room_id, rm.number, o.cabin_id, cb.name, o.customer_id, c.name,
 	o.status, o.total_amount, o.notes,
-	o.created_by, u.name, o.created_at, o.updated_at,
+	o.created_by, u.name, u.image, o.created_at, o.updated_at,
 	COALESCE((
 		SELECT json_agg(json_build_object(
 			'menuItemId', oi.menu_item_id,
@@ -24,7 +29,7 @@ const orderColumns = `
 			'price', mi.price,
 			'quantity', oi.quantity,
 			'addOns', COALESCE((
-				SELECT json_agg(json_build_object('id', a.id, 'name', ad.name, 'price', a.price))
+				SELECT json_agg(json_build_object('id', a.id, 'name', ad.name, 'price', a.price, 'quantity', oia.quantity))
 				FROM order_item_add_ons oia
 				JOIN add_ons a ON a.id = oia.add_on_id
 				JOIN dishes ad ON ad.id = a.dish_id
@@ -68,6 +73,7 @@ func scanOrder(row pgx.Row) (model.Order, error) {
 		&order.Notes,
 		&order.CreatedBy,
 		&order.CreatedByName,
+		&order.CreatedByImage,
 		&order.CreatedAt,
 		&order.UpdatedAt,
 		&itemsJSON,

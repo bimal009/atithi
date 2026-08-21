@@ -1,6 +1,7 @@
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/features/tenant/dashboard/app-sidebar'
 import { SiteHeader } from '@/features/tenant/dashboard/site-header'
+import { requireOnboardedUser } from '@/features/auth/server/session'
 import React from 'react'
 
 const DashboardLayout = async ({
@@ -11,6 +12,7 @@ const DashboardLayout = async ({
   params: Promise<{ tenant: string }>
 }) => {
   const { tenant } = await params
+  const user = await requireOnboardedUser()
 
   return (
     <SidebarProvider
@@ -23,7 +25,7 @@ const DashboardLayout = async ({
     >
       <AppSidebar variant="inset" tenant={tenant} />
       <SidebarInset>
-        <SiteHeader tenant={tenant} />
+        <SiteHeader tenant={tenant} user={user} />
         <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </div>

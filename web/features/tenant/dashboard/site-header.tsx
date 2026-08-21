@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { BellIcon } from "lucide-react"
 
-import { CURRENT_USER, KOT_ORDERS } from "@/lib/mock-data"
+import { KOT_ORDERS } from "@/lib/mock-data"
+import type { AuthUser } from "@/features/auth/types"
 import { NavUser } from "@/features/tenant/dashboard/nav-user"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export function SiteHeader({ tenant }: { tenant: string }) {
+export function SiteHeader({ tenant, user }: { tenant: string; user: AuthUser }) {
   const basePath = `/${tenant}/dashboard`
   const unreadCount = KOT_ORDERS.filter((o) => o.status === "pending").length
 
@@ -35,7 +36,7 @@ export function SiteHeader({ tenant }: { tenant: string }) {
             )}
             <span className="sr-only">Notifications</span>
           </Button>
-          <NavUser user={CURRENT_USER} />
+          <NavUser user={user} />
         </div>
       </div>
     </header>

@@ -12,7 +12,7 @@ import {
   updateOrder,
   updateOrderStatus,
 } from "../api/order";
-import type { CreateOrderInput, UpdateOrderInput } from "../types";
+import type { CreateOrderInput, ListOrdersResponse, Order, UpdateOrderInput } from "../types";
 
 export type OrdersQueryParams = {
   search?: string;
@@ -77,8 +77,22 @@ export const useUpdateOrderStatus = (tenant: string) => {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateOrderStatus(tenant, id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.all(tenant) });
+    onSuccess: (response, { id, status }) => {
+      queryClient.setQueriesData<ListOrdersResponse>(
+        { queryKey: orderKeys.all(tenant) },
+        (data) =>
+          data && {
+            ...data,
+            orders: data.orders.map((o) =>
+              o.id === id ? { ...o, status: status as Order["status"] } : o
+            ),
+          }
+      );
+      queryClient.invalidateQueries({
+        queryKey: orderKeys.all(tenant),
+        predicate: (query) => query.queryKey[5] === 1,
+      });
+      toast.success(response.message);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Could not update order status"));

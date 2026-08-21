@@ -1,14 +1,33 @@
 "use client"
 
-import { ChefHatIcon, XIcon } from "lucide-react"
+import * as React from "react"
+import { ChefHatIcon, EyeIcon, XIcon } from "lucide-react"
 
 import type { Order, OrderStatus } from "@/features/tenant/order/types"
 import { formatCurrency, timeAgo } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 const COLUMN_LABELS: Record<OrderStatus, string> = {
@@ -23,6 +42,14 @@ const NEXT_ACTION: Partial<Record<OrderStatus, string>> = {
   pending: "Start preparing",
   preparing: "Mark ready",
   ready: "Mark served",
+}
+
+const STATUS_BADGE_VARIANT: Record<OrderStatus, "outline" | "secondary" | "destructive"> = {
+  pending: "outline",
+  preparing: "secondary",
+  ready: "secondary",
+  served: "outline",
+  cancelled: "destructive",
 }
 
 function destination(order: Order) {
@@ -55,6 +82,74 @@ function ElapsedBadge({ placedAt }: { placedAt: string }) {
   )
 }
 
+function OrderDetailsDialog({ order, onOpenChange }: { order: Order | null; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={order !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        {order && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {destination(order)}
+                <Badge variant={STATUS_BADGE_VARIANT[order.status]}>
+                  {COLUMN_LABELS[order.status]}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription>
+                Ticket #{order.id.slice(0, 8).toUpperCase()} · placed {timeAgo(order.createdAt)}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto scrollbar-none">
+              <div className="flex flex-col gap-2">
+                {order.items.map((item) => (
+                  <div key={item.menuItemId} className="flex items-start justify-between gap-2 rounded-md border p-2.5">
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                        <span className="tabular-nums text-muted-foreground">{item.quantity}×</span>
+                        {item.name}
+                      </span>
+                      {item.addOns.length > 0 && (
+                        <span className="pl-5 text-xs text-muted-foreground">
+                          + {item.addOns.map((a) => `${a.name} ×${a.quantity}`).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      {formatCurrency(item.price * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {order.notes && (
+                <p className="rounded-md bg-muted/50 px-2.5 py-1.5 text-sm text-muted-foreground italic">
+                  &ldquo;{order.notes}&rdquo;
+                </p>
+              )}
+
+              <div className="flex items-center justify-between gap-2 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <Avatar size="sm">
+                    {order.createdByImage ? (
+                      <AvatarImage src={order.createdByImage} alt="" className="object-contain" />
+                    ) : null}
+                    <AvatarFallback>{initials(order.createdByName)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground">{order.createdByName}</span>
+                </div>
+                <span className="text-sm font-semibold tabular-nums">
+                  {formatCurrency(order.totalAmount)}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function KotBoard({
   orders,
   columns,
@@ -66,6 +161,9 @@ export function KotBoard({
   onAdvance?: (orderId: string) => void
   onCancel?: (orderId: string) => void
 }) {
+  const [viewingOrder, setViewingOrder] = React.useState<Order | null>(null)
+  const [cancellingOrder, setCancellingOrder] = React.useState<Order | null>(null)
+
   return (
     <div
       className="grid gap-4"
@@ -93,7 +191,10 @@ export function KotBoard({
                   const itemCount = order.items.reduce((n, i) => n + i.quantity, 0)
 
                   return (
-                    <Card key={order.id} className="gap-3 py-4 transition-shadow hover:shadow-md">
+                    <Card
+                      key={order.id}
+                      className="h-76 gap-3 py-4 transition-shadow hover:shadow-md"
+                    >
                       <div className="flex items-start justify-between gap-2 px-4">
                         <div className="flex flex-col">
                           <span className="font-heading text-sm font-semibold">
@@ -106,7 +207,7 @@ export function KotBoard({
                         <ElapsedBadge placedAt={order.createdAt} />
                       </div>
 
-                      <div className="flex flex-col gap-1 px-4 text-sm text-muted-foreground">
+                      <div className="flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-none px-4 text-sm text-muted-foreground">
                         {order.items.slice(0, 3).map((item) => (
                           <div key={item.menuItemId} className="flex flex-col">
                             <div className="flex items-center gap-1.5">
@@ -131,7 +232,7 @@ export function KotBoard({
                       </div>
 
                       {order.notes && (
-                        <p className="mx-4 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground italic">
+                        <p className="mx-4 line-clamp-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground italic">
                           &ldquo;{order.notes}&rdquo;
                         </p>
                       )}
@@ -139,6 +240,9 @@ export function KotBoard({
                       <div className="flex items-center justify-between gap-2 border-t px-4 pt-3">
                         <div className="flex items-center gap-2">
                           <Avatar size="sm">
+                            {order.createdByImage ? (
+                              <AvatarImage src={order.createdByImage} alt="" className="object-contain" />
+                            ) : null}
                             <AvatarFallback>{initials(order.createdByName)}</AvatarFallback>
                           </Avatar>
                           <span className="text-xs text-muted-foreground">
@@ -147,31 +251,51 @@ export function KotBoard({
                         </div>
                       </div>
 
-                      {(onAdvance || onCancel) && (
-                        <div className="flex items-center gap-2 px-4">
-                          {onAdvance && NEXT_ACTION[order.status] && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className={cn("flex-1", !onCancel && "w-full")}
-                              onClick={() => onAdvance(order.id)}
-                            >
-                              {NEXT_ACTION[order.status]}
-                            </Button>
-                          )}
-                          {onCancel && (
-                            <Button
-                              size="icon-sm"
-                              variant="outline"
-                              aria-label="Cancel order"
-                              title="Cancel order"
-                              onClick={() => onCancel(order.id)}
-                            >
-                              <XIcon />
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 px-4">
+                        {onAdvance && NEXT_ACTION[order.status] && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="flex-1"
+                            onClick={() => onAdvance(order.id)}
+                          >
+                            {NEXT_ACTION[order.status]}
+                          </Button>
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                size="icon-sm"
+                                variant="outline"
+                                aria-label="View order details"
+                                className={cn(!NEXT_ACTION[order.status] && !onCancel && "flex-1")}
+                                onClick={() => setViewingOrder(order)}
+                              >
+                                <EyeIcon />
+                              </Button>
+                            }
+                          />
+                          <TooltipContent>View details</TooltipContent>
+                        </Tooltip>
+                        {onCancel && (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  size="icon-sm"
+                                  variant="outline"
+                                  aria-label="Cancel order"
+                                  onClick={() => setCancellingOrder(order)}
+                                >
+                                  <XIcon />
+                                </Button>
+                              }
+                            />
+                            <TooltipContent>Cancel order</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </Card>
                   )
                 })
@@ -180,6 +304,34 @@ export function KotBoard({
           </div>
         )
       })}
+
+      <OrderDetailsDialog order={viewingOrder} onOpenChange={(open) => !open && setViewingOrder(null)} />
+
+      <AlertDialog open={cancellingOrder !== null} onOpenChange={(open) => !open && setCancellingOrder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Cancel order #{cancellingOrder?.id.slice(0, 8).toUpperCase()}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This sends the ticket to Cancelled. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Keep order</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={() => {
+                if (cancellingOrder) onCancel?.(cancellingOrder.id)
+                setCancellingOrder(null)
+              }}
+            >
+              Cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

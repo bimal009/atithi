@@ -8,8 +8,10 @@ type MessageType string
 
 const (
 	OrderCreated      MessageType = "order.created"
+	OrderUpdated      MessageType = "order.updated"
 	OrderStatusUpdate MessageType = "order.status_update"
 	OrderCancelled    MessageType = "order.cancelled"
+	OrderDeleted      MessageType = "order.deleted"
 
 	BookingCreated  MessageType = "booking.created"
 	BookingCheckin  MessageType = "booking.checkin"

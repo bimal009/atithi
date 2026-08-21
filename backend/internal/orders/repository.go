@@ -41,7 +41,9 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 	}
 	var addOnIDs []string
 	for _, it := range items {
-		addOnIDs = append(addOnIDs, it.AddOnIDs...)
+		for _, ao := range it.AddOns {
+			addOnIDs = append(addOnIDs, ao.AddOnID)
+		}
 	}
 
 	priceRows, err := tx.Query(ctx, `
@@ -78,15 +80,15 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 		if !ok {
 			return model.Order{}, apperr.ErrOrderResourceInvalid
 		}
-		lineTotal := price
-		for _, addOnID := range it.AddOnIDs {
-			addOnPrice, ok := addOnPrices[addOnID]
+		lineTotal := price * float64(it.Quantity)
+		for _, ao := range it.AddOns {
+			addOnPrice, ok := addOnPrices[ao.AddOnID]
 			if !ok {
 				return model.Order{}, apperr.ErrOrderResourceInvalid
 			}
-			lineTotal += addOnPrice
+			lineTotal += addOnPrice * float64(ao.Quantity)
 		}
-		total += lineTotal * float64(it.Quantity)
+		total += lineTotal
 	}
 
 	var created model.Order
@@ -147,19 +149,21 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 
 	var addOnMenuItemIDs []string
 	var flatAddOnIDs []string
+	var addOnQuantities []int
 	for _, it := range items {
-		for _, addOnID := range it.AddOnIDs {
+		for _, ao := range it.AddOns {
 			addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
-			flatAddOnIDs = append(flatAddOnIDs, addOnID)
+			flatAddOnIDs = append(flatAddOnIDs, ao.AddOnID)
+			addOnQuantities = append(addOnQuantities, ao.Quantity)
 		}
 	}
 	if len(flatAddOnIDs) > 0 {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id)
-			SELECT $1::uuid, x.menu_item_id, x.add_on_id
-			FROM unnest($2::uuid[], $3::uuid[]) AS x(menu_item_id, add_on_id)
-			JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $4::uuid
-		`, created.ID, addOnMenuItemIDs, flatAddOnIDs, order.HotelID); err != nil {
+			INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id, quantity)
+			SELECT $1::uuid, x.menu_item_id, x.add_on_id, x.quantity
+			FROM unnest($2::uuid[], $3::uuid[], $4::int[]) AS x(menu_item_id, add_on_id, quantity)
+			JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $5::uuid
+		`, created.ID, addOnMenuItemIDs, flatAddOnIDs, addOnQuantities, order.HotelID); err != nil {
 			return model.Order{}, err
 		}
 	}
@@ -239,6 +243,7 @@ func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 			&order.Notes,
 			&order.CreatedBy,
 			&order.CreatedByName,
+			&order.CreatedByImage,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 			&itemsJSON,
@@ -277,7 +282,9 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 		}
 		var addOnIDs []string
 		for _, it := range *items {
-			addOnIDs = append(addOnIDs, it.AddOnIDs...)
+			for _, ao := range it.AddOns {
+				addOnIDs = append(addOnIDs, ao.AddOnID)
+			}
 		}
 
 		priceRows, err := tx.Query(ctx, `
@@ -314,15 +321,15 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 			if !ok {
 				return model.Order{}, apperr.ErrOrderResourceInvalid
 			}
-			lineTotal := price
-			for _, addOnID := range it.AddOnIDs {
-				addOnPrice, ok := addOnPrices[addOnID]
+			lineTotal := price * float64(it.Quantity)
+			for _, ao := range it.AddOns {
+				addOnPrice, ok := addOnPrices[ao.AddOnID]
 				if !ok {
 					return model.Order{}, apperr.ErrOrderResourceInvalid
 				}
-				lineTotal += addOnPrice
+				lineTotal += addOnPrice * float64(ao.Quantity)
 			}
-			total += lineTotal * float64(it.Quantity)
+			total += lineTotal
 		}
 
 		newTotal = &total
@@ -395,19 +402,21 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 
 		var addOnMenuItemIDs []string
 		var flatAddOnIDs []string
+		var addOnQuantities []int
 		for _, it := range *items {
-			for _, addOnID := range it.AddOnIDs {
+			for _, ao := range it.AddOns {
 				addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
-				flatAddOnIDs = append(flatAddOnIDs, addOnID)
+				flatAddOnIDs = append(flatAddOnIDs, ao.AddOnID)
+				addOnQuantities = append(addOnQuantities, ao.Quantity)
 			}
 		}
 		if len(flatAddOnIDs) > 0 {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id)
-				SELECT $1::uuid, x.menu_item_id, x.add_on_id
-				FROM unnest($2::uuid[], $3::uuid[]) AS x(menu_item_id, add_on_id)
-				JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $4::uuid
-			`, updated.ID, addOnMenuItemIDs, flatAddOnIDs, order.HotelID); err != nil {
+				INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id, quantity)
+				SELECT $1::uuid, x.menu_item_id, x.add_on_id, x.quantity
+				FROM unnest($2::uuid[], $3::uuid[], $4::int[]) AS x(menu_item_id, add_on_id, quantity)
+				JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $5::uuid
+			`, updated.ID, addOnMenuItemIDs, flatAddOnIDs, addOnQuantities, order.HotelID); err != nil {
 				return model.Order{}, err
 			}
 		}

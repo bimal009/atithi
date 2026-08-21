@@ -16,8 +16,9 @@ type Order struct {
 	Status        string         `db:"status" json:"status"`
 	TotalAmount   float64        `db:"total_amount" json:"totalAmount"`
 	Notes         *string        `db:"notes" json:"notes,omitempty"`
-	CreatedBy     string         `db:"created_by" json:"createdBy"`
-	CreatedByName string         `db:"created_by_name" json:"createdByName"`
+	CreatedBy      string        `db:"created_by" json:"createdBy"`
+	CreatedByName  string        `db:"created_by_name" json:"createdByName"`
+	CreatedByImage *string       `json:"createdByImage,omitempty"`
 	Items         []OrderItemRef `json:"items"`
 	CreatedAt     time.Time      `db:"created_at" json:"createdAt"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updatedAt"`

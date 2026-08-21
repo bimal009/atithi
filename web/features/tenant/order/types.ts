@@ -4,6 +4,7 @@ export type OrderItemAddOn = {
   id: string;
   name: string;
   price: number;
+  quantity: number;
 };
 
 export type OrderItem = {
@@ -30,15 +31,21 @@ export type Order = {
   notes?: string;
   createdBy: string;
   createdByName: string;
+  createdByImage?: string;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
 };
 
+export type OrderItemAddOnInput = {
+  addOnId: string;
+  quantity: number;
+};
+
 export type OrderItemInput = {
   menuItemId: string;
   quantity: number;
-  addOnIds?: string[];
+  addOns?: OrderItemAddOnInput[];
 };
 
 export type CreateOrderInput = {

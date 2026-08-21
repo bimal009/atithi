@@ -5,6 +5,8 @@ import { MinusIcon, PlusIcon, SearchIcon, ShoppingCartIcon, UtensilsCrossedIcon 
 
 import { useCreateOrder, useUpdateOrder } from "@/features/tenant/order/client/useOrders"
 import type { Order } from "@/features/tenant/order/types"
+import { useCategoriesQuery } from "@/features/tenant/category/client/useCategories"
+import type { Category } from "@/features/tenant/category/types"
 import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItems"
 import type { AddOnRef, MenuItem } from "@/features/tenant/menuItem/types"
 import { useTablesQuery } from "@/features/tenant/table/client/useTables"
@@ -19,6 +21,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -36,14 +39,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+type CartAddOn = AddOnRef & { quantity: number }
 
 type CartLine = {
   menuItemId: string
   name: string
   price: number
   quantity: number
-  addOns: AddOnRef[]
+  addOns: CartAddOn[]
 }
 
 type Destination = { type: "table" | "room" | "cabin"; id: string }
@@ -52,10 +56,11 @@ const EMPTY_MENU_ITEMS: MenuItem[] = []
 const EMPTY_TABLES: DiningTable[] = []
 const EMPTY_ROOMS: Room[] = []
 const EMPTY_CABINS: Cabin[] = []
+const EMPTY_CATEGORIES: Category[] = []
 
 function lineTotal(line: CartLine) {
-  const addOnsTotal = line.addOns.reduce((sum, a) => sum + a.price, 0)
-  return (line.price + addOnsTotal) * line.quantity
+  const addOnsTotal = line.addOns.reduce((sum, a) => sum + a.price * a.quantity, 0)
+  return line.price * line.quantity + addOnsTotal
 }
 
 function cartTotal(cart: CartLine[]) {
@@ -96,10 +101,10 @@ function OrderFormBody({
 }) {
   const isEdit = !!order
 
-  const menuItemsQuery = useMenuItemsQuery(tenant, { limit: 100 })
   const tablesQuery = useTablesQuery(tenant, { limit: 100 })
   const roomsQuery = useRoomsQuery(tenant, { limit: 100 })
   const cabinsQuery = useCabinsQuery(tenant, { limit: 100 })
+  const categoriesQuery = useCategoriesQuery(tenant, { limit: 100 })
   const createOrder = useCreateOrder(tenant)
   const updateOrder = useUpdateOrder(tenant)
   const pending = isEdit ? updateOrder.isPending : createOrder.isPending
@@ -107,13 +112,33 @@ function OrderFormBody({
   const [selectedDestination, setSelectedDestination] = React.useState(() =>
     destinationFromOrder(order)
   )
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState("")
   const [search, setSearch] = React.useState("")
+  const [notes, setNotes] = React.useState(order?.notes ?? "")
   const [cart, setCart] = React.useState<CartLine[]>(() => cartFromOrder(order))
 
   const tables = tablesQuery.data?.tables ?? EMPTY_TABLES
   const rooms = roomsQuery.data?.rooms ?? EMPTY_ROOMS
   const cabins = cabinsQuery.data?.cabins ?? EMPTY_CABINS
-  const menuItems = menuItemsQuery.data?.menuItems ?? EMPTY_MENU_ITEMS
+  const categories = categoriesQuery.data?.categories ?? EMPTY_CATEGORIES
+
+  const query = search.trim().toLowerCase()
+  const activeCategoryId = selectedCategoryId || categories[0]?.id || ""
+
+  // Items for the selected category — fetched per category instead of one
+  // capped fetch of everything, so categories with many dishes (or many
+  // categories total) don't silently lose items past the page limit.
+  const categoryItemsQuery = useMenuItemsQuery(tenant, {
+    categoryId: activeCategoryId || undefined,
+    limit: 100,
+  })
+  const categoryItems = categoryItemsQuery.data?.menuItems ?? EMPTY_MENU_ITEMS
+
+  const searchItemsQuery = useMenuItemsQuery(tenant, {
+    search: query || undefined,
+    limit: 50,
+  })
+  const searchResults = query ? (searchItemsQuery.data?.menuItems ?? EMPTY_MENU_ITEMS) : []
 
   const destinationItems = React.useMemo(
     () => ({
@@ -123,23 +148,6 @@ function OrderFormBody({
     }),
     [tables, rooms, cabins]
   )
-
-  const categories = React.useMemo(() => {
-    const seen = new Set<string>()
-    const list: string[] = []
-    for (const item of menuItems) {
-      if (!seen.has(item.categoryName)) {
-        seen.add(item.categoryName)
-        list.push(item.categoryName)
-      }
-    }
-    return list
-  }, [menuItems])
-
-  const query = search.trim().toLowerCase()
-  const searchResults = query
-    ? menuItems.filter((item) => item.name.toLowerCase().includes(query))
-    : []
 
   const destinationValue =
     selectedDestination || (!order && tables[0] ? `table:${tables[0].id}` : "")
@@ -179,11 +187,12 @@ function OrderFormBody({
     )
   }
 
-  /** Toggles an add-on on a dish's cart line, adding the dish first if it isn't in the cart yet. */
-  function toggleAddOn(item: MenuItem, addOn: AddOnRef) {
+  /** Adds/removes one unit of an add-on on a dish's cart line, adding the dish first if needed. */
+  function changeAddOnQuantity(item: MenuItem, addOn: AddOnRef, delta: number) {
     setCart((prev) => {
       const existing = prev.find((i) => i.menuItemId === item.id)
       if (!existing) {
+        if (delta <= 0) return prev
         return [
           ...prev,
           {
@@ -191,14 +200,18 @@ function OrderFormBody({
             name: item.name,
             price: item.price,
             quantity: 1,
-            addOns: [addOn],
+            addOns: [{ ...addOn, quantity: 1 }],
           },
         ]
       }
-      const hasAddOn = existing.addOns.some((a) => a.id === addOn.id)
-      const nextAddOns = hasAddOn
-        ? existing.addOns.filter((a) => a.id !== addOn.id)
-        : [...existing.addOns, addOn]
+      const existingAddOn = existing.addOns.find((a) => a.id === addOn.id)
+      const nextQuantity = (existingAddOn?.quantity ?? 0) + delta
+      const nextAddOns =
+        nextQuantity <= 0
+          ? existing.addOns.filter((a) => a.id !== addOn.id)
+          : existingAddOn
+            ? existing.addOns.map((a) => (a.id === addOn.id ? { ...a, quantity: nextQuantity } : a))
+            : [...existing.addOns, { ...addOn, quantity: nextQuantity }]
       return prev.map((i) => (i.menuItemId === item.id ? { ...i, addOns: nextAddOns } : i))
     })
   }
@@ -210,10 +223,11 @@ function OrderFormBody({
       tableId: destination.type === "table" ? destination.id : undefined,
       roomId: destination.type === "room" ? destination.id : undefined,
       cabinId: destination.type === "cabin" ? destination.id : undefined,
+      notes: notes.trim() || undefined,
       items: cart.map((line) => ({
         menuItemId: line.menuItemId,
         quantity: line.quantity,
-        addOnIds: line.addOns.map((a) => a.id),
+        addOns: line.addOns.map((a) => ({ addOnId: a.id, quantity: a.quantity })),
       })),
     }
 
@@ -300,24 +314,42 @@ function OrderFormBody({
         </div>
 
         {item.addOns.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pl-5">
+          <div className="flex flex-wrap items-center gap-1.5 pl-13">
             <span className="text-[11px] text-muted-foreground">Add-ons:</span>
             {item.addOns.map((addOn) => {
-              const selected = inCart?.addOns.some((a) => a.id === addOn.id)
-              return (
+              const cartAddOn = inCart?.addOns.find((a) => a.id === addOn.id)
+              return cartAddOn ? (
+                <span
+                  key={addOn.id}
+                  className="flex items-center gap-1 rounded-full border border-primary bg-primary text-primary-foreground px-1 py-0.5 text-[11px]"
+                >
+                  <button
+                    type="button"
+                    className="cursor-pointer px-0.5"
+                    onClick={() => changeAddOnQuantity(item, addOn, -1)}
+                  >
+                    <MinusIcon className="size-3" />
+                  </button>
+                  <span className="tabular-nums">
+                    {addOn.name} ×{cartAddOn.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="cursor-pointer px-0.5"
+                    onClick={() => changeAddOnQuantity(item, addOn, 1)}
+                  >
+                    <PlusIcon className="size-3" />
+                  </button>
+                </span>
+              ) : (
                 <button
                   key={addOn.id}
                   type="button"
-                  onClick={() => toggleAddOn(item, addOn)}
-                  className={cn(
-                    "cursor-pointer rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                    selected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input text-muted-foreground hover:border-primary hover:text-primary"
-                  )}
+                  onClick={() => changeAddOnQuantity(item, addOn, 1)}
+                  className="cursor-pointer rounded-full border border-input px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
-                  {addOn.name}
-                  {addOn.price > 0 && ` +${formatCurrency(addOn.price)}`}
+                  + {addOn.name}
+                  {addOn.price > 0 && ` (${formatCurrency(addOn.price)})`}
                 </button>
               )
             })}
@@ -338,148 +370,167 @@ function OrderFormBody({
         </DialogDescription>
       </DialogHeader>
 
-        <div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto scrollbar-none px-1 py-1 -mx-1">
-          <Select value={destinationValue} onValueChange={(v) => setSelectedDestination(v ?? "")} items={destinationItems}>
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder="Select a table, room, or cabin" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Restaurant tables</SelectLabel>
-                {tables.map((table) => (
-                  <SelectItem key={table.id} value={`table:${table.id}`}>
-                    {table.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectGroup>
-                <SelectLabel>Room service</SelectLabel>
-                {rooms.map((room) => (
-                  <SelectItem key={room.id} value={`room:${room.id}`}>
-                    Room {room.number}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              <SelectGroup>
-                <SelectLabel>Cabins</SelectLabel>
-                {cabins.map((cabin) => (
-                  <SelectItem key={cabin.id} value={`cabin:${cabin.id}`}>
-                    {cabin.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search dishes…"
-              className="pl-8"
-            />
-          </div>
-
-          {categories.length === 0 ? (
-            <EmptyState
-              icon={ShoppingCartIcon}
-              title="No dishes on the menu yet"
-              description="Add menu items before taking orders."
-            />
-          ) : query ? (
-            <div className="flex flex-col gap-2">
-              {searchResults.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  No dishes match &ldquo;{search}&rdquo;.
-                </p>
-              ) : (
-                searchResults.map(renderMenuItem)
-              )}
-            </div>
-          ) : (
-            <Tabs defaultValue={categories[0]}>
-              <TabsList className="w-full flex-wrap">
-                {categories.map((category) => (
-                  <TabsTrigger key={category} value={category}>
-                    {category}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {categories.map((category) => (
-                <TabsContent key={category} value={category} className="mt-3">
-                  <div className="flex flex-col gap-2">
-                    {menuItems.filter((item) => item.categoryName === category).map(renderMenuItem)}
-                  </div>
-                </TabsContent>
+      <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto scrollbar-none px-1 py-1 -mx-1">
+        <Select value={destinationValue} onValueChange={(v) => setSelectedDestination(v ?? "")} items={destinationItems}>
+          <SelectTrigger className="w-full sm:w-64">
+            <SelectValue placeholder="Select a table, room, or cabin" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectLabel>Restaurant tables</SelectLabel>
+              {tables.map((table) => (
+                <SelectItem key={table.id} value={`table:${table.id}`}>
+                  {table.name}
+                </SelectItem>
               ))}
-            </Tabs>
-          )}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Room service</SelectLabel>
+              {rooms.map((room) => (
+                <SelectItem key={room.id} value={`room:${room.id}`}>
+                  Room {room.number}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Cabins</SelectLabel>
+              {cabins.map((cabin) => (
+                <SelectItem key={cabin.id} value={`cabin:${cabin.id}`}>
+                  {cabin.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
 
-          <div className="flex flex-col gap-2 border-t pt-3">
-            <span className="text-sm font-medium">
-              Order summary{itemCount > 0 && ` · ${itemCount} items`}
-            </span>
-
-            {cart.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                Add dishes from the menu to build this order.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {cart.map((item) => (
-                  <div key={item.menuItemId} className="flex items-start gap-2">
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm font-medium">{item.name}</span>
-                      {item.addOns.length > 0 && (
-                        <span className="truncate text-xs text-primary">
-                          + {item.addOns.map((a) => a.name).join(", ")}
-                        </span>
-                      )}
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {formatCurrency(lineTotal(item))}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="outline"
-                        onClick={() => changeQuantity(item.menuItemId, -1)}
-                      >
-                        <MinusIcon />
-                      </Button>
-                      <span className="w-5 text-center text-sm tabular-nums">
-                        {item.quantity}
-                      </span>
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="outline"
-                        onClick={() => changeQuantity(item.menuItemId, 1)}
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search dishes…"
+            className="pl-8"
+          />
         </div>
 
-        <DialogFooter className="items-center sm:justify-between">
+        {categories.length === 0 ? (
+          <EmptyState
+            icon={ShoppingCartIcon}
+            title="No dishes on the menu yet"
+            description="Add menu items before taking orders."
+          />
+        ) : query ? (
+          <div className="flex max-h-80 flex-col gap-2 overflow-y-auto scrollbar-none">
+            {searchResults.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No dishes match &ldquo;{search}&rdquo;.
+              </p>
+            ) : (
+              searchResults.map(renderMenuItem)
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-[128px_1fr] gap-3">
+            <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto scrollbar-none pr-1">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => setSelectedCategoryId(category.id)}
+                  className={cn(
+                    "cursor-pointer truncate rounded-md px-2.5 py-2 text-left text-sm transition-colors",
+                    category.id === activeCategoryId
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex max-h-80 flex-col gap-2 overflow-y-auto scrollbar-none pl-1">
+              {categoryItems.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No dishes in this category.
+                </p>
+              ) : (
+                categoryItems.map(renderMenuItem)
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 border-t pt-3">
           <span className="text-sm font-medium">
-            Total <span className="tabular-nums">{formatCurrency(total)}</span>
+            Order summary{itemCount > 0 && ` · ${itemCount} items`}
           </span>
-          <Button
-            disabled={cart.length === 0 || !destination || pending}
-            data-icon={pending ? "inline-start" : undefined}
-            onClick={send}
-          >
-            {pending && <Spinner />}
-            {pending ? "Saving" : isEdit ? "Save changes" : "Send to Kitchen"}
-          </Button>
+
+          {cart.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              Add dishes from the menu to build this order.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {cart.map((item) => (
+                <div key={item.menuItemId} className="flex items-start gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium">{item.name}</span>
+                    {item.addOns.length > 0 && (
+                      <span className="truncate text-xs text-primary">
+                        + {item.addOns.map((a) => `${a.name} ×${a.quantity}`).join(", ")}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {formatCurrency(lineTotal(item))}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={() => changeQuantity(item.menuItemId, -1)}
+                    >
+                      <MinusIcon />
+                    </Button>
+                    <span className="w-5 text-center text-sm tabular-nums">
+                      {item.quantity}
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={() => changeQuantity(item.menuItemId, 1)}
+                    >
+                      <PlusIcon />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes for the kitchen (optional)…"
+          rows={2}
+        />
+      </div>
+
+      <DialogFooter className="items-center sm:justify-between">
+        <span className="text-sm font-medium">
+          Total <span className="tabular-nums">{formatCurrency(total)}</span>
+        </span>
+        <Button
+          disabled={cart.length === 0 || !destination || pending}
+          data-icon={pending ? "inline-start" : undefined}
+          onClick={send}
+        >
+          {pending && <Spinner />}
+          {pending ? "Saving" : isEdit ? "Save changes" : "Send to Kitchen"}
+        </Button>
       </DialogFooter>
     </>
   )
@@ -498,7 +549,7 @@ export function OrderFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         {open && <OrderFormBody tenant={tenant} order={order} onOpenChange={onOpenChange} />}
       </DialogContent>
     </Dialog>
