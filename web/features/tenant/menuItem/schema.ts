@@ -10,6 +10,7 @@ export const menuItemSchema = z.object({
   description: z.string().trim().max(1000).optional(),
   ingredients: z.string().trim().max(1000).optional(),
   available: z.boolean(),
+  isTopPick: z.boolean(),
   addOnIds: z.array(z.string()),
 });
 

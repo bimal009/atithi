@@ -9,6 +9,7 @@ export type RoomType = {
   description?: string;
   amenities: string[];
   restrictions: string[];
+  images: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -22,6 +23,7 @@ export type CreateRoomTypeInput = {
   description?: string;
   amenities?: string[];
   restrictions?: string[];
+  images?: string[];
 };
 
 export type UpdateRoomTypeInput = Partial<CreateRoomTypeInput>;

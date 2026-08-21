@@ -66,6 +66,7 @@ const emptyValues: MenuItemInput = {
   description: "",
   ingredients: "",
   available: true,
+  isTopPick: false,
   addOnIds: [],
 };
 
@@ -81,6 +82,7 @@ function valuesOf(item?: MenuItem): MenuItemInput {
     description: item.description ?? "",
     ingredients: item.ingredients ?? "",
     available: item.available,
+    isTopPick: item.isTopPick,
     addOnIds: item.addOns.map((a) => a.id),
   };
 }
@@ -131,6 +133,7 @@ export function MenuItemFormDialog({
   const categoryId = watch("categoryId");
   const imageUrl = watch("imageUrl");
   const available = watch("available");
+  const isTopPick = watch("isTopPick");
   const name = watch("name");
   const addOnIds = watch("addOnIds");
 
@@ -204,6 +207,7 @@ export function MenuItemFormDialog({
             description: values.description || undefined,
             ingredients: values.ingredients || undefined,
             available: values.available,
+            isTopPick: values.isTopPick,
             addOnIds: values.addOnIds,
           },
         })
@@ -217,6 +221,7 @@ export function MenuItemFormDialog({
           description: values.description || undefined,
           ingredients: values.ingredients || undefined,
           available: values.available,
+          isTopPick: values.isTopPick,
           addOnIds: values.addOnIds,
         });
 
@@ -443,6 +448,22 @@ export function MenuItemFormDialog({
                 checked={available}
                 onCheckedChange={(checked) =>
                   setValue("available", checked, { shouldValidate: true })
+                }
+              />
+            </Field>
+
+            <Field orientation="horizontal" className="justify-between">
+              <div className="flex flex-col gap-0.5">
+                <FieldLabel htmlFor="item-top-pick">Top pick</FieldLabel>
+                <FieldDescription>
+                  Highlight this dish as a favorite on the hotel's website menu.
+                </FieldDescription>
+              </div>
+              <Switch
+                id="item-top-pick"
+                checked={isTopPick}
+                onCheckedChange={(checked) =>
+                  setValue("isTopPick", checked, { shouldValidate: true })
                 }
               />
             </Field>

@@ -50,6 +50,11 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 		available = *req.Available
 	}
 
+	isTopPick := false
+	if req.IsTopPick != nil {
+		isTopPick = *req.IsTopPick
+	}
+
 	newItem := &model.MenuItem{
 		ID:          uuid.NewString(),
 		HotelID:     hotelID,
@@ -60,6 +65,7 @@ func (s *menuItemService) Create(ctx context.Context, hotelID, userID string, re
 		Description: req.Description,
 		Ingredients: req.Ingredients,
 		Available:   available,
+		IsTopPick:   isTopPick,
 	}
 
 	created, err := s.repo.CreateWithDish(ctx, req.Name, req.ImageURL, newItem, req.AddOnIDs, userID)
@@ -130,6 +136,9 @@ func (s *menuItemService) Update(ctx context.Context, id, hotelID, userID string
 	}
 	if req.Available != nil {
 		existing.Available = *req.Available
+	}
+	if req.IsTopPick != nil {
+		existing.IsTopPick = *req.IsTopPick
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, req.AddOnIDs, userID)

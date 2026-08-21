@@ -26,6 +26,7 @@ export type MenuItem = {
   description?: string;
   ingredients?: string;
   available: boolean;
+  isTopPick: boolean;
   addOns: AddOnRef[];
   createdAt: string;
   updatedAt: string;
@@ -41,6 +42,7 @@ export type CreateMenuItemInput = {
   description?: string;
   ingredients?: string;
   available?: boolean;
+  isTopPick?: boolean;
   addOnIds?: string[];
 };
 
