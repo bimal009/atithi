@@ -4,47 +4,39 @@ import { cn } from "@/lib/utils"
 type BadgeVariant = "default" | "secondary" | "outline" | "destructive"
 type Tone = "accent" | "muted" | "none"
 
-/**
- * Every status renders from theme tokens only — no hand-picked palette colors.
- * The accent dot marks the state that wants attention, so a glance down a
- * column lands on the rows that need work.
- */
+
 const STATUS_MAP: Record<string, { variant: BadgeVariant; tone: Tone }> = {
-  // booking
   confirmed: { variant: "outline", tone: "muted" },
   "checked-in": { variant: "outline", tone: "accent" },
   "checked-out": { variant: "secondary", tone: "none" },
   cancelled: { variant: "destructive", tone: "none" },
 
-  // room
   available: { variant: "outline", tone: "accent" },
   occupied: { variant: "outline", tone: "muted" },
   cleaning: { variant: "secondary", tone: "none" },
   maintenance: { variant: "destructive", tone: "none" },
 
-  // staff
   active: { variant: "outline", tone: "accent" },
   inactive: { variant: "secondary", tone: "none" },
 
-  // order
   pending: { variant: "outline", tone: "accent" },
   preparing: { variant: "outline", tone: "muted" },
   ready: { variant: "default", tone: "none" },
   served: { variant: "secondary", tone: "none" },
 
-  // role
   owner: { variant: "default", tone: "none" },
   frontdesk: { variant: "secondary", tone: "none" },
   waiter: { variant: "outline", tone: "muted" },
   kitchen: { variant: "outline", tone: "none" },
 
-  // menu item
   unavailable: { variant: "destructive", tone: "none" },
 
-  // reservation
   seated: { variant: "outline", tone: "accent" },
   completed: { variant: "secondary", tone: "none" },
   no_show: { variant: "destructive", tone: "none" },
+
+  unread: { variant: "outline", tone: "accent" },
+  read: { variant: "secondary", tone: "none" },
 }
 
 const STATUS_LABELS: Record<string, string> = {

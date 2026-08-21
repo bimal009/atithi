@@ -1,8 +1,13 @@
 "use client"
 
+import * as React from "react"
 import { AlertCircleIcon } from "lucide-react"
 
-import { useOrdersQuery, useUpdateOrderStatus } from "@/features/tenant/order/client/useOrders"
+import {
+  useOrdersQuery,
+  useResetKitchenPendingCount,
+  useUpdateOrderStatus,
+} from "@/features/tenant/order/client/useOrders"
 import { useKotSocket } from "@/features/tenant/order/client/useKotSocket"
 import { PageHeader } from "@/components/shared/page-header"
 import { SectionCards } from "@/components/shared/section-cards"
@@ -15,7 +20,6 @@ function minutesSince(iso: string) {
   return Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000)
 }
 
-// The KOT board needs the full active queue at once, not one paginated page.
 const KITCHEN_QUERY_PARAMS = { limit: 100 }
 
 function KitchenSkeleton() {
@@ -42,8 +46,14 @@ function KitchenSkeleton() {
 export function KitchenPageClient({ tenant }: { tenant: string }) {
   const ordersQuery = useOrdersQuery(tenant, KITCHEN_QUERY_PARAMS)
   const updateStatus = useUpdateOrderStatus(tenant)
+  const resetPendingCount = useResetKitchenPendingCount(tenant)
 
   useKotSocket(tenant, KITCHEN_QUERY_PARAMS)
+
+  React.useEffect(() => {
+    resetPendingCount.mutate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (ordersQuery.isPending) {
     return <KitchenSkeleton />

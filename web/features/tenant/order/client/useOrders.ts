@@ -7,8 +7,10 @@ import { getErrorMessage } from "@/lib/axios";
 
 import {
   createOrder,
+  getKitchenPendingCount,
   listOrders,
   removeOrder,
+  resetKitchenPendingCount,
   updateOrder,
   updateOrderStatus,
 } from "../api/order";
@@ -31,6 +33,25 @@ export const orderKeys = {
       params?.page ?? 1,
       params?.limit ?? 10,
     ] as const,
+  kitchenPendingCount: (tenant: string) => ["kitchen-pending-count", tenant] as const,
+};
+
+export const useKitchenPendingCount = (tenant: string) =>
+  useQuery({
+    queryKey: orderKeys.kitchenPendingCount(tenant),
+    queryFn: async () => (await getKitchenPendingCount(tenant)).data.count,
+    staleTime: 15_000,
+  });
+
+export const useResetKitchenPendingCount = (tenant: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => resetKitchenPendingCount(tenant),
+    onSuccess: () => {
+      queryClient.setQueryData(orderKeys.kitchenPendingCount(tenant), 0);
+    },
+  });
 };
 
 export const useOrdersQuery = (tenant: string, params?: OrdersQueryParams) =>

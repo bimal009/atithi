@@ -250,6 +250,12 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				ordersGroup.DELETE("/:orderId", h.Order.Delete)
 			}
 
+			kitchenGroup := scoped.Group("/kitchen")
+			{
+				kitchenGroup.GET("/pending-count", h.Order.KitchenPendingCount)
+				kitchenGroup.POST("/pending-count/reset", h.Order.ResetKitchenPendingCount)
+			}
+
 			notificationsGroup := scoped.Group("/notifications")
 			{
 				notificationsGroup.POST("", h.Notification.Create)

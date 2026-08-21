@@ -118,6 +118,25 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("order status updated", order))
 }
 
+func (h *OrderHandler) KitchenPendingCount(c *gin.Context) {
+	count, err := h.service.KitchenPendingCount(c.Request.Context(), middleware.HotelID(c))
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("kitchen pending count fetched", gin.H{"count": count}))
+}
+
+func (h *OrderHandler) ResetKitchenPendingCount(c *gin.Context) {
+	if err := h.service.ResetKitchenPendingCount(c.Request.Context(), middleware.HotelID(c)); err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("kitchen pending count reset", gin.H{"count": 0}))
+}
+
 func (h *OrderHandler) Delete(c *gin.Context) {
 	id := c.Param("orderId")
 

@@ -13,6 +13,11 @@ export const getHotel = async (id: string): Promise<ApiResponse<Hotel>> => {
   return data;
 };
 
+export const getHotelBySlug = async (slug: string): Promise<ApiResponse<Hotel>> => {
+  const { data } = await axiosInstance.get<ApiResponse<Hotel>>(`/hotels/slug/${slug}`);
+  return data;
+};
+
 export const createHotel = async (
   input: CreateHotelInput,
 ): Promise<ApiResponse<Hotel>> => {

@@ -3,15 +3,22 @@ package orders
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/ws"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
+
+func kitchenPendingKey(hotelID string) string {
+	return "kitchen:pending-count:" + hotelID
+}
 
 func orderLabel(order model.Order) string {
 	switch {
@@ -33,6 +40,8 @@ type OrderService interface {
 	Update(ctx context.Context, id, hotelID, userID string, req *UpdateOrderRequest) (model.Order, error)
 	UpdateStatus(ctx context.Context, id, hotelID, userID string, req *UpdateOrderStatusRequest) (model.Order, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
+	KitchenPendingCount(ctx context.Context, hotelID string) (int64, error)
+	ResetKitchenPendingCount(ctx context.Context, hotelID string) error
 }
 
 type orderService struct {
@@ -40,10 +49,11 @@ type orderService struct {
 	repo     OrderRepo
 	hub      *ws.Hub
 	notifier notifications.Notifier
+	redis    *redis.Client
 }
 
-func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub, notifier notifications.Notifier) OrderService {
-	return &orderService{slog: slog, repo: repo, hub: hub, notifier: notifier}
+func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub, notifier notifications.Notifier, redisClient *redis.Client) OrderService {
+	return &orderService{slog: slog, repo: repo, hub: hub, notifier: notifier, redis: redisClient}
 }
 
 func (s *orderService) broadcast(hotelID string, msgType ws.MessageType, payload json.RawMessage) {
@@ -93,6 +103,17 @@ func (s *orderService) Create(ctx context.Context, hotelID, userID string, req *
 	} else {
 		s.broadcastOrder(hydrated, ws.OrderCreated)
 		s.notifier.Notify(ctx, hotelID, model.NotifOrderCreated, fmt.Sprintf("New order for %s", orderLabel(hydrated)), nil)
+	}
+
+	if created.Status == StatusPending {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+
+			if err := s.redis.Incr(bgCtx, kitchenPendingKey(hotelID)).Err(); err != nil {
+				s.slog.Error("failed to increment kitchen pending count", "hotel_id", hotelID, "error", err)
+			}
+		}()
 	}
 
 	return created, nil
@@ -196,6 +217,22 @@ func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 	}
 
 	return updated, nil
+}
+
+func (s *orderService) KitchenPendingCount(ctx context.Context, hotelID string) (int64, error) {
+	count, err := s.redis.Get(ctx, kitchenPendingKey(hotelID)).Int64()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (s *orderService) ResetKitchenPendingCount(ctx context.Context, hotelID string) error {
+	return s.redis.Set(ctx, kitchenPendingKey(hotelID), 0, 0).Err()
 }
 
 func (s *orderService) Delete(ctx context.Context, id, hotelID, userID string) error {

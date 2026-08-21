@@ -70,3 +70,21 @@ export const removeOrder = async (
   );
   return data;
 };
+
+export const getKitchenPendingCount = async (
+  tenant: string,
+): Promise<ApiResponse<{ count: number }>> => {
+  const { data } = await axiosInstance.get<ApiResponse<{ count: number }>>(
+    `/hotels/slug/${tenant}/kitchen/pending-count`,
+  );
+  return data;
+};
+
+export const resetKitchenPendingCount = async (
+  tenant: string,
+): Promise<ApiResponse<{ count: number }>> => {
+  const { data } = await axiosInstance.post<ApiResponse<{ count: number }>>(
+    `/hotels/slug/${tenant}/kitchen/pending-count/reset`,
+  );
+  return data;
+};

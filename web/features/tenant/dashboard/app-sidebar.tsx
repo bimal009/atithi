@@ -7,6 +7,8 @@ import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
 import { TENANT } from "@/lib/mock-data"
 import { NAV_GROUPS } from "@/features/tenant/dashboard/nav-config"
+import { useKitchenPendingSocket } from "@/features/tenant/order/client/useKotSocket"
+import { useKitchenPendingCount } from "@/features/tenant/order/client/useOrders"
 import { Badge } from "@/components/ui/badge"
 import {
   Collapsible,
@@ -35,11 +37,13 @@ function NavCollapsibleItem({
   basePath,
   pathname,
   isSubActive,
+  badgeFor,
 }: {
   item: (typeof NAV_GROUPS)[number]["items"][number]
   basePath: string
   pathname: string
   isSubActive: boolean
+  badgeFor?: (href: string) => number | undefined
 }) {
   const [open, setOpen] = React.useState(isSubActive)
 
@@ -67,6 +71,7 @@ function NavCollapsibleItem({
           <SidebarMenuSub>
             {item.items?.map((sub) => {
               const subHref = `${basePath}${sub.href}`
+              const badgeCount = badgeFor?.(sub.href)
               return (
                 <SidebarMenuSubItem key={sub.title}>
                   <SidebarMenuSubButton
@@ -75,6 +80,11 @@ function NavCollapsibleItem({
                     render={<Link href={subHref} />}
                   >
                     <span>{sub.title}</span>
+                    {!!badgeCount && (
+                      <Badge className="ml-auto">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </Badge>
+                    )}
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               )
@@ -92,6 +102,11 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { tenant: string }) {
   const pathname = usePathname()
   const basePath = `/${tenant}/dashboard`
+
+  const { data: kitchenPendingCount = 0 } = useKitchenPendingCount(tenant)
+  useKitchenPendingSocket(tenant)
+
+  const badgeFor = (href: string) => (href === "/kitchen" ? kitchenPendingCount : undefined)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -162,6 +177,7 @@ export function AppSidebar({
                       basePath={basePath}
                       pathname={pathname}
                       isSubActive={isSubActive}
+                      badgeFor={badgeFor}
                     />
                   )
                 })}

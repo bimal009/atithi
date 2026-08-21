@@ -9,6 +9,7 @@ import {
   checkSlugAvailability,
   createHotel,
   deleteHotel,
+  getHotelBySlug,
   listHotels,
   updateHotel,
 } from "../api/hotel";
@@ -18,6 +19,7 @@ import { CreateHotelInput, UpdateHotelInput } from "../types";
 export const hotelKeys = {
   all: ["hotels"] as const,
   detail: (id: string) => ["hotels", id] as const,
+  bySlug: (slug: string) => ["hotels", "slug", slug] as const,
   slugAvailability: (slug: string) => ["hotels", "slug-availability", slug] as const,
 };
 
@@ -25,6 +27,13 @@ export const useHotelsQuery = () =>
   useQuery({
     queryKey: hotelKeys.all,
     queryFn: async () => (await listHotels()).data,
+  });
+
+export const useHotelBySlugQuery = (slug: string) =>
+  useQuery({
+    queryKey: hotelKeys.bySlug(slug),
+    queryFn: async () => (await getHotelBySlug(slug)).data,
+    enabled: !!slug,
   });
 
 export const useSlugAvailability = (slug: string, options?: { ignore?: string }) => {

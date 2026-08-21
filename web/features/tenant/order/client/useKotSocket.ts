@@ -8,6 +8,29 @@ import { API_URL } from "@/features/auth/constants";
 import { orderKeys, type OrdersQueryParams } from "./useOrders";
 import type { ListOrdersResponse, Order } from "../types";
 
+/** Bumps the sidebar's kitchen badge as new pending orders arrive. Mount once, near the sidebar. */
+export function useKitchenPendingSocket(tenant: string) {
+  const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const url = new URL(`${API_URL}/hotels/slug/${tenant}/ws`);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+
+    const socket = new WebSocket(url);
+
+    socket.onmessage = (event) => {
+      const envelope = JSON.parse(event.data);
+      if (envelope.type !== "order.created") return;
+
+      queryClient.setQueryData<number>(orderKeys.kitchenPendingCount(tenant), (count) =>
+        (count ?? 0) + 1,
+      );
+    };
+
+    return () => socket.close();
+  }, [tenant, queryClient]);
+}
+
 /** `params` must match the params passed to the `useOrdersQuery` this is meant to keep live. */
 export function useKotSocket(tenant: string, params?: OrdersQueryParams) {
   const queryClient = useQueryClient();

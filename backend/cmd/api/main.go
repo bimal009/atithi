@@ -158,7 +158,7 @@ func main() {
 	customerService := customer.NewCustomerService(slog, customerRepo, notificationService)
 	customerHandler := customer.NewCustomerHandler(slog, customerService)
 
-	orderService := orders.NewOrderService(slog, orderRepo, hub, notificationService)
+	orderService := orders.NewOrderService(slog, orderRepo, hub, notificationService, redisClient)
 	orderHandler := orders.NewOrderHandler(slog, orderService)
 
 	imageHandler := handlers.NewImageHandler(cfg)
