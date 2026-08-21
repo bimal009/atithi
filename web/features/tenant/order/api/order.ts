@@ -10,11 +10,18 @@ import {
 
 export const listOrders = async (
   tenant: string,
-  status?: string,
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListOrdersResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListOrdersResponse>>(
     `/hotels/slug/${tenant}/orders`,
-    { params: { status: status || undefined } },
+    {
+      params: {
+        search: params?.search || undefined,
+        status: params?.status || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 10,
+      },
+    },
   );
   return data;
 };

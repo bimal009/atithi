@@ -20,14 +20,20 @@ import type { CreateCustomerInput, UpdateCustomerInput } from "../types";
 
 export const customerKeys = {
   all: (tenant: string) => ["customers", tenant] as const,
-  filtered: (tenant: string, search: string) =>
-    [...customerKeys.all(tenant), { search }] as const,
 };
 
-export const useCustomersQuery = (tenant: string, search = "") =>
+export const useCustomersQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: customerKeys.filtered(tenant, search),
-    queryFn: async () => (await listCustomers(tenant, search)).data,
+    queryKey: [
+      ...customerKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 10,
+    ],
+    queryFn: async () => (await listCustomers(tenant, params)).data,
     placeholderData: keepPreviousData,
   });
 

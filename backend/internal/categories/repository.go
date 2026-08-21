@@ -27,43 +27,6 @@ func NewCategoryRepo(db *pgxpool.Pool) CategoryRepo {
 	return &categoryRepo{DB: db}
 }
 
-const categorySelect = `
-	SELECT c.id, c.hotel_id, c.name, c.created_at, c.updated_at,
-	       COALESCE(
-	         json_agg(json_build_object('id', sm.id, 'name', sm.name) ORDER BY sm.name)
-	           FILTER (WHERE sm.id IS NOT NULL),
-	         '[]'
-	       ) AS sub_menus
-	FROM categories c
-	LEFT JOIN category_sub_menus csm ON csm.category_id = c.id
-	LEFT JOIN sub_menus sm ON sm.id = csm.sub_menu_id
-`
-
-func scanCategory(row pgx.Row) (model.Category, error) {
-	var category model.Category
-	var subMenusJSON []byte
-
-	if err := row.Scan(
-		&category.ID,
-		&category.HotelID,
-		&category.Name,
-		&category.CreatedAt,
-		&category.UpdatedAt,
-		&subMenusJSON,
-	); err != nil {
-		return model.Category{}, err
-	}
-
-	if err := json.Unmarshal(subMenusJSON, &category.SubMenus); err != nil {
-		return model.Category{}, err
-	}
-	if category.SubMenus == nil {
-		category.SubMenus = []model.SubMenuRef{}
-	}
-
-	return category, nil
-}
-
 func (r *categoryRepo) Create(ctx context.Context, category *model.Category, subMenuIDs []string, userID string) (model.Category, error) {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
@@ -93,7 +56,6 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 		}
 		return model.Category{}, err
 	}
-	created.SubMenus = []model.SubMenuRef{}
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO category_sub_menus (category_id, sub_menu_id)
@@ -104,6 +66,7 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 		}
 		return model.Category{}, err
 	}
+	created.SubMenus = []model.SubMenuRef{}
 
 	if err := tx.Commit(ctx); err != nil {
 		return model.Category{}, err
@@ -113,7 +76,16 @@ func (r *categoryRepo) Create(ctx context.Context, category *model.Category, sub
 }
 
 func (r *categoryRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Category, error) {
-	query := categorySelect + `
+	query := `
+		SELECT c.id, c.hotel_id, c.name, c.created_at, c.updated_at,
+		       COALESCE(
+		         json_agg(json_build_object('id', sm.id, 'name', sm.name) ORDER BY sm.name)
+		           FILTER (WHERE sm.id IS NOT NULL),
+		         '[]'
+		       ) AS sub_menus
+		FROM categories c
+		LEFT JOIN category_sub_menus csm ON csm.category_id = c.id
+		LEFT JOIN sub_menus sm ON sm.id = csm.sub_menu_id
 		WHERE c.id = $1::uuid AND c.hotel_id = $2::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
@@ -122,12 +94,29 @@ func (r *categoryRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 		GROUP BY c.id
 	`
 
-	category, err := scanCategory(r.DB.QueryRow(ctx, query, id, hotelID, userID))
+	var category model.Category
+	var subMenusJSON []byte
+
+	err := r.DB.QueryRow(ctx, query, id, hotelID, userID).Scan(
+		&category.ID,
+		&category.HotelID,
+		&category.Name,
+		&category.CreatedAt,
+		&category.UpdatedAt,
+		&subMenusJSON,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Category{}, apperr.ErrCategoryNotFound
 		}
 		return model.Category{}, err
+	}
+
+	if err := json.Unmarshal(subMenusJSON, &category.SubMenus); err != nil {
+		return model.Category{}, err
+	}
+	if category.SubMenus == nil {
+		category.SubMenus = []model.SubMenuRef{}
 	}
 
 	return category, nil
@@ -228,7 +217,6 @@ func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, n
 		}
 		return model.Category{}, err
 	}
-	updated.SubMenus = []model.SubMenuRef{}
 
 	if subMenuIDs != nil {
 		if _, err := tx.Exec(ctx, `DELETE FROM category_sub_menus WHERE category_id = $1::uuid`, id); err != nil {
@@ -244,6 +232,7 @@ func (r *categoryRepo) Update(ctx context.Context, id, hotelID, userID string, n
 			return model.Category{}, err
 		}
 	}
+	updated.SubMenus = []model.SubMenuRef{}
 
 	if err := tx.Commit(ctx); err != nil {
 		return model.Category{}, err

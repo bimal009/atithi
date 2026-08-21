@@ -69,8 +69,11 @@ export function RoomFormDialog({
   onSaved?: (room: Room) => void;
 }) {
   const isEdit = !!room;
-  const roomTypesQuery = useRoomTypesQuery(tenant);
-  const roomTypes = React.useMemo(() => roomTypesQuery.data ?? [], [roomTypesQuery.data]);
+  const roomTypesQuery = useRoomTypesQuery(tenant, { limit: 100 });
+  const roomTypes = React.useMemo(
+    () => roomTypesQuery.data?.roomTypes ?? [],
+    [roomTypesQuery.data],
+  );
   const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
   const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
   const create = useCreateRoom(tenant);

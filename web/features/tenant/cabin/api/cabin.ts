@@ -14,7 +14,7 @@ export const listCabins = async (
         search: params?.search || undefined,
         status: params?.status || undefined,
         page: params?.page ?? 1,
-        limit: params?.limit ?? 12,
+        limit: params?.limit ?? 10,
       },
     },
   );

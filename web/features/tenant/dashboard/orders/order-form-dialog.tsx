@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { MinusIcon, PlusIcon, SearchIcon, ShoppingCartIcon } from "lucide-react"
+import { MinusIcon, PlusIcon, SearchIcon, ShoppingCartIcon, UtensilsCrossedIcon } from "lucide-react"
 
-import { useCreateOrder } from "@/features/tenant/order/client/useOrders"
+import { useCreateOrder, useUpdateOrder } from "@/features/tenant/order/client/useOrders"
+import type { Order } from "@/features/tenant/order/types"
 import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItems"
 import type { AddOnRef, MenuItem } from "@/features/tenant/menuItem/types"
 import { useTablesQuery } from "@/features/tenant/table/client/useTables"
@@ -17,6 +18,7 @@ import { FOOD_TYPE_DOT_CLASS, FOOD_TYPE_LABEL } from "@/lib/food-type"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +26,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -61,18 +62,53 @@ function cartTotal(cart: CartLine[]) {
   return cart.reduce((sum, line) => sum + lineTotal(line), 0)
 }
 
-export function NewOrderDialog({ tenant }: { tenant: string }) {
-  const [open, setOpen] = React.useState(false)
+function cartFromOrder(order?: Order): CartLine[] {
+  if (!order) return []
+  return order.items.map((item) => ({
+    menuItemId: item.menuItemId,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity,
+    addOns: item.addOns,
+  }))
+}
+
+function destinationFromOrder(order?: Order): string {
+  if (!order) return ""
+  if (order.tableId) return `table:${order.tableId}`
+  if (order.roomId) return `room:${order.roomId}`
+  if (order.cabinId) return `cabin:${order.cabinId}`
+  return ""
+}
+
+/**
+ * Only mounted while the dialog is open, so its cart/destination state
+ * always starts fresh from `order` — no effect-based reset needed.
+ */
+function OrderFormBody({
+  tenant,
+  order,
+  onOpenChange,
+}: {
+  tenant: string
+  order?: Order
+  onOpenChange: (open: boolean) => void
+}) {
+  const isEdit = !!order
 
   const menuItemsQuery = useMenuItemsQuery(tenant, { limit: 100 })
   const tablesQuery = useTablesQuery(tenant, { limit: 100 })
-  const roomsQuery = useRoomsQuery(tenant, { status: "occupied", limit: 100 })
-  const cabinsQuery = useCabinsQuery(tenant, { status: "occupied", limit: 100 })
+  const roomsQuery = useRoomsQuery(tenant, { limit: 100 })
+  const cabinsQuery = useCabinsQuery(tenant, { limit: 100 })
   const createOrder = useCreateOrder(tenant)
+  const updateOrder = useUpdateOrder(tenant)
+  const pending = isEdit ? updateOrder.isPending : createOrder.isPending
 
-  const [selectedDestination, setSelectedDestination] = React.useState("")
+  const [selectedDestination, setSelectedDestination] = React.useState(() =>
+    destinationFromOrder(order)
+  )
   const [search, setSearch] = React.useState("")
-  const [cart, setCart] = React.useState<CartLine[]>([])
+  const [cart, setCart] = React.useState<CartLine[]>(() => cartFromOrder(order))
 
   const tables = tablesQuery.data?.tables ?? EMPTY_TABLES
   const rooms = roomsQuery.data?.rooms ?? EMPTY_ROOMS
@@ -105,7 +141,8 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
     ? menuItems.filter((item) => item.name.toLowerCase().includes(query))
     : []
 
-  const destinationValue = selectedDestination || (tables[0] ? `table:${tables[0].id}` : "")
+  const destinationValue =
+    selectedDestination || (!order && tables[0] ? `table:${tables[0].id}` : "")
   const destination: Destination | null = destinationValue
     ? {
         type: destinationValue.startsWith("room:")
@@ -118,12 +155,6 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
     : null
   const total = cartTotal(cart)
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-
-  function resetAll() {
-    setSelectedDestination("")
-    setSearch("")
-    setCart([])
-  }
 
   function addItem(item: MenuItem) {
     setCart((prev) => {
@@ -174,24 +205,26 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
 
   function send() {
     if (cart.length === 0 || !destination) return
-    createOrder.mutate(
-      {
-        tableId: destination.type === "table" ? destination.id : undefined,
-        roomId: destination.type === "room" ? destination.id : undefined,
-        cabinId: destination.type === "cabin" ? destination.id : undefined,
-        items: cart.map((line) => ({
-          menuItemId: line.menuItemId,
-          quantity: line.quantity,
-          addOnIds: line.addOns.map((a) => a.id),
-        })),
-      },
-      {
-        onSuccess: () => {
-          setOpen(false)
-          resetAll()
-        },
-      }
-    )
+
+    const payload = {
+      tableId: destination.type === "table" ? destination.id : undefined,
+      roomId: destination.type === "room" ? destination.id : undefined,
+      cabinId: destination.type === "cabin" ? destination.id : undefined,
+      items: cart.map((line) => ({
+        menuItemId: line.menuItemId,
+        quantity: line.quantity,
+        addOnIds: line.addOns.map((a) => a.id),
+      })),
+    }
+
+    if (order) {
+      updateOrder.mutate(
+        { id: order.id, input: payload },
+        { onSuccess: () => onOpenChange(false) }
+      )
+    } else {
+      createOrder.mutate(payload, { onSuccess: () => onOpenChange(false) })
+    }
   }
 
   function renderMenuItem(item: MenuItem) {
@@ -205,13 +238,29 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
         )}
       >
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            title={FOOD_TYPE_LABEL[item.foodType]}
-            className={cn("size-2 shrink-0 rounded-full border", FOOD_TYPE_DOT_CLASS[item.foodType])}
-          />
+          {item.imageUrl ? (
+            <span className="block size-10 shrink-0 overflow-hidden rounded-full">
+              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="size-full object-cover"
+              />
+            </span>
+          ) : (
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <UtensilsCrossedIcon className="size-4" />
+            </span>
+          )}
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-medium">{item.name}</span>
+            <span className="flex items-center gap-1.5 truncate text-sm font-medium">
+              <span
+                aria-hidden
+                title={FOOD_TYPE_LABEL[item.foodType]}
+                className={cn("size-2 shrink-0 rounded-full border", FOOD_TYPE_DOT_CLASS[item.foodType])}
+              />
+              <span className="truncate">{item.name}</span>
+            </span>
             <span className="text-xs text-muted-foreground tabular-nums">
               {formatCurrency(item.price)}
             </span>
@@ -279,24 +328,15 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (!next) resetAll()
-      }}
-    >
-      <DialogTrigger render={<Button data-icon="inline-start" />}>
-        <PlusIcon aria-hidden />
-        New Order
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New order</DialogTitle>
-          <DialogDescription>
-            Build a ticket for a table, room, or cabin and send it to the kitchen.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>{isEdit ? "Edit order" : "New order"}</DialogTitle>
+        <DialogDescription>
+          {isEdit
+            ? "Update the destination or items on this ticket."
+            : "Build a ticket for a table, room, or cabin and send it to the kitchen."}
+        </DialogDescription>
+      </DialogHeader>
 
         <div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto scrollbar-none px-1 py-1 -mx-1">
           <Select value={destinationValue} onValueChange={(v) => setSelectedDestination(v ?? "")} items={destinationItems}>
@@ -433,12 +473,33 @@ export function NewOrderDialog({ tenant }: { tenant: string }) {
             Total <span className="tabular-nums">{formatCurrency(total)}</span>
           </span>
           <Button
-            disabled={cart.length === 0 || !destination || createOrder.isPending}
+            disabled={cart.length === 0 || !destination || pending}
+            data-icon={pending ? "inline-start" : undefined}
             onClick={send}
           >
-            Send to Kitchen
+            {pending && <Spinner />}
+            {pending ? "Saving" : isEdit ? "Save changes" : "Send to Kitchen"}
           </Button>
-        </DialogFooter>
+      </DialogFooter>
+    </>
+  )
+}
+
+export function OrderFormDialog({
+  tenant,
+  order,
+  open,
+  onOpenChange,
+}: {
+  tenant: string
+  order?: Order
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        {open && <OrderFormBody tenant={tenant} order={order} onOpenChange={onOpenChange} />}
       </DialogContent>
     </Dialog>
   )

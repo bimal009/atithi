@@ -14,14 +14,29 @@ import {
 } from "../api/order";
 import type { CreateOrderInput, UpdateOrderInput } from "../types";
 
-export const orderKeys = {
-  all: (tenant: string) => ["orders", tenant] as const,
+export type OrdersQueryParams = {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
 };
 
-export const useOrdersQuery = (tenant: string, status?: string) =>
+export const orderKeys = {
+  all: (tenant: string) => ["orders", tenant] as const,
+  list: (tenant: string, params?: OrdersQueryParams) =>
+    [
+      ...orderKeys.all(tenant),
+      params?.search ?? "",
+      params?.status ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 10,
+    ] as const,
+};
+
+export const useOrdersQuery = (tenant: string, params?: OrdersQueryParams) =>
   useQuery({
-    queryKey: [...orderKeys.all(tenant), status ?? ""],
-    queryFn: async () => (await listOrders(tenant, status)).data,
+    queryKey: orderKeys.list(tenant, params),
+    queryFn: async () => (await listOrders(tenant, params)).data,
     placeholderData: keepPreviousData,
   });
 

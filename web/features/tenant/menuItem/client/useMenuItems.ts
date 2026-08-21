@@ -42,7 +42,7 @@ export const useMenuItemsQuery = (
       params?.categoryId ?? "",
       params?.foodType ?? "",
       params?.page ?? 1,
-      params?.limit ?? 12,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listMenuItems(tenant, params)).data,
     placeholderData: keepPreviousData,

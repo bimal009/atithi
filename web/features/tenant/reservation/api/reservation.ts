@@ -10,11 +10,18 @@ import {
 
 export const listReservations = async (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListReservationsResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListReservationsResponse>>(
     `/hotels/slug/${tenant}/reservations`,
-    { params: { search: params?.search || undefined, status: params?.status || undefined, limit: 100 } },
+    {
+      params: {
+        search: params?.search || undefined,
+        status: params?.status || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 10,
+      },
+    },
   );
   return data;
 };

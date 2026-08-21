@@ -65,7 +65,7 @@ const statusParser = parseAsStringLiteral([
 
 const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 export function TablesGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);

@@ -28,7 +28,7 @@ export const useTablesQuery = (
       params?.search ?? "",
       params?.status ?? "",
       params?.page ?? 1,
-      params?.limit ?? 12,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listTables(tenant, params)).data,
     placeholderData: keepPreviousData,

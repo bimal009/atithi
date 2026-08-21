@@ -26,7 +26,7 @@ export const useAddOnsQuery = (
       ...addOnKeys.all(tenant),
       params?.search ?? "",
       params?.page ?? 1,
-      params?.limit ?? 12,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listAddOns(tenant, params)).data,
     placeholderData: keepPreviousData,

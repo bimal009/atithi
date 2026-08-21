@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon } from "lucide-react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,6 +16,10 @@ import { CustomersTable } from "./customers-table";
 const searchParser = parseAsString.withDefault("").withOptions({
   history: "replace",
 });
+
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 10;
 
 function CustomersSkeleton() {
   return (
@@ -42,8 +46,17 @@ function CustomersSkeleton() {
 
 export function CustomersPageClient({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const debouncedSearch = useDebouncedValue(search, 400);
-  const customersQuery = useCustomersQuery(tenant, debouncedSearch);
+  const customersQuery = useCustomersQuery(tenant, {
+    search: debouncedSearch,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   if (customersQuery.isPending) {
     return <CustomersSkeleton />;
@@ -62,13 +75,23 @@ export function CustomersPageClient({ tenant }: { tenant: string }) {
     );
   }
 
+  const total = customersQuery.data.total;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <CustomersTable
       tenant={tenant}
       customers={customersQuery.data.customers}
+      total={total}
       search={search}
-      onSearchChange={setSearch}
+      onSearchChange={(value) => {
+        setSearch(value);
+        resetToFirstPage();
+      }}
       loading={customersQuery.isFetching}
+      page={page}
+      pageCount={pageCount}
+      onPageChange={setPage}
     />
   );
 }

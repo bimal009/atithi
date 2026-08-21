@@ -42,6 +42,7 @@ import { EditMemberDialog } from "./edit-member-dialog";
 export function StaffTable({
   tenant,
   members,
+  total,
   roles,
   assignableRoles,
   roleFilter,
@@ -49,9 +50,13 @@ export function StaffTable({
   search,
   onSearchChange,
   loading,
+  page,
+  pageCount,
+  onPageChange,
 }: {
   tenant: string;
   members: Member[];
+  total: number;
   roles: RoleSummary[];
   assignableRoles: RoleSummary[];
   roleFilter: string;
@@ -59,6 +64,9 @@ export function StaffTable({
   search: string;
   onSearchChange: (value: string) => void;
   loading?: boolean;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
   const [editingMember, setEditingMember] = React.useState<Member | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Member | null>(null);
@@ -168,18 +176,19 @@ export function StaffTable({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Staff"
-        description={`${members.length} team members`}
+        description={`${total} team members`}
         actions={<AddMemberDialog tenant={tenant} roles={assignableRoles} />}
       />
 
       <SectionCards
         stats={[
-          { label: "Total staff", value: String(members.length) },
+          { label: "Total staff", value: String(total) },
           {
             label: "Active",
             value: String(members.filter((m) => m.status === "active").length),
+            description: "On this page",
           },
-          { label: "Roles in use", value: String(distinctRoles) },
+          { label: "Roles in use", value: String(distinctRoles), description: "On this page" },
         ]}
       />
 
@@ -188,6 +197,9 @@ export function StaffTable({
         data={members}
         loading={loading}
         getRowId={(m) => m.id}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={onPageChange}
         searchPlaceholder="Search by name, email or phone…"
         searchValue={search}
         onSearchChange={onSearchChange}

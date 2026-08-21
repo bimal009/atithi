@@ -10,12 +10,18 @@ import {
 
 export const listMembers = async (
   tenant: string,
-  roleId?: string,
-  search?: string,
+  params?: { roleId?: string; search?: string; page?: number; limit?: number },
 ): Promise<ApiResponse<ListMembersResponse>> => {
   const { data } = await axiosInstance.get<ApiResponse<ListMembersResponse>>(
     `/hotels/slug/${tenant}/members`,
-    { params: { roleId: roleId || undefined, search: search || undefined } },
+    {
+      params: {
+        roleId: params?.roleId || undefined,
+        search: params?.search || undefined,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 10,
+      },
+    },
   );
   return data;
 };

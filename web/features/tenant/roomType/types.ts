@@ -25,3 +25,10 @@ export type CreateRoomTypeInput = {
 };
 
 export type UpdateRoomTypeInput = Partial<CreateRoomTypeInput>;
+
+export type ListRoomTypesResponse = {
+  roomTypes: RoomType[];
+  page: number;
+  limit: number;
+  total: number;
+};

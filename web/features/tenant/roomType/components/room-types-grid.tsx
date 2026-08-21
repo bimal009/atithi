@@ -24,11 +24,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PaginationFooter } from "@/components/shared/pagination-footer";
 import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 
@@ -133,9 +135,21 @@ function RoomTypeCard({
 export function RoomTypesGrid({
   tenant,
   roomTypes,
+  total,
+  search,
+  onSearchChange,
+  page,
+  pageCount,
+  onPageChange,
 }: {
   tenant: string;
   roomTypes: RoomType[];
+  total: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
   const [creating, setCreating] = React.useState(false);
   const [editingRoomType, setEditingRoomType] = React.useState<RoomType | null>(
@@ -169,9 +183,20 @@ export function RoomTypesGrid({
 
       <SectionCards
         stats={[
-          { label: "Room types", value: String(roomTypes.length) },
-          { label: "Average base rate", value: formatCurrency(avgPrice) },
+          { label: "Room types", value: String(total) },
+          {
+            label: "Average base rate",
+            value: formatCurrency(avgPrice),
+            description: "On this page",
+          },
         ]}
+      />
+
+      <Input
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search room types…"
+        className="sm:max-w-xs"
       />
 
       {roomTypes.length === 0 ? (
@@ -179,7 +204,7 @@ export function RoomTypesGrid({
           <CardContent>
             <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
               <LayoutGridIcon className="size-8" aria-hidden />
-              <p>No room types defined yet.</p>
+              <p>{search ? "No room types match your search." : "No room types defined yet."}</p>
             </div>
           </CardContent>
         </Card>
@@ -196,6 +221,8 @@ export function RoomTypesGrid({
           ))}
         </div>
       )}
+
+      <PaginationFooter page={page} pageCount={pageCount} onPageChange={onPageChange} />
 
       <RoomTypeFormDialog
         tenant={tenant}

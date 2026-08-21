@@ -36,7 +36,7 @@ export const listMenuItems = async (
         categoryId: params?.categoryId || undefined,
         foodType: params?.foodType || undefined,
         page: params?.page ?? 1,
-        limit: params?.limit ?? 12,
+        limit: params?.limit ?? 10,
       },
     },
   );

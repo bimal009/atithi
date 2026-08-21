@@ -26,7 +26,7 @@ export const useCategoriesQuery = (
       ...categoryKeys.all(tenant),
       params?.search ?? "",
       params?.page ?? 1,
-      params?.limit ?? 20,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listCategories(tenant, params)).data,
     placeholderData: keepPreviousData,

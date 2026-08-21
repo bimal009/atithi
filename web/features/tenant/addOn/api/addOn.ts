@@ -18,7 +18,7 @@ export const listAddOns = async (
       params: {
         search: params?.search || undefined,
         page: params?.page ?? 1,
-        limit: params?.limit ?? 12,
+        limit: params?.limit ?? 10,
       },
     },
   );

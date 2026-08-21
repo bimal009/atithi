@@ -20,10 +20,16 @@ export const reservationKeys = {
 
 export const useReservationsQuery = (
   tenant: string,
-  params?: { search?: string; status?: string },
+  params?: { search?: string; status?: string; page?: number; limit?: number },
 ) =>
   useQuery({
-    queryKey: [...reservationKeys.all(tenant), params?.search ?? "", params?.status ?? ""],
+    queryKey: [
+      ...reservationKeys.all(tenant),
+      params?.search ?? "",
+      params?.status ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 10,
+    ],
     queryFn: async () => (await listReservations(tenant, params)).data,
     placeholderData: keepPreviousData,
   });

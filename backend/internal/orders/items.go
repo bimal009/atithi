@@ -1,11 +1,9 @@
 package orders
 
 import (
-	"context"
 	"encoding/json"
 
 	model "github.com/bimal009/atithi/internal/models"
-	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -87,70 +85,3 @@ func scanOrder(row pgx.Row) (model.Order, error) {
 	return order, nil
 }
 
-func insertOrderItems(ctx context.Context, tx pgx.Tx, orderID, hotelID string, items []OrderItemInput) error {
-	menuItemIDs := make([]string, len(items))
-	quantities := make([]int, len(items))
-	for i, it := range items {
-		menuItemIDs[i] = it.MenuItemID
-		quantities[i] = it.Quantity
-	}
-
-	tag, err := tx.Exec(ctx, `
-		INSERT INTO order_items (order_id, menu_item_id, quantity)
-		SELECT $1::uuid, x.menu_item_id, x.quantity
-		FROM unnest($2::uuid[], $3::int[]) AS x(menu_item_id, quantity)
-		JOIN menu_items mi ON mi.id = x.menu_item_id AND mi.hotel_id = $4::uuid
-	`, orderID, menuItemIDs, quantities, hotelID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() != int64(len(items)) {
-		return apperr.ErrOrderResourceInvalid
-	}
-
-	var addOnMenuItemIDs, addOnIDs []string
-	for _, it := range items {
-		for _, addOnID := range it.AddOnIDs {
-			addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
-			addOnIDs = append(addOnIDs, addOnID)
-		}
-	}
-
-	if len(addOnIDs) == 0 {
-		return nil
-	}
-
-	tag, err = tx.Exec(ctx, `
-		INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id)
-		SELECT $1::uuid, x.menu_item_id, x.add_on_id
-		FROM unnest($2::uuid[], $3::uuid[]) AS x(menu_item_id, add_on_id)
-		JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $4::uuid
-	`, orderID, addOnMenuItemIDs, addOnIDs, hotelID)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() != int64(len(addOnIDs)) {
-		return apperr.ErrOrderResourceInvalid
-	}
-
-	return nil
-}
-
-func recomputeTotal(ctx context.Context, tx pgx.Tx, orderID string) error {
-	_, err := tx.Exec(ctx, `
-		UPDATE orders SET total_amount = COALESCE((
-			SELECT SUM(
-				(mi.price + COALESCE((
-					SELECT SUM(a.price) FROM order_item_add_ons oia
-					JOIN add_ons a ON a.id = oia.add_on_id
-					WHERE oia.order_id = oi.order_id AND oia.menu_item_id = oi.menu_item_id
-				), 0)) * oi.quantity
-			)
-			FROM order_items oi
-			JOIN menu_items mi ON mi.id = oi.menu_item_id
-			WHERE oi.order_id = orders.id
-		), 0)
-		WHERE id = $1::uuid
-	`, orderID)
-	return err
-}

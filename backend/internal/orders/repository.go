@@ -35,13 +35,67 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 	}
 	defer tx.Rollback(ctx)
 
-	var orderID string
+	menuItemIDs := make([]string, len(items))
+	for i, it := range items {
+		menuItemIDs[i] = it.MenuItemID
+	}
+	var addOnIDs []string
+	for _, it := range items {
+		addOnIDs = append(addOnIDs, it.AddOnIDs...)
+	}
+
+	priceRows, err := tx.Query(ctx, `
+		SELECT 'item', id, price FROM menu_items WHERE id = ANY($1::uuid[]) AND hotel_id = $3::uuid
+		UNION ALL
+		SELECT 'addon', id, price FROM add_ons WHERE id = ANY($2::uuid[]) AND hotel_id = $3::uuid
+	`, menuItemIDs, addOnIDs, order.HotelID)
+	if err != nil {
+		return model.Order{}, err
+	}
+	itemPrices := make(map[string]float64, len(menuItemIDs))
+	addOnPrices := make(map[string]float64, len(addOnIDs))
+	for priceRows.Next() {
+		var kind, id string
+		var price float64
+		if err := priceRows.Scan(&kind, &id, &price); err != nil {
+			priceRows.Close()
+			return model.Order{}, err
+		}
+		if kind == "item" {
+			itemPrices[id] = price
+		} else {
+			addOnPrices[id] = price
+		}
+	}
+	priceRows.Close()
+	if err := priceRows.Err(); err != nil {
+		return model.Order{}, err
+	}
+
+	var total float64
+	for _, it := range items {
+		price, ok := itemPrices[it.MenuItemID]
+		if !ok {
+			return model.Order{}, apperr.ErrOrderResourceInvalid
+		}
+		lineTotal := price
+		for _, addOnID := range it.AddOnIDs {
+			addOnPrice, ok := addOnPrices[addOnID]
+			if !ok {
+				return model.Order{}, apperr.ErrOrderResourceInvalid
+			}
+			lineTotal += addOnPrice
+		}
+		total += lineTotal * float64(it.Quantity)
+	}
+
+	var created model.Order
 	err = tx.QueryRow(ctx, `
-		INSERT INTO orders (id, hotel_id, table_id, room_id, cabin_id, customer_id, status, notes, created_by)
-		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid, $7, $8, m.id
+		INSERT INTO orders (id, hotel_id, table_id, room_id, cabin_id, customer_id, status, notes, created_by, total_amount)
+		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid, $7, $8, m.id, $9
 		FROM members m
-		WHERE m.hotel_id = $2::uuid AND m.user_id = $9::uuid AND m.status = 'active'
-		RETURNING id
+		WHERE m.hotel_id = $2::uuid AND m.user_id = $10::uuid AND m.status = 'active'
+		RETURNING id, hotel_id, table_id, room_id, cabin_id, customer_id, status, total_amount, notes, created_by, created_at, updated_at
 	`,
 		order.ID,
 		order.HotelID,
@@ -51,8 +105,22 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 		order.CustomerID,
 		order.Status,
 		order.Notes,
+		total,
 		userID,
-	).Scan(&orderID)
+	).Scan(
+		&created.ID,
+		&created.HotelID,
+		&created.TableID,
+		&created.RoomID,
+		&created.CabinID,
+		&created.CustomerID,
+		&created.Status,
+		&created.TotalAmount,
+		&created.Notes,
+		&created.CreatedBy,
+		&created.CreatedAt,
+		&created.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -64,18 +132,44 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 		return model.Order{}, err
 	}
 
-	if err := insertOrderItems(ctx, tx, orderID, order.HotelID, items); err != nil {
+	quantities := make([]int, len(items))
+	for i, it := range items {
+		quantities[i] = it.Quantity
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO order_items (order_id, menu_item_id, quantity)
+		SELECT $1::uuid, x.menu_item_id, x.quantity
+		FROM unnest($2::uuid[], $3::int[]) AS x(menu_item_id, quantity)
+		JOIN menu_items mi ON mi.id = x.menu_item_id AND mi.hotel_id = $4::uuid
+	`, created.ID, menuItemIDs, quantities, order.HotelID); err != nil {
 		return model.Order{}, err
 	}
-	if err := recomputeTotal(ctx, tx, orderID); err != nil {
-		return model.Order{}, err
+
+	var addOnMenuItemIDs []string
+	var flatAddOnIDs []string
+	for _, it := range items {
+		for _, addOnID := range it.AddOnIDs {
+			addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
+			flatAddOnIDs = append(flatAddOnIDs, addOnID)
+		}
 	}
+	if len(flatAddOnIDs) > 0 {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id)
+			SELECT $1::uuid, x.menu_item_id, x.add_on_id
+			FROM unnest($2::uuid[], $3::uuid[]) AS x(menu_item_id, add_on_id)
+			JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $4::uuid
+		`, created.ID, addOnMenuItemIDs, flatAddOnIDs, order.HotelID); err != nil {
+			return model.Order{}, err
+		}
+	}
+	created.Items = []model.OrderItemRef{}
 
 	if err := tx.Commit(ctx); err != nil {
 		return model.Order{}, err
 	}
 
-	return r.Get(ctx, orderID, order.HotelID, userID)
+	return created, nil
 }
 
 func (r *orderRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Order, error) {
@@ -101,6 +195,15 @@ func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 	query := "SELECT " + orderColumns + `, COUNT(*) OVER() AS total` + orderFrom + `
 		WHERE o.hotel_id = $1::uuid
 		  AND ($5 = '' OR o.status = $5)
+		  AND (
+		    $6 = ''
+		    OR dt.name ILIKE '%' || $6 || '%'
+		    OR rm.number ILIKE '%' || $6 || '%'
+		    OR cb.name ILIKE '%' || $6 || '%'
+		    OR c.name ILIKE '%' || $6 || '%'
+		    OR u.name ILIKE '%' || $6 || '%'
+		    OR o.id::text ILIKE $6 || '%'
+		  )
 		  AND EXISTS (
 			SELECT 1 FROM members mm WHERE mm.hotel_id = o.hotel_id AND mm.user_id = $2::uuid AND mm.status = 'active'
 		  )
@@ -108,7 +211,7 @@ func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 		LIMIT $3 OFFSET $4
 	`
 
-	rows, err := r.DB.Query(ctx, query, hotelID, userID, pagination.Limit, pagination.Offset(), status)
+	rows, err := r.DB.Query(ctx, query, hotelID, userID, pagination.Limit, pagination.Offset(), status, pagination.Search)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -166,25 +269,99 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 	}
 	defer tx.Rollback(ctx)
 
-	var orderID string
+	var newTotal *float64
+	if items != nil {
+		menuItemIDs := make([]string, len(*items))
+		for i, it := range *items {
+			menuItemIDs[i] = it.MenuItemID
+		}
+		var addOnIDs []string
+		for _, it := range *items {
+			addOnIDs = append(addOnIDs, it.AddOnIDs...)
+		}
+
+		priceRows, err := tx.Query(ctx, `
+			SELECT 'item', id, price FROM menu_items WHERE id = ANY($1::uuid[]) AND hotel_id = $3::uuid
+			UNION ALL
+			SELECT 'addon', id, price FROM add_ons WHERE id = ANY($2::uuid[]) AND hotel_id = $3::uuid
+		`, menuItemIDs, addOnIDs, order.HotelID)
+		if err != nil {
+			return model.Order{}, err
+		}
+		itemPrices := make(map[string]float64, len(menuItemIDs))
+		addOnPrices := make(map[string]float64, len(addOnIDs))
+		for priceRows.Next() {
+			var kind, id string
+			var price float64
+			if err := priceRows.Scan(&kind, &id, &price); err != nil {
+				priceRows.Close()
+				return model.Order{}, err
+			}
+			if kind == "item" {
+				itemPrices[id] = price
+			} else {
+				addOnPrices[id] = price
+			}
+		}
+		priceRows.Close()
+		if err := priceRows.Err(); err != nil {
+			return model.Order{}, err
+		}
+
+		var total float64
+		for _, it := range *items {
+			price, ok := itemPrices[it.MenuItemID]
+			if !ok {
+				return model.Order{}, apperr.ErrOrderResourceInvalid
+			}
+			lineTotal := price
+			for _, addOnID := range it.AddOnIDs {
+				addOnPrice, ok := addOnPrices[addOnID]
+				if !ok {
+					return model.Order{}, apperr.ErrOrderResourceInvalid
+				}
+				lineTotal += addOnPrice
+			}
+			total += lineTotal * float64(it.Quantity)
+		}
+
+		newTotal = &total
+	}
+
+	var updated model.Order
 	err = tx.QueryRow(ctx, `
 		UPDATE orders
-		SET table_id = $1::uuid, room_id = $2::uuid, cabin_id = $3::uuid, customer_id = $4::uuid, notes = $5, updated_at = now()
-		WHERE id = $6::uuid AND hotel_id = $7::uuid
+		SET table_id = $1::uuid, room_id = $2::uuid, cabin_id = $3::uuid, customer_id = $4::uuid, notes = $5,
+		    total_amount = COALESCE($6, total_amount), updated_at = now()
+		WHERE id = $7::uuid AND hotel_id = $8::uuid
 		  AND EXISTS (
-			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $8::uuid AND m.status = 'active'
+			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $9::uuid AND m.status = 'active'
 		  )
-		RETURNING id
+		RETURNING id, hotel_id, table_id, room_id, cabin_id, customer_id, status, total_amount, notes, created_by, created_at, updated_at
 	`,
 		order.TableID,
 		order.RoomID,
 		order.CabinID,
 		order.CustomerID,
 		order.Notes,
+		newTotal,
 		order.ID,
 		order.HotelID,
 		userID,
-	).Scan(&orderID)
+	).Scan(
+		&updated.ID,
+		&updated.HotelID,
+		&updated.TableID,
+		&updated.RoomID,
+		&updated.CabinID,
+		&updated.CustomerID,
+		&updated.Status,
+		&updated.TotalAmount,
+		&updated.Notes,
+		&updated.CreatedBy,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -197,41 +374,86 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 	}
 
 	if items != nil {
-		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_id = $1::uuid`, orderID); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_id = $1::uuid`, updated.ID); err != nil {
 			return model.Order{}, err
 		}
-		if err := insertOrderItems(ctx, tx, orderID, order.HotelID, *items); err != nil {
+
+		menuItemIDs := make([]string, len(*items))
+		quantities := make([]int, len(*items))
+		for i, it := range *items {
+			menuItemIDs[i] = it.MenuItemID
+			quantities[i] = it.Quantity
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO order_items (order_id, menu_item_id, quantity)
+			SELECT $1::uuid, x.menu_item_id, x.quantity
+			FROM unnest($2::uuid[], $3::int[]) AS x(menu_item_id, quantity)
+			JOIN menu_items mi ON mi.id = x.menu_item_id AND mi.hotel_id = $4::uuid
+		`, updated.ID, menuItemIDs, quantities, order.HotelID); err != nil {
 			return model.Order{}, err
 		}
-		if err := recomputeTotal(ctx, tx, orderID); err != nil {
-			return model.Order{}, err
+
+		var addOnMenuItemIDs []string
+		var flatAddOnIDs []string
+		for _, it := range *items {
+			for _, addOnID := range it.AddOnIDs {
+				addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
+				flatAddOnIDs = append(flatAddOnIDs, addOnID)
+			}
+		}
+		if len(flatAddOnIDs) > 0 {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id)
+				SELECT $1::uuid, x.menu_item_id, x.add_on_id
+				FROM unnest($2::uuid[], $3::uuid[]) AS x(menu_item_id, add_on_id)
+				JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $4::uuid
+			`, updated.ID, addOnMenuItemIDs, flatAddOnIDs, order.HotelID); err != nil {
+				return model.Order{}, err
+			}
 		}
 	}
+	updated.Items = []model.OrderItemRef{}
 
 	if err := tx.Commit(ctx); err != nil {
 		return model.Order{}, err
 	}
 
-	return r.Get(ctx, orderID, order.HotelID, userID)
+	return updated, nil
 }
 
 func (r *orderRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status string) (model.Order, error) {
-	result, err := r.DB.Exec(ctx, `
+	var updated model.Order
+	err := r.DB.QueryRow(ctx, `
 		UPDATE orders
 		SET status = $1, updated_at = now()
 		WHERE id = $2::uuid AND hotel_id = $3::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-	`, status, id, hotelID, userID)
+		RETURNING id, hotel_id, table_id, room_id, cabin_id, customer_id, status, total_amount, notes, created_by, created_at, updated_at
+	`, status, id, hotelID, userID).Scan(
+		&updated.ID,
+		&updated.HotelID,
+		&updated.TableID,
+		&updated.RoomID,
+		&updated.CabinID,
+		&updated.CustomerID,
+		&updated.Status,
+		&updated.TotalAmount,
+		&updated.Notes,
+		&updated.CreatedBy,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Order{}, apperr.ErrOrderNotFound
+		}
 		return model.Order{}, err
 	}
-	if result.RowsAffected() == 0 {
-		return model.Order{}, apperr.ErrOrderNotFound
-	}
+	updated.Items = []model.OrderItemRef{}
 
-	return r.Get(ctx, id, hotelID, userID)
+	return updated, nil
 }
 
 func (r *orderRepo) Delete(ctx context.Context, id, hotelID, userID string) error {

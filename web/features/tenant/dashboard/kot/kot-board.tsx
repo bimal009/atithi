@@ -1,9 +1,9 @@
 "use client"
 
-import { ChefHatIcon } from "lucide-react"
+import { ChefHatIcon, XIcon } from "lucide-react"
 
-import type { KotOrder, OrderStatus } from "@/types"
-import { formatCurrency, orderTotal, timeAgo } from "@/lib/utils"
+import type { Order, OrderStatus } from "@/features/tenant/order/types"
+import { formatCurrency, timeAgo } from "@/lib/utils"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -16,12 +16,20 @@ const COLUMN_LABELS: Record<OrderStatus, string> = {
   preparing: "Preparing",
   ready: "Ready",
   served: "Served",
+  cancelled: "Cancelled",
 }
 
 const NEXT_ACTION: Partial<Record<OrderStatus, string>> = {
   pending: "Start preparing",
   preparing: "Mark ready",
   ready: "Mark served",
+}
+
+function destination(order: Order) {
+  if (order.tableName) return order.tableName
+  if (order.roomNumber) return `Room ${order.roomNumber}`
+  if (order.cabinName) return order.cabinName
+  return "—"
 }
 
 function initials(name: string) {
@@ -51,10 +59,12 @@ export function KotBoard({
   orders,
   columns,
   onAdvance,
+  onCancel,
 }: {
-  orders: KotOrder[]
+  orders: Order[]
   columns: OrderStatus[]
   onAdvance?: (orderId: string) => void
+  onCancel?: (orderId: string) => void
 }) {
   return (
     <div
@@ -64,7 +74,7 @@ export function KotBoard({
       {columns.map((column) => {
         const columnOrders = orders
           .filter((order) => order.status === column)
-          .sort((a, b) => +new Date(a.placedAt) - +new Date(b.placedAt))
+          .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
 
         return (
           <div key={column} className="flex min-w-0 flex-col gap-3">
@@ -81,38 +91,31 @@ export function KotBoard({
               ) : (
                 columnOrders.map((order) => {
                   const itemCount = order.items.reduce((n, i) => n + i.quantity, 0)
-                  const total = orderTotal(order.items)
 
                   return (
-                    <Card
-                      key={order.id}
-                      className={cn(
-                        "gap-3 py-4 transition-shadow hover:shadow-md",
-                        order.status === "served" && "opacity-70"
-                      )}
-                    >
+                    <Card key={order.id} className="gap-3 py-4 transition-shadow hover:shadow-md">
                       <div className="flex items-start justify-between gap-2 px-4">
                         <div className="flex flex-col">
                           <span className="font-heading text-sm font-semibold">
-                            {order.table}
+                            {destination(order)}
                           </span>
                           <span className="text-xs text-muted-foreground tabular-nums">
-                            {order.kotNumber}
+                            #{order.id.slice(0, 8).toUpperCase()}
                           </span>
                         </div>
-                        <ElapsedBadge placedAt={order.placedAt} />
+                        <ElapsedBadge placedAt={order.createdAt} />
                       </div>
 
                       <div className="flex flex-col gap-1 px-4 text-sm text-muted-foreground">
                         {order.items.slice(0, 3).map((item) => (
-                          <div key={item.id} className="flex flex-col">
+                          <div key={item.menuItemId} className="flex flex-col">
                             <div className="flex items-center gap-1.5">
                               <span className="tabular-nums text-foreground">
                                 {item.quantity}×
                               </span>
                               <span className="truncate">{item.name}</span>
                             </div>
-                            {item.addOns && item.addOns.length > 0 && (
+                            {item.addOns.length > 0 && (
                               <span className="truncate pl-5 text-xs">
                                 + {item.addOns.map((a) => a.name).join(", ")}
                               </span>
@@ -136,26 +139,37 @@ export function KotBoard({
                       <div className="flex items-center justify-between gap-2 border-t px-4 pt-3">
                         <div className="flex items-center gap-2">
                           <Avatar size="sm">
-                            <AvatarFallback>
-                              {initials(order.waiterName)}
-                            </AvatarFallback>
+                            <AvatarFallback>{initials(order.createdByName)}</AvatarFallback>
                           </Avatar>
                           <span className="text-xs text-muted-foreground">
-                            {itemCount} items · {formatCurrency(total)}
+                            {itemCount} items · {formatCurrency(order.totalAmount)}
                           </span>
                         </div>
                       </div>
 
-                      {onAdvance && NEXT_ACTION[order.status] && (
-                        <div className="px-4">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="w-full"
-                            onClick={() => onAdvance(order.id)}
-                          >
-                            {NEXT_ACTION[order.status]}
-                          </Button>
+                      {(onAdvance || onCancel) && (
+                        <div className="flex items-center gap-2 px-4">
+                          {onAdvance && NEXT_ACTION[order.status] && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className={cn("flex-1", !onCancel && "w-full")}
+                              onClick={() => onAdvance(order.id)}
+                            >
+                              {NEXT_ACTION[order.status]}
+                            </Button>
+                          )}
+                          {onCancel && (
+                            <Button
+                              size="icon-sm"
+                              variant="outline"
+                              aria-label="Cancel order"
+                              title="Cancel order"
+                              onClick={() => onCancel(order.id)}
+                            >
+                              <XIcon />
+                            </Button>
+                          )}
                         </div>
                       )}
                     </Card>

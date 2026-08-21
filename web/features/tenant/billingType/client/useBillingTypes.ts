@@ -26,7 +26,7 @@ export const useBillingTypesQuery = (
       ...billingTypeKeys.all(tenant),
       params?.search ?? "",
       params?.page ?? 1,
-      params?.limit ?? 20,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listBillingTypes(tenant, params)).data,
     placeholderData: keepPreviousData,

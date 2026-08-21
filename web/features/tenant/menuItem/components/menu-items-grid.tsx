@@ -53,7 +53,7 @@ const foodTypeParser = parseAsStringLiteral(["all", "veg", "non-veg", "vegan", "
 
 const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 export function MenuItemsGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);

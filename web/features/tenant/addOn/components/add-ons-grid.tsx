@@ -35,7 +35,7 @@ const searchParser = parseAsString.withDefault("").withOptions({
 
 const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 export function AddOnsGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);

@@ -26,7 +26,7 @@ export const useSectionsQuery = (
       ...sectionKeys.all(tenant),
       params?.search ?? "",
       params?.page ?? 1,
-      params?.limit ?? 20,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listSections(tenant, params)).data,
     placeholderData: keepPreviousData,

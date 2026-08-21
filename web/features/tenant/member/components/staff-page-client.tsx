@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertCircleIcon } from "lucide-react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,6 +20,10 @@ import { StaffTable } from "./staff-table";
 const searchParser = parseAsString.withDefault("").withOptions({
   history: "replace",
 });
+
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 10;
 
 function StaffSkeleton() {
   return (
@@ -47,11 +51,21 @@ function StaffSkeleton() {
 export function StaffPageClient({ tenant }: { tenant: string }) {
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [search, setSearch] = useQueryState("q", searchParser);
+  const [page, setPage] = useQueryState("page", pageParser);
 
   const debouncedSearch = useDebouncedValue(search, 400);
-  const membersQuery = useMembersQuery(tenant, roleFilter, debouncedSearch);
+  const membersQuery = useMembersQuery(tenant, {
+    roleId: roleFilter,
+    search: debouncedSearch,
+    page,
+    limit: PAGE_SIZE,
+  });
   const rolesQuery = useRolesQuery(tenant);
   const assignableRolesQuery = useAssignableRolesQuery(tenant);
+
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
 
   if (membersQuery.isPending || rolesQuery.isPending || assignableRolesQuery.isPending) {
     return <StaffSkeleton />;
@@ -77,17 +91,30 @@ export function StaffPageClient({ tenant }: { tenant: string }) {
     );
   }
 
+  const total = membersQuery.data.total;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <StaffTable
       tenant={tenant}
       members={membersQuery.data.members}
+      total={total}
       roles={rolesQuery.data.roles}
       assignableRoles={assignableRolesQuery.data.roles}
       roleFilter={roleFilter}
-      onRoleFilterChange={setRoleFilter}
+      onRoleFilterChange={(value) => {
+        setRoleFilter(value);
+        resetToFirstPage();
+      }}
       search={search}
-      onSearchChange={setSearch}
+      onSearchChange={(value) => {
+        setSearch(value);
+        resetToFirstPage();
+      }}
       loading={membersQuery.isFetching}
+      page={page}
+      pageCount={pageCount}
+      onPageChange={setPage}
     />
   );
 }

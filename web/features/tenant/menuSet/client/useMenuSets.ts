@@ -26,7 +26,7 @@ export const useMenuSetsQuery = (
       ...menuSetKeys.all(tenant),
       params?.search ?? "",
       params?.page ?? 1,
-      params?.limit ?? 12,
+      params?.limit ?? 10,
     ],
     queryFn: async () => (await listMenuSets(tenant, params)).data,
     placeholderData: keepPreviousData,

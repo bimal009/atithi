@@ -33,15 +33,23 @@ import { CustomerFormDialog } from "./customer-form-dialog";
 export function CustomersTable({
   tenant,
   customers,
+  total,
   search,
   onSearchChange,
   loading,
+  page,
+  pageCount,
+  onPageChange,
 }: {
   tenant: string;
   customers: Customer[];
+  total: number;
   search: string;
   onSearchChange: (value: string) => void;
   loading?: boolean;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
   const [creating, setCreating] = React.useState(false);
   const [editingCustomer, setEditingCustomer] = React.useState<Customer | null>(null);
@@ -141,7 +149,7 @@ export function CustomersTable({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Customers"
-        description={`${customers.length} guests on record`}
+        description={`${total} guests on record`}
         actions={
           <Button className="cursor-pointer" onClick={() => setCreating(true)}>
             <PlusIcon data-icon="inline-start" aria-hidden />
@@ -152,9 +160,9 @@ export function CustomersTable({
 
       <SectionCards
         stats={[
-          { label: "Total customers", value: String(customers.length) },
-          { label: "With email", value: String(withEmail) },
-          { label: "With ID document", value: String(withDocument) },
+          { label: "Total customers", value: String(total) },
+          { label: "With email", value: String(withEmail), description: "On this page" },
+          { label: "With ID document", value: String(withDocument), description: "On this page" },
         ]}
       />
 
@@ -166,6 +174,9 @@ export function CustomersTable({
         searchPlaceholder="Search by name, phone, email or document…"
         searchValue={search}
         onSearchChange={onSearchChange}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={onPageChange}
         emptyIcon={UsersRoundIcon}
         emptyTitle="No customers found"
         emptyDescription="Try a different search term."

@@ -9,7 +9,7 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import {
   AlertDialog,
@@ -85,9 +85,14 @@ const statusParser = parseAsStringLiteral([
   .withDefault("all")
   .withOptions({ history: "replace" });
 
+const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
+
+const PAGE_SIZE = 10;
+
 export function ReservationsTable({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
   const [status, setStatus] = useQueryState("status", statusParser);
+  const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);
   const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Reservation | null>(null);
@@ -96,12 +101,20 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
   const reservationsQuery = useReservationsQuery(tenant, {
     search: debouncedSearch,
     status: status === "all" ? undefined : status,
+    page,
+    limit: PAGE_SIZE,
   });
 
   const updateStatus = useUpdateReservationStatus(tenant);
   const remove = useRemoveReservation(tenant);
 
+  const resetToFirstPage = () => {
+    if (page !== 1) setPage(1);
+  };
+
   const reservations = reservationsQuery.data?.reservations ?? [];
+  const total = reservationsQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const upcoming = reservations.filter(
     (r) => r.status === "confirmed" && new Date(r.reservedAt) > new Date(),
   ).length;
@@ -252,25 +265,34 @@ export function ReservationsTable({ tenant }: { tenant: string }) {
 
       <SectionCards
         stats={[
-          { label: "Total reservations", value: String(reservations.length) },
-          { label: "Upcoming", value: String(upcoming) },
-          { label: "Seated now", value: String(seated) },
+          { label: "Total reservations", value: String(total) },
+          { label: "Upcoming", value: String(upcoming), description: "On this page" },
+          { label: "Seated now", value: String(seated), description: "On this page" },
         ]}
       />
 
       <DataTable
         columns={columns}
         data={reservations}
-        loading={reservationsQuery.isPending}
+        loading={reservationsQuery.isFetching}
         getRowId={(r) => r.id}
         searchPlaceholder="Search by guest name or phone…"
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={(value) => {
+          setSearch(value);
+          resetToFirstPage();
+        }}
+        page={page}
+        pageCount={pageCount}
+        onPageChange={setPage}
         toolbar={
           <Select
             items={STATUS_ITEMS}
             value={status}
-            onValueChange={(v) => setStatus((v ?? "all") as typeof status)}
+            onValueChange={(v) => {
+              setStatus((v ?? "all") as typeof status);
+              resetToFirstPage();
+            }}
           >
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue />

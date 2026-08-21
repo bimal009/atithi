@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
@@ -17,10 +17,19 @@ export const roomTypeKeys = {
   all: (tenant: string) => ["roomTypes", tenant] as const,
 };
 
-export const useRoomTypesQuery = (tenant: string) =>
+export const useRoomTypesQuery = (
+  tenant: string,
+  params?: { search?: string; page?: number; limit?: number },
+) =>
   useQuery({
-    queryKey: roomTypeKeys.all(tenant),
-    queryFn: async () => (await listRoomTypes(tenant)).data,
+    queryKey: [
+      ...roomTypeKeys.all(tenant),
+      params?.search ?? "",
+      params?.page ?? 1,
+      params?.limit ?? 10,
+    ],
+    queryFn: async () => (await listRoomTypes(tenant, params)).data,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateRoomType = (tenant: string) => {

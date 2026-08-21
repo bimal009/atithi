@@ -67,7 +67,7 @@ const statusParser = parseAsStringLiteral([
 
 const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 export function RoomsGrid({ tenant }: { tenant: string }) {
   const [search, setSearch] = useQueryState("q", searchParser);
@@ -84,8 +84,10 @@ export function RoomsGrid({ tenant }: { tenant: string }) {
     page,
     limit: PAGE_SIZE,
   });
-  const roomTypesQuery = useRoomTypesQuery(tenant);
-  const roomTypesById = new Map((roomTypesQuery.data ?? []).map((rt) => [rt.id, rt]));
+  const roomTypesQuery = useRoomTypesQuery(tenant, { limit: 100 });
+  const roomTypesById = new Map(
+    (roomTypesQuery.data?.roomTypes ?? []).map((rt) => [rt.id, rt]),
+  );
   const billingTypesQuery = useBillingTypesQuery(tenant, { limit: 100 });
   const billingTypes = billingTypesQuery.data?.billingTypes ?? [];
 

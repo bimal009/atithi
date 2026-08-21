@@ -68,7 +68,12 @@ func (s *orderService) Create(ctx context.Context, hotelID, userID string, req *
 	}
 
 	s.slog.Info("order created", "order_id", created.ID, "hotel_id", hotelID)
-	s.broadcast(created, ws.OrderCreated)
+
+	if hydrated, err := s.repo.Get(ctx, created.ID, hotelID, userID); err != nil {
+		s.slog.Error("failed to hydrate order for broadcast", "order_id", created.ID, "error", err)
+	} else {
+		s.broadcast(hydrated, ws.OrderCreated)
+	}
 
 	return created, nil
 }
@@ -150,7 +155,12 @@ func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 	if req.Status == StatusCancelled {
 		msgType = ws.OrderCancelled
 	}
-	s.broadcast(updated, msgType)
+
+	if hydrated, err := s.repo.Get(ctx, id, hotelID, userID); err != nil {
+		s.slog.Error("failed to hydrate order for broadcast", "order_id", id, "error", err)
+	} else {
+		s.broadcast(hydrated, msgType)
+	}
 
 	return updated, nil
 }
