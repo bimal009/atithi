@@ -15,6 +15,11 @@ type Order struct {
 	CustomerName  *string        `json:"customerName,omitempty"`
 	Status        string         `db:"status" json:"status"`
 	TotalAmount   float64        `db:"total_amount" json:"totalAmount"`
+	TaxPercent           float64 `json:"taxPercent"`
+	TaxAmount            float64 `json:"taxAmount"`
+	ServiceChargePercent float64 `json:"serviceChargePercent"`
+	ServiceChargeAmount  float64 `json:"serviceChargeAmount"`
+	GrandTotal           float64 `json:"grandTotal"`
 	Notes         *string        `db:"notes" json:"notes,omitempty"`
 	CreatedBy      string        `db:"created_by" json:"createdBy"`
 	CreatedByName  string        `db:"created_by_name" json:"createdByName"`

@@ -20,6 +20,20 @@ func kitchenPendingKey(hotelID string) string {
 	return "kitchen:pending-count:" + hotelID
 }
 
+// SettingsProvider is the narrow slice of hotelsettings this package needs.
+type SettingsProvider interface {
+	Get(ctx context.Context, hotelID string) (model.HotelSettings, error)
+}
+
+func computeOrderBilling(order model.Order, settings model.HotelSettings) model.Order {
+	order.TaxPercent = settings.TaxPercent
+	order.TaxAmount = order.TotalAmount * settings.TaxPercent / 100
+	order.ServiceChargePercent = settings.ServiceChargePercent
+	order.ServiceChargeAmount = order.TotalAmount * settings.ServiceChargePercent / 100
+	order.GrandTotal = order.TotalAmount + order.TaxAmount + order.ServiceChargeAmount
+	return order
+}
+
 func orderLabel(order model.Order) string {
 	switch {
 	case order.TableName != nil:
@@ -50,10 +64,36 @@ type orderService struct {
 	hub      *ws.Hub
 	notifier notifications.Notifier
 	redis    *redis.Client
+	settings SettingsProvider
 }
 
-func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub, notifier notifications.Notifier, redisClient *redis.Client) OrderService {
-	return &orderService{slog: slog, repo: repo, hub: hub, notifier: notifier, redis: redisClient}
+func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub, notifier notifications.Notifier, redisClient *redis.Client, settings SettingsProvider) OrderService {
+	return &orderService{slog: slog, repo: repo, hub: hub, notifier: notifier, redis: redisClient, settings: settings}
+}
+
+func (s *orderService) applyBilling(ctx context.Context, order model.Order) model.Order {
+	settings, err := s.settings.Get(ctx, order.HotelID)
+	if err != nil {
+		s.slog.Error("failed to load hotel settings for order total", "hotel_id", order.HotelID, "error", err)
+		order.GrandTotal = order.TotalAmount
+		return order
+	}
+	return computeOrderBilling(order, settings)
+}
+
+func (s *orderService) applyBillingMany(ctx context.Context, hotelID string, orders []model.Order) []model.Order {
+	settings, err := s.settings.Get(ctx, hotelID)
+	if err != nil {
+		s.slog.Error("failed to load hotel settings for order totals", "hotel_id", hotelID, "error", err)
+		for i := range orders {
+			orders[i].GrandTotal = orders[i].TotalAmount
+		}
+		return orders
+	}
+	for i := range orders {
+		orders[i] = computeOrderBilling(orders[i], settings)
+	}
+	return orders
 }
 
 func (s *orderService) broadcast(hotelID string, msgType ws.MessageType, payload json.RawMessage) {
@@ -116,11 +156,16 @@ func (s *orderService) Create(ctx context.Context, hotelID, userID string, req *
 		}()
 	}
 
-	return created, nil
+	return s.applyBilling(ctx, created), nil
 }
 
 func (s *orderService) Get(ctx context.Context, id, hotelID, userID string) (model.Order, error) {
-	return s.repo.Get(ctx, id, hotelID, userID)
+	order, err := s.repo.Get(ctx, id, hotelID, userID)
+	if err != nil {
+		return model.Order{}, err
+	}
+
+	return s.applyBilling(ctx, order), nil
 }
 
 func (s *orderService) GetAll(ctx context.Context, hotelID, userID string, query ListOrdersQuery) (ListOrdersResponse, error) {
@@ -137,7 +182,7 @@ func (s *orderService) GetAll(ctx context.Context, hotelID, userID string, query
 	}
 
 	return ListOrdersResponse{
-		Orders: list,
+		Orders: s.applyBillingMany(ctx, hotelID, list),
 		Page:   query.Pagination.Page,
 		Limit:  query.Pagination.Limit,
 		Total:  total,
@@ -185,7 +230,7 @@ func (s *orderService) Update(ctx context.Context, id, hotelID, userID string, r
 		s.notifier.Notify(ctx, hotelID, model.NotifOrderUpdated, fmt.Sprintf("Order for %s updated", orderLabel(hydrated)), nil)
 	}
 
-	return updated, nil
+	return s.applyBilling(ctx, updated), nil
 }
 
 func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID string, req *UpdateOrderStatusRequest) (model.Order, error) {
@@ -216,7 +261,7 @@ func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 		s.notifier.Notify(ctx, hotelID, notifType, fmt.Sprintf("Order for %s marked %s", orderLabel(hydrated), req.Status), nil)
 	}
 
-	return updated, nil
+	return s.applyBilling(ctx, updated), nil
 }
 
 func (s *orderService) KitchenPendingCount(ctx context.Context, hotelID string) (int64, error) {

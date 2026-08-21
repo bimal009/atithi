@@ -8,6 +8,7 @@ import (
 	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
+	"github.com/bimal009/atithi/internal/hotelsettings"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
@@ -27,6 +28,7 @@ import (
 type Handlers struct {
 	Auth           *auth.AuthHandler
 	Hotel          *hotel.HotelHandler
+	HotelSettings  *hotelsettings.HotelSettingsHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
 	AddOn          *addons.AddOnHandler
@@ -254,6 +256,12 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 			{
 				kitchenGroup.GET("/pending-count", h.Order.KitchenPendingCount)
 				kitchenGroup.POST("/pending-count/reset", h.Order.ResetKitchenPendingCount)
+			}
+
+			settingsGroup := scoped.Group("/settings")
+			{
+				settingsGroup.GET("", h.HotelSettings.Get)
+				settingsGroup.PATCH("", h.HotelSettings.Update)
 			}
 
 			notificationsGroup := scoped.Group("/notifications")

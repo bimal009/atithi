@@ -18,6 +18,7 @@ import (
 	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
+	"github.com/bimal009/atithi/internal/hotelsettings"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
@@ -111,6 +112,10 @@ func main() {
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
+	hotelSettingsRepo := hotelsettings.NewHotelSettingsRepo(pool)
+	hotelSettingsService := hotelsettings.NewHotelSettingsService(slog, hotelSettingsRepo)
+	hotelSettingsHandler := hotelsettings.NewHotelSettingsHandler(slog, hotelSettingsService)
+
 	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo, notificationService)
 	billingTypeHandler := billingtypes.NewBillingTypeHandler(slog, billingTypeService)
 
@@ -158,7 +163,7 @@ func main() {
 	customerService := customer.NewCustomerService(slog, customerRepo, notificationService)
 	customerHandler := customer.NewCustomerHandler(slog, customerService)
 
-	orderService := orders.NewOrderService(slog, orderRepo, hub, notificationService, redisClient)
+	orderService := orders.NewOrderService(slog, orderRepo, hub, notificationService, redisClient, hotelSettingsRepo)
 	orderHandler := orders.NewOrderHandler(slog, orderService)
 
 	imageHandler := handlers.NewImageHandler(cfg)
@@ -189,6 +194,7 @@ func main() {
 	routes.Register(r, &routes.Handlers{
 		Auth:           authHandler,
 		Hotel:          hotelHandler,
+		HotelSettings:  hotelSettingsHandler,
 		BillingType:    billingTypeHandler,
 		Category:       categoryHandler,
 		AddOn:          addOnHandler,
