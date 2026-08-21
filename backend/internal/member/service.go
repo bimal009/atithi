@@ -7,6 +7,7 @@ import (
 	"time"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,11 +31,12 @@ type MemberService interface {
 }
 
 type memberService struct {
-	slog  *slog.Logger
-	repo  MemberRepo
-	roles RoleValidator
-	users UserFinder
-	DB    *pgxpool.Pool
+	slog     *slog.Logger
+	repo     MemberRepo
+	roles    RoleValidator
+	users    UserFinder
+	DB       *pgxpool.Pool
+	notifier notifications.Notifier
 }
 
 func NewMemberService(
@@ -43,13 +45,15 @@ func NewMemberService(
 	roles RoleValidator,
 	users UserFinder,
 	db *pgxpool.Pool,
+	notifier notifications.Notifier,
 ) MemberService {
 	return &memberService{
-		slog:  slog,
-		repo:  repo,
-		roles: roles,
-		users: users,
-		DB:    db,
+		slog:     slog,
+		repo:     repo,
+		roles:    roles,
+		users:    users,
+		DB:       db,
+		notifier: notifier,
 	}
 }
 func (s *memberService) List(ctx context.Context, hotelID, roleID string, pagination model.Pagination) (ListMembersResponse, error) {
@@ -117,6 +121,8 @@ func (s *memberService) Add(ctx context.Context, hotelID, invitedBy string, req 
 
 	s.slog.Info("member added", "hotel_id", hotelID, "member_id", created.ID, "user_id", user.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifMemberAdded, fmt.Sprintf("'%s' added as %s", user.Name, role.Name), nil)
+
 	return model.MemberDetail{
 		Member:    created,
 		UserName:  user.Name,
@@ -175,6 +181,8 @@ func (s *memberService) Update(ctx context.Context, id, hotelID string, req *Upd
 
 	s.slog.Info("member updated", "member_id", id, "hotel_id", hotelID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifMemberUpdated, "Staff member updated", nil)
+
 	return updated, nil
 }
 
@@ -201,6 +209,8 @@ func (s *memberService) Remove(ctx context.Context, id, hotelID string) error {
 	}
 
 	s.slog.Info("member removed", "member_id", id, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifMemberRemoved, "Staff member removed", nil)
 
 	return nil
 }

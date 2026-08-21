@@ -3,13 +3,28 @@ package orders
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/ws"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
+
+func orderLabel(order model.Order) string {
+	switch {
+	case order.TableName != nil:
+		return "table " + *order.TableName
+	case order.RoomNumber != nil:
+		return "room " + *order.RoomNumber
+	case order.CabinName != nil:
+		return "cabin " + *order.CabinName
+	default:
+		return "order"
+	}
+}
 
 type OrderService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateOrderRequest) (model.Order, error)
@@ -21,13 +36,14 @@ type OrderService interface {
 }
 
 type orderService struct {
-	slog *slog.Logger
-	repo OrderRepo
-	hub  *ws.Hub
+	slog     *slog.Logger
+	repo     OrderRepo
+	hub      *ws.Hub
+	notifier notifications.Notifier
 }
 
-func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub) OrderService {
-	return &orderService{slog: slog, repo: repo, hub: hub}
+func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub, notifier notifications.Notifier) OrderService {
+	return &orderService{slog: slog, repo: repo, hub: hub, notifier: notifier}
 }
 
 func (s *orderService) broadcast(hotelID string, msgType ws.MessageType, payload json.RawMessage) {
@@ -76,6 +92,7 @@ func (s *orderService) Create(ctx context.Context, hotelID, userID string, req *
 		s.slog.Error("failed to hydrate order for broadcast", "order_id", created.ID, "error", err)
 	} else {
 		s.broadcastOrder(hydrated, ws.OrderCreated)
+		s.notifier.Notify(ctx, hotelID, model.NotifOrderCreated, fmt.Sprintf("New order for %s", orderLabel(hydrated)), nil)
 	}
 
 	return created, nil
@@ -144,6 +161,7 @@ func (s *orderService) Update(ctx context.Context, id, hotelID, userID string, r
 		s.slog.Error("failed to hydrate order for broadcast", "order_id", id, "error", err)
 	} else {
 		s.broadcastOrder(hydrated, ws.OrderUpdated)
+		s.notifier.Notify(ctx, hotelID, model.NotifOrderUpdated, fmt.Sprintf("Order for %s updated", orderLabel(hydrated)), nil)
 	}
 
 	return updated, nil
@@ -165,10 +183,16 @@ func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 		msgType = ws.OrderCancelled
 	}
 
+	notifType := model.NotifOrderStatusUpdated
+	if req.Status == StatusCancelled {
+		notifType = model.NotifOrderCancelled
+	}
+
 	if hydrated, err := s.repo.Get(ctx, id, hotelID, userID); err != nil {
 		s.slog.Error("failed to hydrate order for broadcast", "order_id", id, "error", err)
 	} else {
 		s.broadcastOrder(hydrated, msgType)
+		s.notifier.Notify(ctx, hotelID, notifType, fmt.Sprintf("Order for %s marked %s", orderLabel(hydrated), req.Status), nil)
 	}
 
 	return updated, nil
@@ -187,6 +211,8 @@ func (s *orderService) Delete(ctx context.Context, id, hotelID, userID string) e
 	} else {
 		s.broadcast(hotelID, ws.OrderDeleted, payload)
 	}
+
+	s.notifier.Notify(ctx, hotelID, model.NotifOrderDeleted, "Order removed", nil)
 
 	return nil
 }

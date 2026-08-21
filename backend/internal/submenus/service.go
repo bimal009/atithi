@@ -2,9 +2,11 @@ package submenus
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,12 +20,13 @@ type SubMenuService interface {
 }
 
 type subMenuService struct {
-	slog *slog.Logger
-	repo SubMenuRepo
+	slog     *slog.Logger
+	repo     SubMenuRepo
+	notifier notifications.Notifier
 }
 
-func NewSubMenuService(slog *slog.Logger, repo SubMenuRepo) SubMenuService {
-	return &subMenuService{slog: slog, repo: repo}
+func NewSubMenuService(slog *slog.Logger, repo SubMenuRepo, notifier notifications.Notifier) SubMenuService {
+	return &subMenuService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *subMenuService) Create(ctx context.Context, hotelID, userID string, req *CreateSubMenuRequest) (model.SubMenu, error) {
@@ -45,6 +48,8 @@ func (s *subMenuService) Create(ctx context.Context, hotelID, userID string, req
 	}
 
 	s.slog.Info("sub-menu created", "sub_menu_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifSubMenuCreated, fmt.Sprintf("Sub-menu '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -96,6 +101,8 @@ func (s *subMenuService) Update(ctx context.Context, id, hotelID, userID string,
 
 	s.slog.Info("sub-menu updated", "sub_menu_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifSubMenuUpdated, fmt.Sprintf("Sub-menu '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -106,6 +113,8 @@ func (s *subMenuService) Delete(ctx context.Context, id, hotelID, userID string)
 	}
 
 	s.slog.Info("sub-menu deleted", "sub_menu_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifSubMenuDeleted, "Sub-menu removed", nil)
 
 	return nil
 }

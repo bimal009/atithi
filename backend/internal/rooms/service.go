@@ -2,9 +2,11 @@ package rooms
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -19,12 +21,13 @@ type RoomService interface {
 }
 
 type roomService struct {
-	slog *slog.Logger
-	repo RoomRepo
+	slog     *slog.Logger
+	repo     RoomRepo
+	notifier notifications.Notifier
 }
 
-func NewRoomService(slog *slog.Logger, repo RoomRepo) RoomService {
-	return &roomService{slog: slog, repo: repo}
+func NewRoomService(slog *slog.Logger, repo RoomRepo, notifier notifications.Notifier) RoomService {
+	return &roomService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *roomService) Create(ctx context.Context, hotelID, userID string, req *CreateRoomRequest) (model.Room, error) {
@@ -54,6 +57,8 @@ func (s *roomService) Create(ctx context.Context, hotelID, userID string, req *C
 	}
 
 	s.slog.Info("room created", "room_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomCreated, fmt.Sprintf("Room '%s' added", created.Number), nil)
 
 	return created, nil
 }
@@ -114,6 +119,8 @@ func (s *roomService) Update(ctx context.Context, id, hotelID, userID string, re
 
 	s.slog.Info("room updated", "room_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomUpdated, fmt.Sprintf("Room '%s' updated", updated.Number), nil)
+
 	return updated, nil
 }
 
@@ -128,6 +135,8 @@ func (s *roomService) UpdateStatus(ctx context.Context, id, hotelID, userID stri
 		return model.Room{}, err
 	}
 
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomUpdated, fmt.Sprintf("Room '%s' marked %s", updated.Number, updated.Status), nil)
+
 	return updated, nil
 }
 
@@ -138,6 +147,8 @@ func (s *roomService) Delete(ctx context.Context, id, hotelID, userID string) er
 	}
 
 	s.slog.Info("room deleted", "room_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomDeleted, "Room removed", nil)
 
 	return nil
 }

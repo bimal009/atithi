@@ -2,9 +2,11 @@ package roomtypes
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,14 +20,16 @@ type RoomTypeService interface {
 }
 
 type roomTypeService struct {
-	slog *slog.Logger
-	repo RoomTypeRepo
+	slog     *slog.Logger
+	repo     RoomTypeRepo
+	notifier notifications.Notifier
 }
 
-func NewRoomTypeService(slog *slog.Logger, repo RoomTypeRepo) RoomTypeService {
+func NewRoomTypeService(slog *slog.Logger, repo RoomTypeRepo, notifier notifications.Notifier) RoomTypeService {
 	return &roomTypeService{
-		slog: slog,
-		repo: repo,
+		slog:     slog,
+		repo:     repo,
+		notifier: notifier,
 	}
 }
 
@@ -64,6 +68,8 @@ func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, re
 	}
 
 	s.slog.Info("room type created", "room_type_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomTypeCreated, fmt.Sprintf("Room type '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -133,6 +139,8 @@ func (s *roomTypeService) Update(ctx context.Context, id, hotelID, userID string
 
 	s.slog.Info("room type updated", "room_type_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomTypeUpdated, fmt.Sprintf("Room type '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -143,6 +151,8 @@ func (s *roomTypeService) Delete(ctx context.Context, id, hotelID, userID string
 	}
 
 	s.slog.Info("room type deleted", "room_type_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifRoomTypeDeleted, "Room type removed", nil)
 
 	return nil
 }

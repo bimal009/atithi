@@ -3,13 +3,21 @@ package notifications
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
 
+// Notifier lets other domains raise a system notification without depending
+// on the full NotificationService surface.
+type Notifier interface {
+	Notify(ctx context.Context, hotelID, notifType, title string, subtitle *string)
+}
+
 type NotificationService interface {
+	Notifier
 	Create(ctx context.Context, hotelID string, req *CreateNotificationRequest) (model.Notification, error)
 	GetAll(ctx context.Context, hotelID, userID string, query ListNotificationsQuery) (ListNotificationsResponse, error)
 	MarkRead(ctx context.Context, id, hotelID, userID string) (model.Notification, error)
@@ -47,6 +55,25 @@ func (s *notificationService) Create(ctx context.Context, hotelID string, req *C
 	s.slog.Info("notification created", "notification_id", created.ID, "hotel_id", hotelID)
 
 	return created, nil
+}
+
+func (s *notificationService) Notify(ctx context.Context, hotelID, notifType, title string, subtitle *string) {
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+
+		newNotification := &model.Notification{
+			ID:       uuid.NewString(),
+			HotelID:  hotelID,
+			Type:     notifType,
+			Title:    title,
+			Subtitle: subtitle,
+		}
+
+		if _, err := s.repo.Create(bgCtx, newNotification); err != nil {
+			s.slog.Error("failed to create notification", "hotel_id", hotelID, "type", notifType, "error", err)
+		}
+	}()
 }
 
 func (s *notificationService) GetAll(ctx context.Context, hotelID, userID string, query ListNotificationsQuery) (ListNotificationsResponse, error) {

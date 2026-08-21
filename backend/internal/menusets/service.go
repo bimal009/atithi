@@ -2,9 +2,11 @@ package menusets
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,12 +20,13 @@ type MenuSetService interface {
 }
 
 type menuSetService struct {
-	slog *slog.Logger
-	repo MenuSetRepo
+	slog     *slog.Logger
+	repo     MenuSetRepo
+	notifier notifications.Notifier
 }
 
-func NewMenuSetService(slog *slog.Logger, repo MenuSetRepo) MenuSetService {
-	return &menuSetService{slog: slog, repo: repo}
+func NewMenuSetService(slog *slog.Logger, repo MenuSetRepo, notifier notifications.Notifier) MenuSetService {
+	return &menuSetService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *menuSetService) Create(ctx context.Context, hotelID, userID string, req *CreateMenuSetRequest) (model.MenuSet, error) {
@@ -52,6 +55,8 @@ func (s *menuSetService) Create(ctx context.Context, hotelID, userID string, req
 	}
 
 	s.slog.Info("menu set created", "menu_set_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifMenuSetCreated, fmt.Sprintf("Menu set '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -91,6 +96,8 @@ func (s *menuSetService) Update(ctx context.Context, id, hotelID, userID string,
 
 	s.slog.Info("menu set updated", "menu_set_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifMenuSetUpdated, fmt.Sprintf("Menu set '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -101,6 +108,8 @@ func (s *menuSetService) Delete(ctx context.Context, id, hotelID, userID string)
 	}
 
 	s.slog.Info("menu set deleted", "menu_set_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifMenuSetDeleted, "Menu set removed", nil)
 
 	return nil
 }

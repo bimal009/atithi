@@ -2,9 +2,11 @@ package cabins
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -19,12 +21,13 @@ type CabinService interface {
 }
 
 type cabinService struct {
-	slog *slog.Logger
-	repo CabinRepo
+	slog     *slog.Logger
+	repo     CabinRepo
+	notifier notifications.Notifier
 }
 
-func NewCabinService(slog *slog.Logger, repo CabinRepo) CabinService {
-	return &cabinService{slog: slog, repo: repo}
+func NewCabinService(slog *slog.Logger, repo CabinRepo, notifier notifications.Notifier) CabinService {
+	return &cabinService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *cabinService) Create(ctx context.Context, hotelID, userID string, req *CreateCabinRequest) (model.Cabin, error) {
@@ -69,6 +72,8 @@ func (s *cabinService) Create(ctx context.Context, hotelID, userID string, req *
 	}
 
 	s.slog.Info("cabin created", "cabin_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCabinCreated, fmt.Sprintf("Cabin '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -144,6 +149,8 @@ func (s *cabinService) Update(ctx context.Context, id, hotelID, userID string, r
 
 	s.slog.Info("cabin updated", "cabin_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifCabinUpdated, fmt.Sprintf("Cabin '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -158,6 +165,8 @@ func (s *cabinService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 		return model.Cabin{}, err
 	}
 
+	s.notifier.Notify(ctx, hotelID, model.NotifCabinUpdated, fmt.Sprintf("Cabin '%s' marked %s", updated.Name, updated.Status), nil)
+
 	return updated, nil
 }
 
@@ -168,6 +177,8 @@ func (s *cabinService) Delete(ctx context.Context, id, hotelID, userID string) e
 	}
 
 	s.slog.Info("cabin deleted", "cabin_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCabinDeleted, "Cabin removed", nil)
 
 	return nil
 }

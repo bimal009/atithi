@@ -95,7 +95,13 @@ func main() {
 	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
 	orderRepo := orders.NewOrderRepo(pool)
-	notificationRepo := notifications.NewNotificationRepo(pool)
+
+	hub := ws.NewHub()
+	go hub.Run()
+
+	notificationRepo := notifications.NewNotificationRepo(pool, hub)
+	notificationService := notifications.NewNotificationService(slog, notificationRepo)
+	notificationHandler := notifications.NewNotificationHandler(slog, notificationService)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
@@ -105,61 +111,55 @@ func main() {
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
 
-	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo)
+	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo, notificationService)
 	billingTypeHandler := billingtypes.NewBillingTypeHandler(slog, billingTypeService)
 
-	categoryService := categories.NewCategoryService(slog, categoryRepo)
+	categoryService := categories.NewCategoryService(slog, categoryRepo, notificationService)
 	categoryHandler := categories.NewCategoryHandler(slog, categoryService)
 
-	addOnService := addons.NewAddOnService(slog, addOnRepo)
+	addOnService := addons.NewAddOnService(slog, addOnRepo, notificationService)
 	addOnHandler := addons.NewAddOnHandler(slog, addOnService)
 
-	sectionService := sections.NewSectionService(slog, sectionRepo)
+	sectionService := sections.NewSectionService(slog, sectionRepo, notificationService)
 	sectionHandler := sections.NewSectionHandler(slog, sectionService)
 
-	subMenuService := submenus.NewSubMenuService(slog, subMenuRepo)
+	subMenuService := submenus.NewSubMenuService(slog, subMenuRepo, notificationService)
 	subMenuHandler := submenus.NewSubMenuHandler(slog, subMenuService)
 
-	menuItemService := menuitems.NewMenuItemService(slog, menuItemRepo)
+	menuItemService := menuitems.NewMenuItemService(slog, menuItemRepo, notificationService)
 	menuItemHandler := menuitems.NewMenuItemHandler(slog, menuItemService)
 
-	menuSetService := menusets.NewMenuSetService(slog, menuSetRepo)
+	menuSetService := menusets.NewMenuSetService(slog, menuSetRepo, notificationService)
 	menuSetHandler := menusets.NewMenuSetHandler(slog, menuSetService)
 
-	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo)
+	roomTypeService := roomtypes.NewRoomTypeService(slog, roomTypeRepo, notificationService)
 	roomTypeHandler := roomtypes.NewRoomTypeHandler(slog, roomTypeService)
 
-	roomService := rooms.NewRoomService(slog, roomRepo)
+	roomService := rooms.NewRoomService(slog, roomRepo, notificationService)
 	roomHandler := rooms.NewRoomHandler(slog, roomService)
 
-	cabinService := cabins.NewCabinService(slog, cabinRepo)
+	cabinService := cabins.NewCabinService(slog, cabinRepo, notificationService)
 	cabinHandler := cabins.NewCabinHandler(slog, cabinService)
 
-	tableService := tables.NewTableService(slog, tableRepo)
+	tableService := tables.NewTableService(slog, tableRepo, notificationService)
 	tableHandler := tables.NewTableHandler(slog, tableService)
 
-	reservationService := reservations.NewReservationService(slog, reservationRepo)
+	reservationService := reservations.NewReservationService(slog, reservationRepo, notificationService)
 	reservationHandler := reservations.NewReservationHandler(slog, reservationService)
 
 	permissionService := permission.NewPermissionService(permissionRepo)
 
-	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, pool)
+	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, pool, notificationService)
 	roleHandler := role.NewRoleHandler(slog, roleService)
 
-	memberService := member.NewMemberService(slog, memberRepo, roleRepo, userRepo, pool)
+	memberService := member.NewMemberService(slog, memberRepo, roleRepo, userRepo, pool, notificationService)
 	memberHandler := member.NewMemberHandler(slog, memberService)
 
-	customerService := customer.NewCustomerService(slog, customerRepo)
+	customerService := customer.NewCustomerService(slog, customerRepo, notificationService)
 	customerHandler := customer.NewCustomerHandler(slog, customerService)
 
-	hub := ws.NewHub()
-	go hub.Run()
-
-	orderService := orders.NewOrderService(slog, orderRepo, hub)
+	orderService := orders.NewOrderService(slog, orderRepo, hub, notificationService)
 	orderHandler := orders.NewOrderHandler(slog, orderService)
-
-	notificationService := notifications.NewNotificationService(slog, notificationRepo)
-	notificationHandler := notifications.NewNotificationHandler(slog, notificationService)
 
 	imageHandler := handlers.NewImageHandler(cfg)
 

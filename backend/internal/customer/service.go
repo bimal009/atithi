@@ -2,9 +2,11 @@ package customer
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
 )
@@ -18,14 +20,16 @@ type CustomerService interface {
 }
 
 type customerService struct {
-	slog *slog.Logger
-	repo CustomerRepo
+	slog     *slog.Logger
+	repo     CustomerRepo
+	notifier notifications.Notifier
 }
 
-func NewCustomerService(slog *slog.Logger, repo CustomerRepo) CustomerService {
+func NewCustomerService(slog *slog.Logger, repo CustomerRepo, notifier notifications.Notifier) CustomerService {
 	return &customerService{
-		slog: slog,
-		repo: repo,
+		slog:     slog,
+		repo:     repo,
+		notifier: notifier,
 	}
 }
 
@@ -54,6 +58,8 @@ func (s *customerService) Create(ctx context.Context, hotelID string, req *Creat
 	}
 
 	s.slog.Info("customer created", "customer_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCustomerCreated, fmt.Sprintf("Customer '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -121,6 +127,8 @@ func (s *customerService) Update(ctx context.Context, id, hotelID string, req *U
 
 	s.slog.Info("customer updated", "customer_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifCustomerUpdated, fmt.Sprintf("Customer '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -131,6 +139,8 @@ func (s *customerService) Delete(ctx context.Context, id, hotelID string) error 
 	}
 
 	s.slog.Info("customer deleted", "customer_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCustomerDeleted, "Customer removed", nil)
 
 	return nil
 }

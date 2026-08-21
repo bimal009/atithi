@@ -2,9 +2,11 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/ws"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,15 +16,17 @@ type NotificationRepo interface {
 	Create(ctx context.Context, notification *model.Notification) (model.Notification, error)
 	ListForHotel(ctx context.Context, hotelID, userID string, read *bool, pagination model.Pagination) ([]model.Notification, int, error)
 	MarkRead(ctx context.Context, id, hotelID, userID string) (model.Notification, error)
+	MarkAllRead(ctx context.Context, hotelID, userID string) (int, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
 
 type notificationRepo struct {
-	DB *pgxpool.Pool
+	DB  *pgxpool.Pool
+	hub *ws.Hub
 }
 
-func NewNotificationRepo(db *pgxpool.Pool) NotificationRepo {
-	return &notificationRepo{DB: db}
+func NewNotificationRepo(db *pgxpool.Pool, hub *ws.Hub) NotificationRepo {
+	return &notificationRepo{DB: db, hub: hub}
 }
 
 func (r *notificationRepo) Create(ctx context.Context, notification *model.Notification) (model.Notification, error) {
@@ -58,6 +62,13 @@ func (r *notificationRepo) Create(ctx context.Context, notification *model.Notif
 		}
 		return model.Notification{}, err
 	}
+
+	payload, _ := json.Marshal(created)
+	r.hub.Broadcast(&ws.Message{
+		HotelID: created.HotelID,
+		Type:    ws.Notification,
+		Payload: payload,
+	})
 
 	return created, nil
 }

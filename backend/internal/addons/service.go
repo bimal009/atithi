@@ -2,9 +2,11 @@ package addons
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,12 +20,13 @@ type AddOnService interface {
 }
 
 type addOnService struct {
-	slog *slog.Logger
-	repo AddOnRepo
+	slog     *slog.Logger
+	repo     AddOnRepo
+	notifier notifications.Notifier
 }
 
-func NewAddOnService(slog *slog.Logger, repo AddOnRepo) AddOnService {
-	return &addOnService{slog: slog, repo: repo}
+func NewAddOnService(slog *slog.Logger, repo AddOnRepo, notifier notifications.Notifier) AddOnService {
+	return &addOnService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *addOnService) Create(ctx context.Context, hotelID, userID string, req *CreateAddOnRequest) (model.AddOn, error) {
@@ -50,6 +53,8 @@ func (s *addOnService) Create(ctx context.Context, hotelID, userID string, req *
 	}
 
 	s.slog.Info("add-on created", "add_on_id", created.ID, "hotel_id", hotelID, "dish_id", created.DishID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifAddOnCreated, fmt.Sprintf("Add-on '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -101,6 +106,8 @@ func (s *addOnService) Update(ctx context.Context, id, hotelID, userID string, r
 
 	s.slog.Info("add-on updated", "add_on_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifAddOnUpdated, fmt.Sprintf("Add-on '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -111,6 +118,8 @@ func (s *addOnService) Delete(ctx context.Context, id, hotelID, userID string) e
 	}
 
 	s.slog.Info("add-on deleted", "add_on_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifAddOnDeleted, "Add-on removed", nil)
 
 	return nil
 }

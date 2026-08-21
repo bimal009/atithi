@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
@@ -38,6 +39,7 @@ type roleService struct {
 	repo        RoleRepo
 	permissions permission.PermissionRepo
 	DB          *pgxpool.Pool
+	notifier    notifications.Notifier
 }
 
 func NewRoleService(
@@ -45,12 +47,14 @@ func NewRoleService(
 	repo RoleRepo,
 	permissions permission.PermissionRepo,
 	db *pgxpool.Pool,
+	notifier notifications.Notifier,
 ) RoleService {
 	return &roleService{
 		slog:        slog,
 		repo:        repo,
 		permissions: permissions,
 		DB:          db,
+		notifier:    notifier,
 	}
 }
 
@@ -167,6 +171,8 @@ func (s *roleService) Create(ctx context.Context, hotelID, userID string, req *C
 
 	s.slog.Info("role created", "role_id", created.ID, "hotel_id", hotelID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifRoleCreated, fmt.Sprintf("Role '%s' added", created.Name), nil)
+
 	return toRoleResponse(created, nil), nil
 }
 
@@ -222,6 +228,8 @@ func (s *roleService) Update(ctx context.Context, id, hotelID string, req *Updat
 
 	s.slog.Info("role updated", "role_id", id)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifRoleUpdated, fmt.Sprintf("Role '%s' updated", updated.Name), nil)
+
 	return toRoleResponse(updated, nil), nil
 }
 
@@ -243,6 +251,8 @@ func (s *roleService) Delete(ctx context.Context, id, hotelID string) error {
 	}
 
 	s.slog.Info("role deleted", "role_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifRoleDeleted, fmt.Sprintf("Role '%s' removed", existing.Name), nil)
 
 	return nil
 }

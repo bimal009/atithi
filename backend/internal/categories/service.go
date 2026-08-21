@@ -2,9 +2,11 @@ package categories
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,12 +20,13 @@ type CategoryService interface {
 }
 
 type categoryService struct {
-	slog *slog.Logger
-	repo CategoryRepo
+	slog     *slog.Logger
+	repo     CategoryRepo
+	notifier notifications.Notifier
 }
 
-func NewCategoryService(slog *slog.Logger, repo CategoryRepo) CategoryService {
-	return &categoryService{slog: slog, repo: repo}
+func NewCategoryService(slog *slog.Logger, repo CategoryRepo, notifier notifications.Notifier) CategoryService {
+	return &categoryService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *categoryService) Create(ctx context.Context, hotelID, userID string, req *CreateCategoryRequest) (model.Category, error) {
@@ -44,6 +47,8 @@ func (s *categoryService) Create(ctx context.Context, hotelID, userID string, re
 	}
 
 	s.slog.Info("category created", "category_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCategoryCreated, fmt.Sprintf("Category '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -83,6 +88,8 @@ func (s *categoryService) Update(ctx context.Context, id, hotelID, userID string
 
 	s.slog.Info("category updated", "category_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifCategoryUpdated, fmt.Sprintf("Category '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -93,6 +100,8 @@ func (s *categoryService) Delete(ctx context.Context, id, hotelID, userID string
 	}
 
 	s.slog.Info("category deleted", "category_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifCategoryDeleted, "Category removed", nil)
 
 	return nil
 }

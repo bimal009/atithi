@@ -2,9 +2,11 @@ package billingtypes
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 )
@@ -18,12 +20,13 @@ type BillingTypeService interface {
 }
 
 type billingTypeService struct {
-	slog *slog.Logger
-	repo BillingTypeRepo
+	slog     *slog.Logger
+	repo     BillingTypeRepo
+	notifier notifications.Notifier
 }
 
-func NewBillingTypeService(slog *slog.Logger, repo BillingTypeRepo) BillingTypeService {
-	return &billingTypeService{slog: slog, repo: repo}
+func NewBillingTypeService(slog *slog.Logger, repo BillingTypeRepo, notifier notifications.Notifier) BillingTypeService {
+	return &billingTypeService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *billingTypeService) Create(ctx context.Context, hotelID, userID string, req *CreateBillingTypeRequest) (model.BillingType, error) {
@@ -44,6 +47,8 @@ func (s *billingTypeService) Create(ctx context.Context, hotelID, userID string,
 	}
 
 	s.slog.Info("billing type created", "billing_type_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifBillingTypeCreated, fmt.Sprintf("Billing type '%s' added", created.Name), nil)
 
 	return created, nil
 }
@@ -92,6 +97,8 @@ func (s *billingTypeService) Update(ctx context.Context, id, hotelID, userID str
 
 	s.slog.Info("billing type updated", "billing_type_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifBillingTypeUpdated, fmt.Sprintf("Billing type '%s' updated", updated.Name), nil)
+
 	return updated, nil
 }
 
@@ -102,6 +109,8 @@ func (s *billingTypeService) Delete(ctx context.Context, id, hotelID, userID str
 	}
 
 	s.slog.Info("billing type deleted", "billing_type_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifBillingTypeDeleted, "Billing type removed", nil)
 
 	return nil
 }

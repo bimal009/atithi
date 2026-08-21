@@ -2,9 +2,11 @@ package reservations
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
@@ -33,12 +35,13 @@ type ReservationService interface {
 }
 
 type reservationService struct {
-	slog *slog.Logger
-	repo ReservationRepo
+	slog     *slog.Logger
+	repo     ReservationRepo
+	notifier notifications.Notifier
 }
 
-func NewReservationService(slog *slog.Logger, repo ReservationRepo) ReservationService {
-	return &reservationService{slog: slog, repo: repo}
+func NewReservationService(slog *slog.Logger, repo ReservationRepo, notifier notifications.Notifier) ReservationService {
+	return &reservationService{slog: slog, repo: repo, notifier: notifier}
 }
 
 func (s *reservationService) Create(ctx context.Context, hotelID, userID string, req *CreateReservationRequest) (model.Reservation, error) {
@@ -64,6 +67,8 @@ func (s *reservationService) Create(ctx context.Context, hotelID, userID string,
 	}
 
 	s.slog.Info("reservation created", "reservation_id", created.ID, "hotel_id", hotelID)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifReservationCreated, fmt.Sprintf("Reservation for '%s' created", created.GuestName), nil)
 
 	return created, nil
 }
@@ -149,6 +154,8 @@ func (s *reservationService) Update(ctx context.Context, id, hotelID, userID str
 
 	s.slog.Info("reservation updated", "reservation_id", updated.ID)
 
+	s.notifier.Notify(ctx, hotelID, model.NotifReservationUpdated, fmt.Sprintf("Reservation for '%s' updated", updated.GuestName), nil)
+
 	return updated, nil
 }
 
@@ -163,6 +170,12 @@ func (s *reservationService) UpdateStatus(ctx context.Context, id, hotelID, user
 		return model.Reservation{}, err
 	}
 
+	notifType := model.NotifReservationUpdated
+	if updated.Status == StatusCancelled {
+		notifType = model.NotifReservationCancelled
+	}
+	s.notifier.Notify(ctx, hotelID, notifType, fmt.Sprintf("Reservation for '%s' marked %s", updated.GuestName, updated.Status), nil)
+
 	return updated, nil
 }
 
@@ -173,6 +186,8 @@ func (s *reservationService) Delete(ctx context.Context, id, hotelID, userID str
 	}
 
 	s.slog.Info("reservation deleted", "reservation_id", id)
+
+	s.notifier.Notify(ctx, hotelID, model.NotifReservationDeleted, "Reservation removed", nil)
 
 	return nil
 }
