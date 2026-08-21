@@ -23,6 +23,7 @@ import (
 	"github.com/bimal009/atithi/internal/menuitems"
 	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/middleware"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/orders"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/internal/reservations"
@@ -94,6 +95,7 @@ func main() {
 	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
 	orderRepo := orders.NewOrderRepo(pool)
+	notificationRepo := notifications.NewNotificationRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
@@ -156,6 +158,9 @@ func main() {
 	orderService := orders.NewOrderService(slog, orderRepo, hub)
 	orderHandler := orders.NewOrderHandler(slog, orderService)
 
+	notificationService := notifications.NewNotificationService(slog, notificationRepo)
+	notificationHandler := notifications.NewNotificationHandler(slog, notificationService)
+
 	imageHandler := handlers.NewImageHandler(cfg)
 
 	requireAuth := middleware.RequireAuth(sessionService, cfg.Session.CookieName, slog)
@@ -200,6 +205,7 @@ func main() {
 		Member:         memberHandler,
 		Customer:       customerHandler,
 		Order:          orderHandler,
+		Notification:   notificationHandler,
 		Image:          imageHandler,
 		RequireAuth:    requireAuth,
 		ValidateHotel:  validateHotel,

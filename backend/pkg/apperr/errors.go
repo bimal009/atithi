@@ -83,6 +83,8 @@ var (
 	ErrBillingTypeNameExists = New(http.StatusConflict, "conflict", "Billing type name already exists")
 	ErrBillingTypeInUse      = New(http.StatusConflict, "conflict", "Billing type is still in use")
 
+	ErrNotificationNotFound = New(http.StatusNotFound, "not_found", "Notification not found")
+
 	ErrSectionNotFound   = New(http.StatusNotFound, "not_found", "Section not found")
 	ErrSectionNameExists = New(http.StatusConflict, "conflict", "Section name already exists")
 	ErrSectionInUse      = New(http.StatusConflict, "conflict", "Section is still in use")

@@ -12,6 +12,7 @@ import (
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
 	"github.com/bimal009/atithi/internal/menusets"
+	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/orders"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
@@ -42,6 +43,7 @@ type Handlers struct {
 	Member         *member.MemberHandler
 	Customer       *customer.CustomerHandler
 	Order          *orders.OrderHandler
+	Notification   *notifications.NotificationHandler
 	Image          *handlers.ImageHandler
 	RequireAuth    gin.HandlerFunc
 	ValidateHotel  gin.HandlerFunc
@@ -246,6 +248,14 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				ordersGroup.PATCH("/:orderId", h.Order.Update)
 				ordersGroup.PATCH("/:orderId/status", h.Order.UpdateStatus)
 				ordersGroup.DELETE("/:orderId", h.Order.Delete)
+			}
+
+			notificationsGroup := scoped.Group("/notifications")
+			{
+				notificationsGroup.POST("", h.Notification.Create)
+				notificationsGroup.GET("", h.Notification.GetAll)
+				notificationsGroup.PATCH("/:notificationId/read", h.Notification.MarkRead)
+				notificationsGroup.DELETE("/:notificationId", h.Notification.Delete)
 			}
 		}
 	}
