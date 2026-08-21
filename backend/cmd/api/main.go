@@ -23,6 +23,7 @@ import (
 	"github.com/bimal009/atithi/internal/menuitems"
 	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/middleware"
+	"github.com/bimal009/atithi/internal/orders"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
@@ -34,6 +35,7 @@ import (
 	submenus "github.com/bimal009/atithi/internal/submenus"
 	"github.com/bimal009/atithi/internal/tables"
 	"github.com/bimal009/atithi/internal/user"
+	"github.com/bimal009/atithi/internal/ws"
 	"github.com/bimal009/atithi/pkg/db"
 	"github.com/bimal009/atithi/pkg/logger"
 	"github.com/bimal009/atithi/pkg/redis"
@@ -44,6 +46,7 @@ import (
 )
 
 func main() {
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -90,6 +93,7 @@ func main() {
 	tableRepo := tables.NewTableRepo(pool)
 	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
+	orderRepo := orders.NewOrderRepo(pool)
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
@@ -135,6 +139,8 @@ func main() {
 	reservationService := reservations.NewReservationService(slog, reservationRepo)
 	reservationHandler := reservations.NewReservationHandler(slog, reservationService)
 
+	permissionService := permission.NewPermissionService(permissionRepo)
+
 	roleService := role.NewRoleService(slog, roleRepo, permissionRepo, pool)
 	roleHandler := role.NewRoleHandler(slog, roleService)
 
@@ -143,6 +149,12 @@ func main() {
 
 	customerService := customer.NewCustomerService(slog, customerRepo)
 	customerHandler := customer.NewCustomerHandler(slog, customerService)
+
+	hub := ws.NewHub()
+	go hub.Run()
+
+	orderService := orders.NewOrderService(slog, orderRepo, hub)
+	orderHandler := orders.NewOrderHandler(slog, orderService)
 
 	imageHandler := handlers.NewImageHandler(cfg)
 
@@ -167,6 +179,8 @@ func main() {
 		}))
 	})
 
+	r.GET("/ws", requireAuth, validateHotel, validateMember, ws.Handler(hub, permissionService, slog))
+
 	routes.Register(r, &routes.Handlers{
 		Auth:           authHandler,
 		Hotel:          hotelHandler,
@@ -185,6 +199,7 @@ func main() {
 		Role:           roleHandler,
 		Member:         memberHandler,
 		Customer:       customerHandler,
+		Order:          orderHandler,
 		Image:          imageHandler,
 		RequireAuth:    requireAuth,
 		ValidateHotel:  validateHotel,

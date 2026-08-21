@@ -103,6 +103,9 @@ var (
 
 	ErrMenuItemNotFound = New(http.StatusNotFound, "not_found", "Menu item not found")
 	ErrMenuItemExists   = New(http.StatusConflict, "conflict", "This dish is already on your menu")
+
+	ErrOrderNotFound        = New(http.StatusNotFound, "not_found", "Order not found")
+	ErrOrderResourceInvalid = New(http.StatusBadRequest, "invalid_input", "Table or customer does not exist")
 )
 
 func HandleError(c *gin.Context, logger *slog.Logger, err error) {

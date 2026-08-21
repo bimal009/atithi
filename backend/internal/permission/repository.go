@@ -16,6 +16,7 @@ type PermissionRepo interface {
 	GetByResourceAction(ctx context.Context, resource, action string) (model.Permission, error)
 	GetAll(ctx context.Context) ([]model.Permission, error)
 	ListByRole(ctx context.Context, roleID string) ([]model.Permission, error)
+	GetByMember(ctx context.Context, memberID string, hotelID string) ([]model.Permission, error)
 	Update(ctx context.Context, permission *model.Permission) (model.Permission, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -238,4 +239,45 @@ func (r *permissionRepo) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (r *permissionRepo) GetByMember(ctx context.Context, memberID string, hotelID string) ([]model.Permission, error) {
+	query := `
+		SELECT p.id, p.resource, p.action, p.description, p.created_at
+		FROM members m
+		JOIN role_permissions rp ON rp.role_id = m.role_id
+		JOIN permissions p ON p.id = rp.permission_id
+		WHERE m.hotel_id = $1::uuid
+		  AND m.id = $2::uuid
+		  AND m.status = 'active'
+		ORDER BY p.resource, p.action
+	`
+
+	rows, err := r.DB.Query(ctx, query, hotelID, memberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	permissions := make([]model.Permission, 0)
+
+	for rows.Next() {
+		var permission model.Permission
+		if err := rows.Scan(
+			&permission.ID,
+			&permission.Resource,
+			&permission.Action,
+			&permission.Description,
+			&permission.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, permission)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return permissions, nil
 }
