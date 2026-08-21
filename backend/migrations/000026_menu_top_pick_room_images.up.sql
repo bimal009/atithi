@@ -1,0 +1,2 @@
+ALTER TABLE menu_items ADD COLUMN is_top_pick BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE room_types ADD COLUMN images TEXT[] NOT NULL DEFAULT '{}';

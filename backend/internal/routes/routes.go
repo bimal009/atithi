@@ -9,6 +9,7 @@ import (
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
 	"github.com/bimal009/atithi/internal/hotelsettings"
+	"github.com/bimal009/atithi/internal/hotelwebsite"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
@@ -29,6 +30,7 @@ type Handlers struct {
 	Auth           *auth.AuthHandler
 	Hotel          *hotel.HotelHandler
 	HotelSettings  *hotelsettings.HotelSettingsHandler
+	HotelWebsite   *hotelwebsite.HotelWebsiteHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
 	AddOn          *addons.AddOnHandler
@@ -262,6 +264,12 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 			{
 				settingsGroup.GET("", h.HotelSettings.Get)
 				settingsGroup.PATCH("", h.HotelSettings.Update)
+			}
+
+			websiteGroup := scoped.Group("/website")
+			{
+				websiteGroup.GET("", h.HotelWebsite.Get)
+				websiteGroup.PATCH("", h.HotelWebsite.Update)
 			}
 
 			notificationsGroup := scoped.Group("/notifications")

@@ -3,6 +3,7 @@ import {
   BedIcon,
   BellIcon,
   CalendarCheckIcon,
+  GlobeIcon,
   LayoutDashboardIcon,
   MessageSquareIcon,
   ReceiptTextIcon,
@@ -46,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       { title: "Notifications", href: "/notifications", icon: BellIcon },
+      { title: "Website", href: "/website", icon: GlobeIcon },
     ],
   },
   {

@@ -33,7 +33,7 @@ func NewMenuItemRepo(db *pgxpool.Pool) MenuItemRepo {
 
 const menuItemSelect = `
 	SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
-	       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
+	       mi.price, mi.discount, mi.description, mi.ingredients, mi.available, mi.is_top_pick,
 	       mi.created_at, mi.updated_at,
 	       COALESCE(
 	         json_agg(json_build_object('id', ao.id, 'name', ad.name, 'price', ao.price))
@@ -66,6 +66,7 @@ func scanMenuItem(row pgx.Row) (model.MenuItem, error) {
 		&item.Description,
 		&item.Ingredients,
 		&item.Available,
+		&item.IsTopPick,
 		&item.CreatedAt,
 		&item.UpdatedAt,
 		&addOnsJSON,
@@ -158,13 +159,13 @@ func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL
 	item.DishID = dish.ID
 
 	query := `
-		INSERT INTO menu_items (id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available)
-		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8, $9, $10
+		INSERT INTO menu_items (id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, is_top_pick)
+		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8, $9, $10, $11
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $11::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $12::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id, hotel_id, dish_id, category_id, food_type, price, discount, description, ingredients, available, is_top_pick, created_at, updated_at
 	`
 
 	var created model.MenuItem
@@ -181,10 +182,11 @@ func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL
 		item.Description,
 		item.Ingredients,
 		item.Available,
+		item.IsTopPick,
 		userID,
 	).Scan(
 		&created.ID, &created.HotelID, &created.DishID, &created.CategoryID, &created.FoodType,
-		&created.Price, &created.Discount, &created.Description, &created.Ingredients, &created.Available,
+		&created.Price, &created.Discount, &created.Description, &created.Ingredients, &created.Available, &created.IsTopPick,
 		&created.CreatedAt, &created.UpdatedAt,
 	)
 
@@ -242,7 +244,7 @@ func (r *menuItemRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, categoryID, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error) {
 	query := `
 		SELECT mi.id, mi.hotel_id, mi.dish_id, d.name, d.image_url, mi.category_id, c.name, mi.food_type,
-		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available,
+		       mi.price, mi.discount, mi.description, mi.ingredients, mi.available, mi.is_top_pick,
 		       mi.created_at, mi.updated_at,
 		       COALESCE(
 		         json_agg(json_build_object('id', ao.id, 'name', ad.name, 'price', ao.price))
@@ -295,6 +297,7 @@ func (r *menuItemRepo) ListForHotel(ctx context.Context, hotelID, userID, catego
 			&item.Description,
 			&item.Ingredients,
 			&item.Available,
+			&item.IsTopPick,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 			&addOnsJSON,
@@ -335,13 +338,14 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnID
 			description = $5,
 			ingredients = $6,
 			available = $7,
+			is_top_pick = $8,
 			updated_at = now()
-		WHERE id = $8::uuid AND hotel_id = $9::uuid
+		WHERE id = $9::uuid AND hotel_id = $10::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = menu_items.hotel_id AND m.user_id = $10::uuid AND m.status = 'active'
+			WHERE m.hotel_id = menu_items.hotel_id AND m.user_id = $11::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, category_id, food_type, price, discount, description, ingredients, available, created_at, updated_at
+		RETURNING id, hotel_id, category_id, food_type, price, discount, description, ingredients, available, is_top_pick, created_at, updated_at
 	`
 
 	updated := *item
@@ -355,12 +359,13 @@ func (r *menuItemRepo) Update(ctx context.Context, item *model.MenuItem, addOnID
 		item.Description,
 		item.Ingredients,
 		item.Available,
+		item.IsTopPick,
 		item.ID,
 		item.HotelID,
 		userID,
 	).Scan(
 		&updated.ID, &updated.HotelID, &updated.CategoryID, &updated.FoodType, &updated.Price,
-		&updated.Discount, &updated.Description, &updated.Ingredients, &updated.Available,
+		&updated.Discount, &updated.Description, &updated.Ingredients, &updated.Available, &updated.IsTopPick,
 		&updated.CreatedAt, &updated.UpdatedAt,
 	)
 

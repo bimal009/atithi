@@ -12,6 +12,7 @@ type CreateMenuItemRequest struct {
 	Description *string  `json:"description,omitempty" validate:"omitempty,max=1000"`
 	Ingredients *string  `json:"ingredients,omitempty" validate:"omitempty,max=1000"`
 	Available   *bool    `json:"available,omitempty"`
+	IsTopPick   *bool    `json:"isTopPick,omitempty"`
 	AddOnIDs    []string `json:"addOnIds,omitempty" validate:"omitempty,dive,uuid"`
 }
 
@@ -23,6 +24,7 @@ type UpdateMenuItemRequest struct {
 	Description *string  `json:"description,omitempty" validate:"omitempty,max=1000"`
 	Ingredients *string  `json:"ingredients,omitempty" validate:"omitempty,max=1000"`
 	Available   *bool    `json:"available,omitempty"`
+	IsTopPick   *bool    `json:"isTopPick,omitempty"`
 	AddOnIDs    []string `json:"addOnIds" validate:"omitempty,dive,uuid"`
 }
 

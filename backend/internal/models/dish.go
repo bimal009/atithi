@@ -30,6 +30,7 @@ type MenuItem struct {
 	Description  *string    `db:"description" json:"description,omitempty"`
 	Ingredients  *string    `db:"ingredients" json:"ingredients,omitempty"`
 	Available    bool       `db:"available" json:"available"`
+	IsTopPick    bool       `db:"is_top_pick" json:"isTopPick"`
 	AddOns       []AddOnRef `json:"addOns"`
 	CreatedAt    time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updatedAt"`
