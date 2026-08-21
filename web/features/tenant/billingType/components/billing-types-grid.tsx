@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
+import { BillingSettingsForm } from "@/features/tenant/dashboard/settings/billing-settings-form";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/axios";
 
@@ -116,6 +117,7 @@ export function BillingTypesGrid({ tenant }: { tenant: string }) {
           title="Billing Types"
           description="How cabins and room types get billed."
         />
+        <BillingSettingsForm tenant={tenant} />
         <Alert variant="destructive">
           <AlertCircleIcon aria-hidden />
           <AlertTitle>Could not load billing types</AlertTitle>
@@ -137,6 +139,8 @@ export function BillingTypesGrid({ tenant }: { tenant: string }) {
           </Button>
         }
       />
+
+      <BillingSettingsForm tenant={tenant} />
 
       <DataTable
         columns={columns}

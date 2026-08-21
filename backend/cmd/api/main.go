@@ -25,6 +25,7 @@ import (
 	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/middleware"
 	"github.com/bimal009/atithi/internal/notifications"
+	"github.com/bimal009/atithi/internal/orderitems"
 	"github.com/bimal009/atithi/internal/orders"
 	"github.com/bimal009/atithi/internal/permission"
 	"github.com/bimal009/atithi/internal/reservations"
@@ -95,7 +96,8 @@ func main() {
 	tableRepo := tables.NewTableRepo(pool)
 	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
-	orderRepo := orders.NewOrderRepo(pool)
+	orderItemRepo := orderitems.NewOrderItemRepo()
+	orderRepo := orders.NewOrderRepo(pool, menuItemRepo, addOnRepo, orderItemRepo)
 
 	hub := ws.NewHub()
 	go hub.Run()

@@ -20,6 +20,7 @@ type MenuItemRepo interface {
 	ListForHotel(ctx context.Context, hotelID, userID, categoryID, foodType string, pagination model.Pagination) ([]model.MenuItem, int, error)
 	Update(ctx context.Context, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
+	GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error)
 }
 
 type menuItemRepo struct {
@@ -82,8 +83,6 @@ func scanMenuItem(row pgx.Row) (model.MenuItem, error) {
 	return item, nil
 }
 
-// linkAddOns replaces the set of add-ons offered with a menu item, scoping
-// the insert to add-ons that belong to the same hotel.
 func linkAddOns(ctx context.Context, tx pgx.Tx, menuItemID, hotelID string, addOnIDs []string) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM menu_item_add_ons WHERE menu_item_id = $1::uuid`, menuItemID); err != nil {
 		return err
@@ -145,8 +144,6 @@ func (r *menuItemRepo) FindOrCreateDish(ctx context.Context, name string, imageU
 	return dishes.FindOrCreate(ctx, r.DB, name, imageURL)
 }
 
-// CreateWithDish finds-or-creates the shared dish, inserts the hotel's menu
-// item, and links its add-ons, all in a single transaction.
 func (r *menuItemRepo) CreateWithDish(ctx context.Context, name string, imageURL *string, item *model.MenuItem, addOnIDs []string, userID string) (model.MenuItem, error) {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
@@ -415,4 +412,30 @@ func (r *menuItemRepo) Delete(ctx context.Context, id, hotelID, userID string) e
 	}
 
 	return nil
+}
+
+func (r *menuItemRepo) GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT id, price FROM menu_items WHERE id = ANY($1::uuid[]) AND hotel_id = $2::uuid
+	`, ids, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	prices := make(map[string]float64, len(ids))
+	for rows.Next() {
+		var id string
+		var price float64
+		if err := rows.Scan(&id, &price); err != nil {
+			return nil, err
+		}
+		prices[id] = price
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return prices, nil
 }

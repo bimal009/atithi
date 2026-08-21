@@ -28,6 +28,11 @@ export type Order = {
   customerName?: string;
   status: OrderStatus;
   totalAmount: number;
+  taxPercent: number;
+  taxAmount: number;
+  serviceChargePercent: number;
+  serviceChargeAmount: number;
+  grandTotal: number;
   notes?: string;
   createdBy: string;
   createdByName: string;

@@ -6,10 +6,23 @@ import (
 	"errors"
 
 	model "github.com/bimal009/atithi/internal/models"
+	"github.com/bimal009/atithi/internal/orderitems"
 	"github.com/bimal009/atithi/pkg/apperr"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// MenuItemPricer is the narrow slice of menuitems this package needs to
+// price a ticket inside its own transaction.
+type MenuItemPricer interface {
+	GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error)
+}
+
+// AddOnPricer is the narrow slice of addons this package needs to price a
+// ticket inside its own transaction.
+type AddOnPricer interface {
+	GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error)
+}
 
 type OrderRepo interface {
 	Create(ctx context.Context, order *model.Order, items []OrderItemInput, userID string) (model.Order, error)
@@ -21,20 +34,29 @@ type OrderRepo interface {
 }
 
 type orderRepo struct {
-	DB *pgxpool.Pool
+	DB        *pgxpool.Pool
+	menuItems MenuItemPricer
+	addOns    AddOnPricer
+	items     orderitems.OrderItemRepo
 }
 
-func NewOrderRepo(db *pgxpool.Pool) OrderRepo {
-	return &orderRepo{DB: db}
+func NewOrderRepo(db *pgxpool.Pool, menuItems MenuItemPricer, addOns AddOnPricer, items orderitems.OrderItemRepo) OrderRepo {
+	return &orderRepo{DB: db, menuItems: menuItems, addOns: addOns, items: items}
 }
 
-func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []OrderItemInput, userID string) (model.Order, error) {
-	tx, err := r.DB.Begin(ctx)
-	if err != nil {
-		return model.Order{}, err
+func toOrderItems(items []OrderItemInput) []orderitems.Item {
+	out := make([]orderitems.Item, len(items))
+	for i, it := range items {
+		addOns := make([]orderitems.ItemAddOn, len(it.AddOns))
+		for j, ao := range it.AddOns {
+			addOns[j] = orderitems.ItemAddOn{AddOnID: ao.AddOnID, Quantity: ao.Quantity}
+		}
+		out[i] = orderitems.Item{MenuItemID: it.MenuItemID, Quantity: it.Quantity, AddOns: addOns}
 	}
-	defer tx.Rollback(ctx)
+	return out
+}
 
+func (r *orderRepo) priceItems(ctx context.Context, tx pgx.Tx, hotelID string, items []OrderItemInput) (float64, error) {
 	menuItemIDs := make([]string, len(items))
 	for i, it := range items {
 		menuItemIDs[i] = it.MenuItemID
@@ -46,49 +68,45 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 		}
 	}
 
-	priceRows, err := tx.Query(ctx, `
-		SELECT 'item', id, price FROM menu_items WHERE id = ANY($1::uuid[]) AND hotel_id = $3::uuid
-		UNION ALL
-		SELECT 'addon', id, price FROM add_ons WHERE id = ANY($2::uuid[]) AND hotel_id = $3::uuid
-	`, menuItemIDs, addOnIDs, order.HotelID)
+	itemPrices, err := r.menuItems.GetPricesTx(ctx, tx, menuItemIDs, hotelID)
 	if err != nil {
-		return model.Order{}, err
+		return 0, err
 	}
-	itemPrices := make(map[string]float64, len(menuItemIDs))
-	addOnPrices := make(map[string]float64, len(addOnIDs))
-	for priceRows.Next() {
-		var kind, id string
-		var price float64
-		if err := priceRows.Scan(&kind, &id, &price); err != nil {
-			priceRows.Close()
-			return model.Order{}, err
-		}
-		if kind == "item" {
-			itemPrices[id] = price
-		} else {
-			addOnPrices[id] = price
-		}
-	}
-	priceRows.Close()
-	if err := priceRows.Err(); err != nil {
-		return model.Order{}, err
+	addOnPrices, err := r.addOns.GetPricesTx(ctx, tx, addOnIDs, hotelID)
+	if err != nil {
+		return 0, err
 	}
 
 	var total float64
 	for _, it := range items {
 		price, ok := itemPrices[it.MenuItemID]
 		if !ok {
-			return model.Order{}, apperr.ErrOrderResourceInvalid
+			return 0, apperr.ErrOrderResourceInvalid
 		}
 		lineTotal := price * float64(it.Quantity)
 		for _, ao := range it.AddOns {
 			addOnPrice, ok := addOnPrices[ao.AddOnID]
 			if !ok {
-				return model.Order{}, apperr.ErrOrderResourceInvalid
+				return 0, apperr.ErrOrderResourceInvalid
 			}
 			lineTotal += addOnPrice * float64(ao.Quantity)
 		}
 		total += lineTotal
+	}
+
+	return total, nil
+}
+
+func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []OrderItemInput, userID string) (model.Order, error) {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return model.Order{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	total, err := r.priceItems(ctx, tx, order.HotelID, items)
+	if err != nil {
+		return model.Order{}, err
 	}
 
 	var created model.Order
@@ -134,38 +152,11 @@ func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []Orde
 		return model.Order{}, err
 	}
 
-	quantities := make([]int, len(items))
-	for i, it := range items {
-		quantities[i] = it.Quantity
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO order_items (order_id, menu_item_id, quantity)
-		SELECT $1::uuid, x.menu_item_id, x.quantity
-		FROM unnest($2::uuid[], $3::int[]) AS x(menu_item_id, quantity)
-		JOIN menu_items mi ON mi.id = x.menu_item_id AND mi.hotel_id = $4::uuid
-	`, created.ID, menuItemIDs, quantities, order.HotelID); err != nil {
+	if err := r.items.InsertTx(ctx, tx, created.ID, order.HotelID, toOrderItems(items)); err != nil {
+		if apperr.IsForeignKeyViolation(err) {
+			return model.Order{}, apperr.ErrOrderResourceInvalid
+		}
 		return model.Order{}, err
-	}
-
-	var addOnMenuItemIDs []string
-	var flatAddOnIDs []string
-	var addOnQuantities []int
-	for _, it := range items {
-		for _, ao := range it.AddOns {
-			addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
-			flatAddOnIDs = append(flatAddOnIDs, ao.AddOnID)
-			addOnQuantities = append(addOnQuantities, ao.Quantity)
-		}
-	}
-	if len(flatAddOnIDs) > 0 {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id, quantity)
-			SELECT $1::uuid, x.menu_item_id, x.add_on_id, x.quantity
-			FROM unnest($2::uuid[], $3::uuid[], $4::int[]) AS x(menu_item_id, add_on_id, quantity)
-			JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $5::uuid
-		`, created.ID, addOnMenuItemIDs, flatAddOnIDs, addOnQuantities, order.HotelID); err != nil {
-			return model.Order{}, err
-		}
 	}
 	created.Items = []model.OrderItemRef{}
 
@@ -276,62 +267,10 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 
 	var newTotal *float64
 	if items != nil {
-		menuItemIDs := make([]string, len(*items))
-		for i, it := range *items {
-			menuItemIDs[i] = it.MenuItemID
-		}
-		var addOnIDs []string
-		for _, it := range *items {
-			for _, ao := range it.AddOns {
-				addOnIDs = append(addOnIDs, ao.AddOnID)
-			}
-		}
-
-		priceRows, err := tx.Query(ctx, `
-			SELECT 'item', id, price FROM menu_items WHERE id = ANY($1::uuid[]) AND hotel_id = $3::uuid
-			UNION ALL
-			SELECT 'addon', id, price FROM add_ons WHERE id = ANY($2::uuid[]) AND hotel_id = $3::uuid
-		`, menuItemIDs, addOnIDs, order.HotelID)
+		total, err := r.priceItems(ctx, tx, order.HotelID, *items)
 		if err != nil {
 			return model.Order{}, err
 		}
-		itemPrices := make(map[string]float64, len(menuItemIDs))
-		addOnPrices := make(map[string]float64, len(addOnIDs))
-		for priceRows.Next() {
-			var kind, id string
-			var price float64
-			if err := priceRows.Scan(&kind, &id, &price); err != nil {
-				priceRows.Close()
-				return model.Order{}, err
-			}
-			if kind == "item" {
-				itemPrices[id] = price
-			} else {
-				addOnPrices[id] = price
-			}
-		}
-		priceRows.Close()
-		if err := priceRows.Err(); err != nil {
-			return model.Order{}, err
-		}
-
-		var total float64
-		for _, it := range *items {
-			price, ok := itemPrices[it.MenuItemID]
-			if !ok {
-				return model.Order{}, apperr.ErrOrderResourceInvalid
-			}
-			lineTotal := price * float64(it.Quantity)
-			for _, ao := range it.AddOns {
-				addOnPrice, ok := addOnPrices[ao.AddOnID]
-				if !ok {
-					return model.Order{}, apperr.ErrOrderResourceInvalid
-				}
-				lineTotal += addOnPrice * float64(ao.Quantity)
-			}
-			total += lineTotal
-		}
-
 		newTotal = &total
 	}
 
@@ -381,44 +320,15 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]Ord
 	}
 
 	if items != nil {
-		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_id = $1::uuid`, updated.ID); err != nil {
+		if err := r.items.DeleteAllTx(ctx, tx, updated.ID); err != nil {
 			return model.Order{}, err
 		}
 
-		menuItemIDs := make([]string, len(*items))
-		quantities := make([]int, len(*items))
-		for i, it := range *items {
-			menuItemIDs[i] = it.MenuItemID
-			quantities[i] = it.Quantity
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO order_items (order_id, menu_item_id, quantity)
-			SELECT $1::uuid, x.menu_item_id, x.quantity
-			FROM unnest($2::uuid[], $3::int[]) AS x(menu_item_id, quantity)
-			JOIN menu_items mi ON mi.id = x.menu_item_id AND mi.hotel_id = $4::uuid
-		`, updated.ID, menuItemIDs, quantities, order.HotelID); err != nil {
+		if err := r.items.InsertTx(ctx, tx, updated.ID, order.HotelID, toOrderItems(*items)); err != nil {
+			if apperr.IsForeignKeyViolation(err) {
+				return model.Order{}, apperr.ErrOrderResourceInvalid
+			}
 			return model.Order{}, err
-		}
-
-		var addOnMenuItemIDs []string
-		var flatAddOnIDs []string
-		var addOnQuantities []int
-		for _, it := range *items {
-			for _, ao := range it.AddOns {
-				addOnMenuItemIDs = append(addOnMenuItemIDs, it.MenuItemID)
-				flatAddOnIDs = append(flatAddOnIDs, ao.AddOnID)
-				addOnQuantities = append(addOnQuantities, ao.Quantity)
-			}
-		}
-		if len(flatAddOnIDs) > 0 {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO order_item_add_ons (order_id, menu_item_id, add_on_id, quantity)
-				SELECT $1::uuid, x.menu_item_id, x.add_on_id, x.quantity
-				FROM unnest($2::uuid[], $3::uuid[], $4::int[]) AS x(menu_item_id, add_on_id, quantity)
-				JOIN add_ons a ON a.id = x.add_on_id AND a.hotel_id = $5::uuid
-			`, updated.ID, addOnMenuItemIDs, flatAddOnIDs, addOnQuantities, order.HotelID); err != nil {
-				return model.Order{}, err
-			}
 		}
 	}
 	updated.Items = []model.OrderItemRef{}

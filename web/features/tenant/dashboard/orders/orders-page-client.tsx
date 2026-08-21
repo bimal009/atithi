@@ -188,10 +188,17 @@ export function OrdersPageClient({ tenant }: { tenant: string }) {
       key: "items",
       header: "Items",
       cell: (o) => (
-        <span className="text-muted-foreground">
-          {o.items.reduce((n, i) => n + i.quantity, 0)} items ·{" "}
-          {formatCurrency(o.totalAmount)}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">
+            {o.items.reduce((n, i) => n + i.quantity, 0)} items ·{" "}
+            {formatCurrency(o.grandTotal)}
+          </span>
+          {o.grandTotal !== o.totalAmount && (
+            <span className="text-xs text-muted-foreground">
+              {formatCurrency(o.totalAmount)} + tax
+            </span>
+          )}
+        </div>
       ),
     },
     {

@@ -5,7 +5,6 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { BillingSettingsForm } from "./billing-settings-form";
 import { HotelSettingsForm } from "./hotel-settings-form";
 import { ProfileSettingsForm } from "./profile-settings-form";
 
@@ -29,10 +28,7 @@ export function SettingsPageClient({ tenant }: { tenant: string }) {
           {tab === "profile" ? (
             <ProfileSettingsForm />
           ) : (
-            <div className="flex flex-col gap-6">
-              <HotelSettingsForm tenant={tenant} />
-              <BillingSettingsForm tenant={tenant} />
-            </div>
+            <HotelSettingsForm tenant={tenant} />
           )}
         </TabsContent>
       </Tabs>

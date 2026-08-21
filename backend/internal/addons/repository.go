@@ -18,6 +18,7 @@ type AddOnRepo interface {
 	ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.AddOn, int, error)
 	Update(ctx context.Context, addOn *model.AddOn, userID string) (model.AddOn, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
+	GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error)
 }
 
 type addOnRepo struct {
@@ -248,4 +249,30 @@ func (r *addOnRepo) Delete(ctx context.Context, id, hotelID, userID string) erro
 	}
 
 	return nil
+}
+
+func (r *addOnRepo) GetPricesTx(ctx context.Context, tx pgx.Tx, ids []string, hotelID string) (map[string]float64, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT id, price FROM add_ons WHERE id = ANY($1::uuid[]) AND hotel_id = $2::uuid
+	`, ids, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	prices := make(map[string]float64, len(ids))
+	for rows.Next() {
+		var id string
+		var price float64
+		if err := rows.Scan(&id, &price); err != nil {
+			return nil, err
+		}
+		prices[id] = price
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return prices, nil
 }
