@@ -179,7 +179,7 @@ func main() {
 		}))
 	})
 
-	r.GET("/ws", requireAuth, validateHotel, validateMember, ws.Handler(hub, permissionService, slog))
+	r.GET("/hotels/slug/:slug/ws", requireAuth, validateHotel, validateMember, ws.Handler(hub, permissionService, slog))
 
 	routes.Register(r, &routes.Handlers{
 		Auth:           authHandler,

@@ -5,26 +5,31 @@ import model "github.com/bimal009/atithi/internal/models"
 const (
 	StatusPending   = "pending"
 	StatusPreparing = "preparing"
-	StatusCompleted = "completed"
+	StatusReady     = "ready"
+	StatusServed    = "served"
 	StatusCancelled = "cancelled"
 )
 
 type CreateOrderRequest struct {
-	TableID     *string `json:"tableId,omitempty" validate:"omitempty,uuid"`
-	CustomerID  *string `json:"customerId,omitempty" validate:"omitempty,uuid"`
-	TotalAmount float64 `json:"totalAmount" validate:"gte=0"`
-	Notes       *string `json:"notes,omitempty" validate:"omitempty,max=1000"`
+	TableID    *string          `json:"tableId,omitempty" validate:"omitempty,uuid"`
+	RoomID     *string          `json:"roomId,omitempty" validate:"omitempty,uuid"`
+	CabinID    *string          `json:"cabinId,omitempty" validate:"omitempty,uuid"`
+	CustomerID *string          `json:"customerId,omitempty" validate:"omitempty,uuid"`
+	Items      []OrderItemInput `json:"items" validate:"required,min=1,dive"`
+	Notes      *string          `json:"notes,omitempty" validate:"omitempty,max=1000"`
 }
 
 type UpdateOrderRequest struct {
-	TableID     *string  `json:"tableId,omitempty" validate:"omitempty,uuid"`
-	CustomerID  *string  `json:"customerId,omitempty" validate:"omitempty,uuid"`
-	TotalAmount *float64 `json:"totalAmount,omitempty" validate:"omitempty,gte=0"`
-	Notes       *string  `json:"notes,omitempty" validate:"omitempty,max=1000"`
+	TableID    *string           `json:"tableId,omitempty" validate:"omitempty,uuid"`
+	RoomID     *string           `json:"roomId,omitempty" validate:"omitempty,uuid"`
+	CabinID    *string           `json:"cabinId,omitempty" validate:"omitempty,uuid"`
+	CustomerID *string           `json:"customerId,omitempty" validate:"omitempty,uuid"`
+	Items      *[]OrderItemInput `json:"items,omitempty" validate:"omitempty,min=1,dive"`
+	Notes      *string           `json:"notes,omitempty" validate:"omitempty,max=1000"`
 }
 
 type UpdateOrderStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=pending preparing completed cancelled"`
+	Status string `json:"status" validate:"required,oneof=pending preparing ready served cancelled"`
 }
 
 type ListOrdersResponse struct {
@@ -36,5 +41,5 @@ type ListOrdersResponse struct {
 
 type ListOrdersQuery struct {
 	model.Pagination
-	Status string `form:"status" json:"status" validate:"omitempty,oneof=pending preparing completed cancelled"`
+	Status string `form:"status" json:"status" validate:"omitempty,oneof=pending preparing ready served cancelled"`
 }

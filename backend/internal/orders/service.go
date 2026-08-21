@@ -30,39 +30,45 @@ func NewOrderService(slog *slog.Logger, repo OrderRepo, hub *ws.Hub) OrderServic
 	return &orderService{slog: slog, repo: repo, hub: hub}
 }
 
+func (s *orderService) broadcast(order model.Order, msgType ws.MessageType) {
+	payload, err := json.Marshal(order)
+	if err != nil {
+		s.slog.Error("failed to marshal order for broadcast", "order_id", order.ID, "error", err)
+		return
+	}
+
+	s.hub.Broadcast(&ws.Message{
+		HotelID:     order.HotelID,
+		Permissions: []string{ws.PermKitchenViewQueue},
+		Type:        msgType,
+		Payload:     payload,
+	})
+}
+
 func (s *orderService) Create(ctx context.Context, hotelID, userID string, req *CreateOrderRequest) (model.Order, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return model.Order{}, err
 	}
 
 	newOrder := &model.Order{
-		ID:          uuid.NewString(),
-		HotelID:     hotelID,
-		TableID:     req.TableID,
-		CustomerID:  req.CustomerID,
-		Status:      StatusPending,
-		TotalAmount: req.TotalAmount,
-		Notes:       req.Notes,
+		ID:         uuid.NewString(),
+		HotelID:    hotelID,
+		TableID:    req.TableID,
+		RoomID:     req.RoomID,
+		CabinID:    req.CabinID,
+		CustomerID: req.CustomerID,
+		Status:     StatusPending,
+		Notes:      req.Notes,
 	}
 
-	created, err := s.repo.Create(ctx, newOrder, userID)
+	created, err := s.repo.Create(ctx, newOrder, req.Items, userID)
 	if err != nil {
 		s.slog.Error("failed to create order", "hotel_id", hotelID, "error", err)
 		return model.Order{}, err
 	}
 
 	s.slog.Info("order created", "order_id", created.ID, "hotel_id", hotelID)
-
-	if payload, err := json.Marshal(created); err != nil {
-		s.slog.Error("failed to marshal order for broadcast", "order_id", created.ID, "error", err)
-	} else {
-		s.hub.Broadcast(&ws.Message{
-			HotelID:     created.HotelID,
-			Permissions: []string{ws.PermKitchenViewQueue, ws.PermOrdersRead},
-			Type:        ws.OrderCreated,
-			Payload:     payload,
-		})
-	}
+	s.broadcast(created, ws.OrderCreated)
 
 	return created, nil
 }
@@ -105,17 +111,20 @@ func (s *orderService) Update(ctx context.Context, id, hotelID, userID string, r
 	if req.TableID != nil {
 		existing.TableID = req.TableID
 	}
+	if req.RoomID != nil {
+		existing.RoomID = req.RoomID
+	}
+	if req.CabinID != nil {
+		existing.CabinID = req.CabinID
+	}
 	if req.CustomerID != nil {
 		existing.CustomerID = req.CustomerID
-	}
-	if req.TotalAmount != nil {
-		existing.TotalAmount = *req.TotalAmount
 	}
 	if req.Notes != nil {
 		existing.Notes = req.Notes
 	}
 
-	updated, err := s.repo.Update(ctx, &existing, userID)
+	updated, err := s.repo.Update(ctx, &existing, req.Items, userID)
 	if err != nil {
 		s.slog.Error("failed to update order", "order_id", id, "error", err)
 		return model.Order{}, err
@@ -136,6 +145,12 @@ func (s *orderService) UpdateStatus(ctx context.Context, id, hotelID, userID str
 		s.slog.Error("failed to update order status", "order_id", id, "error", err)
 		return model.Order{}, err
 	}
+
+	msgType := ws.OrderStatusUpdate
+	if req.Status == StatusCancelled {
+		msgType = ws.OrderCancelled
+	}
+	s.broadcast(updated, msgType)
 
 	return updated, nil
 }

@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	model "github.com/bimal009/atithi/internal/models"
@@ -11,10 +12,10 @@ import (
 )
 
 type OrderRepo interface {
-	Create(ctx context.Context, order *model.Order, userID string) (model.Order, error)
+	Create(ctx context.Context, order *model.Order, items []OrderItemInput, userID string) (model.Order, error)
 	Get(ctx context.Context, id, hotelID, userID string) (model.Order, error)
 	ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Order, int, error)
-	Update(ctx context.Context, order *model.Order, userID string) (model.Order, error)
+	Update(ctx context.Context, order *model.Order, items *[]OrderItemInput, userID string) (model.Order, error)
 	UpdateStatus(ctx context.Context, id, hotelID, userID, status string) (model.Order, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -27,79 +28,65 @@ func NewOrderRepo(db *pgxpool.Pool) OrderRepo {
 	return &orderRepo{DB: db}
 }
 
-func (r *orderRepo) Create(ctx context.Context, order *model.Order, userID string) (model.Order, error) {
-	query := `
-		INSERT INTO orders (id, hotel_id, table_id, customer_id, status, total_amount, notes)
-		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7
-		WHERE EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $8::uuid AND m.status = 'active'
-		)
-		RETURNING id, hotel_id, table_id, customer_id, status, total_amount, notes, created_at, updated_at
-	`
+func (r *orderRepo) Create(ctx context.Context, order *model.Order, items []OrderItemInput, userID string) (model.Order, error) {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return model.Order{}, err
+	}
+	defer tx.Rollback(ctx)
 
-	var created model.Order
-
-	err := r.DB.QueryRow(
-		ctx, query,
+	var orderID string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO orders (id, hotel_id, table_id, room_id, cabin_id, customer_id, status, notes, created_by)
+		SELECT $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid, $7, $8, m.id
+		FROM members m
+		WHERE m.hotel_id = $2::uuid AND m.user_id = $9::uuid AND m.status = 'active'
+		RETURNING id
+	`,
 		order.ID,
 		order.HotelID,
 		order.TableID,
+		order.RoomID,
+		order.CabinID,
 		order.CustomerID,
 		order.Status,
-		order.TotalAmount,
 		order.Notes,
 		userID,
-	).Scan(
-		&created.ID,
-		&created.HotelID,
-		&created.TableID,
-		&created.CustomerID,
-		&created.Status,
-		&created.TotalAmount,
-		&created.Notes,
-		&created.CreatedAt,
-		&created.UpdatedAt,
-	)
+	).Scan(&orderID)
 
 	if err != nil {
-		if apperr.IsForeignKeyViolation(err) {
-			return model.Order{}, apperr.ErrOrderResourceInvalid
-		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Order{}, apperr.ErrHotelNotFound
+		}
+		if apperr.IsForeignKeyViolation(err) {
+			return model.Order{}, apperr.ErrOrderResourceInvalid
 		}
 		return model.Order{}, err
 	}
 
-	return created, nil
+	if err := insertOrderItems(ctx, tx, orderID, order.HotelID, items); err != nil {
+		return model.Order{}, err
+	}
+	if err := recomputeTotal(ctx, tx, orderID); err != nil {
+		return model.Order{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.Order{}, err
+	}
+
+	return r.Get(ctx, orderID, order.HotelID, userID)
 }
 
 func (r *orderRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Order, error) {
-	query := `
-		SELECT id, hotel_id, table_id, customer_id, status, total_amount, notes, created_at, updated_at
-		FROM orders
-		WHERE id = $1::uuid AND hotel_id = $2::uuid
+	query := "SELECT " + orderColumns + orderFrom + `
+		WHERE o.id = $1::uuid AND o.hotel_id = $2::uuid
 		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = orders.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
+			SELECT 1 FROM members mm WHERE mm.hotel_id = o.hotel_id AND mm.user_id = $3::uuid AND mm.status = 'active'
 		  )
 	`
 
-	var order model.Order
-
-	err := r.DB.QueryRow(ctx, query, id, hotelID, userID).Scan(
-		&order.ID,
-		&order.HotelID,
-		&order.TableID,
-		&order.CustomerID,
-		&order.Status,
-		&order.TotalAmount,
-		&order.Notes,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-	)
-
+	order, err := scanOrder(r.DB.QueryRow(ctx, query, id, hotelID, userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Order{}, apperr.ErrOrderNotFound
@@ -111,17 +98,13 @@ func (r *orderRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 }
 
 func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Order, int, error) {
-	query := `
-		SELECT id, hotel_id, table_id, customer_id, status, total_amount, notes, created_at, updated_at,
-		       COUNT(*) OVER() AS total
-		FROM orders
-		WHERE hotel_id = $1::uuid
-		  AND ($5 = '' OR status = $5)
+	query := "SELECT " + orderColumns + `, COUNT(*) OVER() AS total` + orderFrom + `
+		WHERE o.hotel_id = $1::uuid
+		  AND ($5 = '' OR o.status = $5)
 		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = orders.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+			SELECT 1 FROM members mm WHERE mm.hotel_id = o.hotel_id AND mm.user_id = $2::uuid AND mm.status = 'active'
 		  )
-		ORDER BY created_at DESC
+		ORDER BY o.created_at DESC
 		LIMIT $3 OFFSET $4
 	`
 
@@ -136,19 +119,35 @@ func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 
 	for rows.Next() {
 		var order model.Order
+		var itemsJSON []byte
 		if err := rows.Scan(
 			&order.ID,
 			&order.HotelID,
 			&order.TableID,
+			&order.TableName,
+			&order.RoomID,
+			&order.RoomNumber,
+			&order.CabinID,
+			&order.CabinName,
 			&order.CustomerID,
+			&order.CustomerName,
 			&order.Status,
 			&order.TotalAmount,
 			&order.Notes,
+			&order.CreatedBy,
+			&order.CreatedByName,
 			&order.CreatedAt,
 			&order.UpdatedAt,
+			&itemsJSON,
 			&total,
 		); err != nil {
 			return nil, 0, err
+		}
+		if err := json.Unmarshal(itemsJSON, &order.Items); err != nil {
+			return nil, 0, err
+		}
+		if order.Items == nil {
+			order.Items = []model.OrderItemRef{}
 		}
 		list = append(list, order)
 	}
@@ -160,45 +159,32 @@ func (r *orderRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 	return list, total, nil
 }
 
-func (r *orderRepo) Update(ctx context.Context, order *model.Order, userID string) (model.Order, error) {
-	query := `
+func (r *orderRepo) Update(ctx context.Context, order *model.Order, items *[]OrderItemInput, userID string) (model.Order, error) {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return model.Order{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var orderID string
+	err = tx.QueryRow(ctx, `
 		UPDATE orders
-		SET
-			table_id = $1::uuid,
-			customer_id = $2::uuid,
-			total_amount = $3,
-			notes = $4,
-			updated_at = now()
-		WHERE id = $5::uuid AND hotel_id = $6::uuid
+		SET table_id = $1::uuid, room_id = $2::uuid, cabin_id = $3::uuid, customer_id = $4::uuid, notes = $5, updated_at = now()
+		WHERE id = $6::uuid AND hotel_id = $7::uuid
 		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = orders.hotel_id AND m.user_id = $7::uuid AND m.status = 'active'
+			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $8::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, table_id, customer_id, status, total_amount, notes, created_at, updated_at
-	`
-
-	var updated model.Order
-
-	err := r.DB.QueryRow(
-		ctx, query,
+		RETURNING id
+	`,
 		order.TableID,
+		order.RoomID,
+		order.CabinID,
 		order.CustomerID,
-		order.TotalAmount,
 		order.Notes,
 		order.ID,
 		order.HotelID,
 		userID,
-	).Scan(
-		&updated.ID,
-		&updated.HotelID,
-		&updated.TableID,
-		&updated.CustomerID,
-		&updated.Status,
-		&updated.TotalAmount,
-		&updated.Notes,
-		&updated.CreatedAt,
-		&updated.UpdatedAt,
-	)
+	).Scan(&orderID)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -210,43 +196,42 @@ func (r *orderRepo) Update(ctx context.Context, order *model.Order, userID strin
 		return model.Order{}, err
 	}
 
-	return updated, nil
+	if items != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM order_items WHERE order_id = $1::uuid`, orderID); err != nil {
+			return model.Order{}, err
+		}
+		if err := insertOrderItems(ctx, tx, orderID, order.HotelID, *items); err != nil {
+			return model.Order{}, err
+		}
+		if err := recomputeTotal(ctx, tx, orderID); err != nil {
+			return model.Order{}, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return model.Order{}, err
+	}
+
+	return r.Get(ctx, orderID, order.HotelID, userID)
 }
 
 func (r *orderRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status string) (model.Order, error) {
-	query := `
+	result, err := r.DB.Exec(ctx, `
 		UPDATE orders
 		SET status = $1, updated_at = now()
 		WHERE id = $2::uuid AND hotel_id = $3::uuid
 		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = orders.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
+			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, table_id, customer_id, status, total_amount, notes, created_at, updated_at
-	`
-
-	var updated model.Order
-
-	err := r.DB.QueryRow(ctx, query, status, id, hotelID, userID).Scan(
-		&updated.ID,
-		&updated.HotelID,
-		&updated.TableID,
-		&updated.CustomerID,
-		&updated.Status,
-		&updated.TotalAmount,
-		&updated.Notes,
-		&updated.CreatedAt,
-		&updated.UpdatedAt,
-	)
-
+	`, status, id, hotelID, userID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return model.Order{}, apperr.ErrOrderNotFound
-		}
 		return model.Order{}, err
 	}
+	if result.RowsAffected() == 0 {
+		return model.Order{}, apperr.ErrOrderNotFound
+	}
 
-	return updated, nil
+	return r.Get(ctx, id, hotelID, userID)
 }
 
 func (r *orderRepo) Delete(ctx context.Context, id, hotelID, userID string) error {
@@ -254,8 +239,7 @@ func (r *orderRepo) Delete(ctx context.Context, id, hotelID, userID string) erro
 		DELETE FROM orders
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = orders.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
+			SELECT 1 FROM members m WHERE m.hotel_id = orders.hotel_id AND m.user_id = $3::uuid AND m.status = 'active'
 		  )
 	`
 

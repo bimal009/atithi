@@ -23,7 +23,6 @@ const (
 
 const (
 	PermKitchenViewQueue         = "kitchen:view_queue"
-	PermOrdersRead               = "orders:read"
 	PermBookingsRead             = "bookings:read"
 	PermConversationsRead        = "conversations:read"
 	PermConversationsReply       = "conversations:reply"
@@ -37,4 +36,9 @@ type Message struct {
 	Permissions []string
 	Type        MessageType
 	Payload     json.RawMessage
+}
+
+type outboundEnvelope struct {
+	Type    MessageType     `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }

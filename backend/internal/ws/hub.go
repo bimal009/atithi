@@ -1,12 +1,14 @@
 package ws
 
+import "encoding/json"
+
 type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan *Message
 
 	hotelClients map[string]map[*Client]bool
-	userClients  map[string]*Client // userID -> client, for targeted delivery
+	userClients  map[string]*Client
 }
 
 func NewHub() *Hub {
@@ -60,10 +62,15 @@ func (h *Hub) Broadcast(msg *Message) {
 }
 
 func (h *Hub) dispatch(message *Message) {
+	data, err := json.Marshal(outboundEnvelope{Type: message.Type, Payload: message.Payload})
+	if err != nil {
+		return
+	}
+
 	if message.UserID != "" {
 		if client, ok := h.userClients[message.UserID]; ok {
 			select {
-			case client.send <- message.Payload:
+			case client.send <- data:
 			default:
 				h.dropClient(client)
 			}
@@ -76,7 +83,7 @@ func (h *Hub) dispatch(message *Message) {
 			continue
 		}
 		select {
-		case client.send <- message.Payload:
+		case client.send <- data:
 		default:
 			h.dropClient(client)
 		}
