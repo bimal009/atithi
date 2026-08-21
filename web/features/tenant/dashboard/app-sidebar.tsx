@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
-import { TENANT } from "@/lib/mock-data"
+import { useHotelBySlugQuery } from "@/features/hotel/client/useHotels"
 import { NAV_GROUPS } from "@/features/tenant/dashboard/nav-config"
 import { useKitchenPendingSocket } from "@/features/tenant/order/client/useKotSocket"
 import { useKitchenPendingCount } from "@/features/tenant/order/client/useOrders"
@@ -103,6 +103,7 @@ export function AppSidebar({
   const pathname = usePathname()
   const basePath = `/${tenant}/dashboard`
 
+  const { data: hotel } = useHotelBySlugQuery(tenant)
   const { data: kitchenPendingCount = 0 } = useKitchenPendingCount(tenant)
   useKitchenPendingSocket(tenant)
 
@@ -118,15 +119,20 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href={basePath} />}
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <HotelIcon className="size-4.5" />
+              <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
+                {hotel?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={hotel.logoUrl} alt="" className="size-full object-contain" />
+                ) : (
+                  <HotelIcon className="size-4.5" />
+                )}
               </div>
               <div className="flex min-w-0 flex-col leading-tight">
                 <span className="truncate text-sm font-semibold">
-                  {TENANT.hotelName}
+                  {hotel?.name ?? "Loading…"}
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/60">
-                  {TENANT.city}
+                  {hotel?.city}
                 </span>
               </div>
             </SidebarMenuButton>

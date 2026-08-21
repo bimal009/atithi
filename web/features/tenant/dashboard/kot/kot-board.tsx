@@ -185,7 +185,7 @@ export function KotBoard({
 
             <div className="flex flex-col gap-3">
               {columnOrders.length === 0 ? (
-                <EmptyState icon={ChefHatIcon} title="No tickets" className="py-8" />
+                <EmptyState icon={ChefHatIcon} title="No Orders" className="py-8" />
               ) : (
                 columnOrders.map((order) => {
                   const itemCount = order.items.reduce((n, i) => n + i.quantity, 0)
