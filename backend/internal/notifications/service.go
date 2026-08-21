@@ -21,6 +21,7 @@ type NotificationService interface {
 	Create(ctx context.Context, hotelID string, req *CreateNotificationRequest) (model.Notification, error)
 	GetAll(ctx context.Context, hotelID, userID string, query ListNotificationsQuery) (ListNotificationsResponse, error)
 	MarkRead(ctx context.Context, id, hotelID, userID string) (model.Notification, error)
+	MarkAllRead(ctx context.Context, hotelID, userID string) (int, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
 
@@ -102,6 +103,16 @@ func (s *notificationService) MarkRead(ctx context.Context, id, hotelID, userID 
 	}
 
 	return updated, nil
+}
+
+func (s *notificationService) MarkAllRead(ctx context.Context, hotelID, userID string) (int, error) {
+	count, err := s.repo.MarkAllRead(ctx, hotelID, userID)
+	if err != nil {
+		s.slog.Error("failed to mark all notifications read", "hotel_id", hotelID, "error", err)
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (s *notificationService) Delete(ctx context.Context, id, hotelID, userID string) error {

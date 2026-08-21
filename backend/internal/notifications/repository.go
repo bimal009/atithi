@@ -155,6 +155,25 @@ func (r *notificationRepo) MarkRead(ctx context.Context, id, hotelID, userID str
 	return updated, nil
 }
 
+func (r *notificationRepo) MarkAllRead(ctx context.Context, hotelID, userID string) (int, error) {
+	query := `
+		UPDATE notifications n
+		SET read = true
+		WHERE n.hotel_id = $1::uuid AND n.read = false
+		  AND EXISTS (
+			SELECT 1 FROM members m
+			WHERE m.hotel_id = n.hotel_id AND m.user_id = $2::uuid AND m.status = 'active'
+		  )
+	`
+
+	result, err := r.DB.Exec(ctx, query, hotelID, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(result.RowsAffected()), nil
+}
+
 func (r *notificationRepo) Delete(ctx context.Context, id, hotelID, userID string) error {
 	query := `
 		DELETE FROM notifications

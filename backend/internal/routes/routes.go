@@ -254,6 +254,7 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 			{
 				notificationsGroup.POST("", h.Notification.Create)
 				notificationsGroup.GET("", h.Notification.GetAll)
+				notificationsGroup.PATCH("/read-all", h.Notification.MarkAllRead)
 				notificationsGroup.PATCH("/:notificationId/read", h.Notification.MarkRead)
 				notificationsGroup.DELETE("/:notificationId", h.Notification.Delete)
 			}

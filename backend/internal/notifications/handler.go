@@ -70,6 +70,16 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, responses.Success("notification marked read", notification))
 }
 
+func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
+	count, err := h.service.MarkAllRead(c.Request.Context(), middleware.HotelID(c), middleware.UserID(c))
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("notifications marked read", gin.H{"count": count}))
+}
+
 func (h *NotificationHandler) Delete(c *gin.Context) {
 	id := c.Param("notificationId")
 
