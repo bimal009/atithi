@@ -211,7 +211,7 @@ func (r *publicSiteRepo) ListMenuItems(ctx context.Context, hotelID string) ([]m
 
 func (r *publicSiteRepo) ListGalleryImages(ctx context.Context, hotelID string) ([]model.GalleryImage, error) {
 	query := `
-		SELECT id, hotel_id, url, position, created_at
+		SELECT id, hotel_id, url, section, position, created_at
 		FROM hotel_gallery_images
 		WHERE hotel_id = $1::uuid
 		ORDER BY position, created_at
@@ -226,7 +226,7 @@ func (r *publicSiteRepo) ListGalleryImages(ctx context.Context, hotelID string) 
 	list := make([]model.GalleryImage, 0)
 	for rows.Next() {
 		var img model.GalleryImage
-		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.Position, &img.CreatedAt); err != nil {
+		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.Section, &img.Position, &img.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, img)

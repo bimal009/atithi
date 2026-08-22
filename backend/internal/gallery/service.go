@@ -9,7 +9,7 @@ import (
 	"github.com/bimal009/atithi/pkg/validator"
 )
 
-const maxGalleryImages = 10
+const maxGalleryImages = 60
 
 type GalleryService interface {
 	Create(ctx context.Context, hotelID, userID string, req *CreateGalleryImageRequest) (model.GalleryImage, error)
@@ -39,7 +39,12 @@ func (s *galleryService) Create(ctx context.Context, hotelID, userID string, req
 		return model.GalleryImage{}, apperr.ErrLimitExceeded
 	}
 
-	created, err := s.repo.Create(ctx, hotelID, req.URL, userID)
+	section := req.Section
+	if section == "" {
+		section = "General"
+	}
+
+	created, err := s.repo.Create(ctx, hotelID, req.URL, section, userID)
 	if err != nil {
 		s.slog.Error("failed to add gallery image", "hotel_id", hotelID, "error", err)
 		return model.GalleryImage{}, err

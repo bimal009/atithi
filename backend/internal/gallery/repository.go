@@ -11,7 +11,7 @@ import (
 )
 
 type GalleryRepo interface {
-	Create(ctx context.Context, hotelID, url, userID string) (model.GalleryImage, error)
+	Create(ctx context.Context, hotelID, url, section, userID string) (model.GalleryImage, error)
 	ListForHotel(ctx context.Context, hotelID, userID string) ([]model.GalleryImage, error)
 	Delete(ctx context.Context, id, hotelID, userID string) error
 }
@@ -24,24 +24,25 @@ func NewGalleryRepo(db *pgxpool.Pool) GalleryRepo {
 	return &galleryRepo{DB: db}
 }
 
-func (r *galleryRepo) Create(ctx context.Context, hotelID, url, userID string) (model.GalleryImage, error) {
+func (r *galleryRepo) Create(ctx context.Context, hotelID, url, section, userID string) (model.GalleryImage, error) {
 	query := `
-		INSERT INTO hotel_gallery_images (id, hotel_id, url, position)
-		SELECT gen_random_uuid(), $1::uuid, $2::text,
+		INSERT INTO hotel_gallery_images (id, hotel_id, url, section, position)
+		SELECT gen_random_uuid(), $1::uuid, $2::text, $3::text,
 		       COALESCE((SELECT MAX(position) + 1 FROM hotel_gallery_images WHERE hotel_id = $1::uuid), 0)
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $1::uuid AND m.user_id = $3::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $1::uuid AND m.user_id = $4::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, url, position, created_at
+		RETURNING id, hotel_id, url, section, position, created_at
 	`
 
 	var created model.GalleryImage
 
-	err := r.DB.QueryRow(ctx, query, hotelID, url, userID).Scan(
+	err := r.DB.QueryRow(ctx, query, hotelID, url, section, userID).Scan(
 		&created.ID,
 		&created.HotelID,
 		&created.URL,
+		&created.Section,
 		&created.Position,
 		&created.CreatedAt,
 	)
@@ -61,7 +62,7 @@ func (r *galleryRepo) Create(ctx context.Context, hotelID, url, userID string) (
 
 func (r *galleryRepo) ListForHotel(ctx context.Context, hotelID, userID string) ([]model.GalleryImage, error) {
 	query := `
-		SELECT id, hotel_id, url, position, created_at
+		SELECT id, hotel_id, url, section, position, created_at
 		FROM hotel_gallery_images
 		WHERE hotel_id = $1::uuid
 		  AND EXISTS (
@@ -81,7 +82,7 @@ func (r *galleryRepo) ListForHotel(ctx context.Context, hotelID, userID string) 
 
 	for rows.Next() {
 		var img model.GalleryImage
-		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.Position, &img.CreatedAt); err != nil {
+		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.Section, &img.Position, &img.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, img)

@@ -29,12 +29,17 @@ import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItem
 import { useRoomTypesQuery } from "@/features/tenant/roomType/client/useRoomTypes";
 import { useTablesQuery } from "@/features/tenant/table/client/useTables";
 
-import { TEMPLATE_MODE, TEMPLATES } from "../templates/registry";
+import {
+  DEFAULT_FONT_PAIRING_BY_TEMPLATE,
+  DEFAULT_THEME_BY_TEMPLATE,
+  TEMPLATE_MODE,
+  TEMPLATES,
+} from "../templates/registry";
 import { SiteThemeProvider } from "../templates/site-theme-provider";
 import { defaultSiteContent, type SiteContent, type TemplateId } from "../types";
 import { FontPicker } from "./font-picker";
-import { GalleryManager } from "./gallery-manager";
-import { SectionToggles } from "./section-toggles";
+import { SectionOrderEditor } from "./section-order-editor";
+import { TemplatePicker } from "./template-picker";
 import { ThemePicker } from "./theme-picker";
 
 const DEVICES = [
@@ -79,9 +84,9 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
   const hotel = hotelQuery.data;
 
-  const [template] = React.useState<TemplateId>("stonehouse");
-  const [theme, setTheme] = React.useState("tripto-blue");
-  const [fontPairing, setFontPairing] = React.useState("tripto-roboto-inter");
+  const [template, setTemplate] = React.useState<TemplateId>(TEMPLATES[0].id);
+  const [theme, setTheme] = React.useState(DEFAULT_THEME_BY_TEMPLATE[TEMPLATES[0].id]);
+  const [fontPairing, setFontPairing] = React.useState(DEFAULT_FONT_PAIRING_BY_TEMPLATE[TEMPLATES[0].id]);
   const [content, setContent] = React.useState<SiteContent | null>(null);
   const [device, setDevice] = React.useState<(typeof DEVICES)[number]["id"]>("desktop");
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -91,8 +96,10 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     if (seeded.current || !hotel || !websiteQuery.data) return;
     seeded.current = true;
 
-    setTheme(websiteQuery.data.theme || "tripto-blue");
-    setFontPairing(websiteQuery.data.fontPairing || "tripto-roboto-inter");
+    const savedTemplate = TEMPLATES.find((t) => t.id === websiteQuery.data!.template)?.id ?? TEMPLATES[0].id;
+    setTemplate(savedTemplate);
+    setTheme(websiteQuery.data.theme || DEFAULT_THEME_BY_TEMPLATE[savedTemplate]);
+    setFontPairing(websiteQuery.data.fontPairing || DEFAULT_FONT_PAIRING_BY_TEMPLATE[savedTemplate]);
 
     const saved = websiteQuery.data.content;
     const hasSavedContent = saved && Object.values(saved).some((v) => v);
@@ -121,7 +128,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     cabins: cabinsQuery.data?.cabins ?? [],
     tables: tablesQuery.data?.tables ?? [],
     menuItems: menuItemsQuery.data?.menuItems ?? [],
-    galleryImages: (galleryQuery.data ?? []).map((img) => img.url),
+    galleryImages: (galleryQuery.data ?? []).map((img) => ({ url: img.url, section: img.section })),
     mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,
@@ -131,8 +138,18 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     setContent((c) => (c ? { ...c, ...patch } : c));
   }
 
+  function handleTemplateChange(id: TemplateId) {
+    setTemplate(id);
+    setTheme(DEFAULT_THEME_BY_TEMPLATE[id]);
+    setFontPairing(DEFAULT_FONT_PAIRING_BY_TEMPLATE[id]);
+  }
+
   const inspector = (
     <>
+      <InspectorSection title="Template">
+        <TemplatePicker value={template} onChange={handleTemplateChange} />
+      </InspectorSection>
+      <Separator />
       <InspectorSection title="Color theme">
         <ThemePicker value={theme} onChange={setTheme} />
       </InspectorSection>
@@ -141,12 +158,35 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
         <FontPicker value={fontPairing} onChange={setFontPairing} />
       </InspectorSection>
       <Separator />
-      <InspectorSection title="Sections">
-        <SectionToggles content={content} onChange={patchContent} />
+      <InspectorSection title="Logo in navbar">
+        <div className="flex gap-1.5">
+          {(
+            [
+              { value: "logo", label: "Logo only" },
+              { value: "text", label: "Text only" },
+              { value: "both", label: "Logo + text" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => patchContent({ logoDisplay: opt.value })}
+              className={cn(
+                "flex-1 cursor-pointer rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                (content.logoDisplay ?? "both") === opt.value
+                  ? "border-foreground bg-muted"
+                  : "border-border hover:bg-muted/60",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </InspectorSection>
       <Separator />
-      <InspectorSection title="Gallery">
-        <GalleryManager tenant={tenant} />
+      <InspectorSection title="Sections">
+        <p className="mb-2 text-xs text-muted-foreground">Drag to reorder, toggle to show or hide.</p>
+        <SectionOrderEditor content={content} onChange={patchContent} />
       </InspectorSection>
     </>
   );
@@ -161,9 +201,9 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
         </p>
       </div>
 
-      <div className="dark relative flex h-[82vh] min-h-[640px] flex-col overflow-hidden rounded-2xl bg-background text-foreground ring-1 ring-border">
+      <div className="relative flex h-[calc(100vh-var(--header-height)-10rem)] min-h-[540px] flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
         {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
           <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
             <GlobeIcon className="size-4 shrink-0 text-primary" />
             <span className="truncate text-sm font-medium">{hotel.name}</span>
@@ -225,7 +265,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Canvas */}
-          <div className="flex flex-1 justify-center overflow-auto bg-muted/40 p-4 sm:p-10">
+          <div className="flex flex-1 justify-center overflow-auto bg-muted/30 p-6 sm:p-12">
             <div style={{ width: activeDevice.width, maxWidth: "100%" }} className="shrink-0">
               <span className="mb-2 block text-xs text-muted-foreground">
                 {activeTemplate.name} · {activeDevice.label}
@@ -249,7 +289,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
           {/* Inspector (desktop) */}
           {sidebarOpen && (
-            <div className="hidden w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l border-border bg-background p-4 md:flex">
+            <div className="hidden w-96 shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-background p-5 md:flex">
               {inspector}
             </div>
           )}

@@ -4,7 +4,7 @@ import type { MenuItem } from "@/features/tenant/menuItem/types";
 import type { RoomType } from "@/features/tenant/roomType/types";
 import type { DiningTable } from "@/features/tenant/table/types";
 
-export type TemplateId = "stonehouse";
+export type TemplateId = "editorial" | "minimal";
 
 export const SECTION_KEYS = [
   "rooms",
@@ -26,6 +26,25 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   contact: "Contact",
 };
 
+/** Home-page preview blocks the owner can drag into any order. */
+export const HOME_SECTIONS = ["about", "topPicks", "rooms", "cabins", "testimonials"] as const;
+
+export type HomeSectionId = (typeof HOME_SECTIONS)[number];
+
+export const HOME_SECTION_LABELS: Record<HomeSectionId, string> = {
+  about: "About",
+  topPicks: "Top picks",
+  rooms: "Rooms",
+  cabins: "Cabins",
+  testimonials: "Testimonials",
+};
+
+export type TextStyleOverride = {
+  color?: string;
+  fontSize?: string;
+  font?: "display" | "body";
+};
+
 export type SiteContent = {
   heroEyebrow: string;
   heroHeading: string;
@@ -45,11 +64,23 @@ export type SiteContent = {
   contactBody: string;
   heroImageUrl?: string;
   aboutImageUrl?: string;
+  logoUrl?: string;
+  logoDisplay?: "logo" | "text" | "both";
   enabledSections?: Partial<Record<SectionKey, boolean>>;
+  sectionOrder?: HomeSectionId[];
+  textStyles?: Record<string, TextStyleOverride>;
 };
 
 export function isSectionEnabled(content: SiteContent, key: SectionKey): boolean {
   return content.enabledSections?.[key] !== false;
+}
+
+export function homeSectionOrder(content: SiteContent): HomeSectionId[] {
+  const saved = content.sectionOrder;
+  if (!saved || saved.length === 0) return [...HOME_SECTIONS];
+  const known = saved.filter((id): id is HomeSectionId => (HOME_SECTIONS as readonly string[]).includes(id));
+  const missing = HOME_SECTIONS.filter((id) => !known.includes(id));
+  return [...known, ...missing];
 }
 
 export type SiteData = {
@@ -58,7 +89,7 @@ export type SiteData = {
   cabins: Cabin[];
   tables: DiningTable[];
   menuItems: MenuItem[];
-  galleryImages: string[];
+  galleryImages: { url: string; section: string }[];
   mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;
@@ -66,11 +97,27 @@ export type SiteData = {
 
 export type ThemeId = string;
 
+export type Page =
+  | "home"
+  | "rooms"
+  | "room-detail"
+  | "cabins"
+  | "cabin-detail"
+  | "gallery"
+  | "restaurant"
+  | "table-booking"
+  | "contact";
+
 export type TemplateComponentProps = {
   data: SiteData;
   themeId: ThemeId;
   editable?: boolean;
   onContentChange?: (patch: Partial<SiteContent>) => void;
+  /** When provided (with `basePath`), navigation pushes real URLs instead of local state — used by the public site. */
+  page?: Page;
+  basePath?: string;
+  /** Room/cabin id for the "room-detail" / "cabin-detail" pages. */
+  detailId?: string;
 };
 
 export type TemplateDefinition = {
@@ -101,5 +148,6 @@ export function defaultSiteContent(hotel: Hotel): SiteContent {
     restaurantSubheading: "A short, seasonal menu, cooked with care.",
     contactHeading: "Your stay starts here",
     contactBody: "Reach out and we'll help you plan the details.",
+    sectionOrder: [...HOME_SECTIONS],
   };
 }

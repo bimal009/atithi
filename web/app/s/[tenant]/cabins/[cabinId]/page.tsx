@@ -1,18 +1,19 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-import { SiteShell } from "@/features/site/components/site-shell";
-import { StayDetail } from "@/features/site/components/stay-detail";
-import { dummyCabins, dummyHotel } from "@/features/site/lib/dummy-data";
+import { PublicSiteView } from "@/features/site/components/public-site-view";
+import { loadSite } from "@/features/site/lib/load-site";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ cabinId: string }>;
+  params: Promise<{ tenant: string; cabinId: string }>;
 }): Promise<Metadata> {
-  const { cabinId } = await params;
-  const cabin = dummyCabins.find((c) => c.id === cabinId);
-  return { title: cabin ? `${cabin.name} — ${dummyHotel.name}` : dummyHotel.name };
+  const { tenant, cabinId } = await params;
+  const site = await loadSite(tenant);
+  const cabin = site.cabins.find((c) => c.id === cabinId);
+  if (!cabin) return {};
+  return { title: `${cabin.name} — ${site.hotel.name}` };
 }
 
 export default async function CabinDetailPage({
@@ -21,21 +22,8 @@ export default async function CabinDetailPage({
   params: Promise<{ tenant: string; cabinId: string }>;
 }) {
   const { tenant, cabinId } = await params;
-  const cabin = dummyCabins.find((c) => c.id === cabinId);
-  if (!cabin) notFound();
+  const site = await loadSite(tenant);
+  if (!site.cabins.some((c) => c.id === cabinId)) notFound();
 
-  const related = dummyCabins.filter((c) => c.id !== cabin.id).slice(0, 2);
-
-  return (
-    <SiteShell tenant={tenant} active="cabins">
-      <StayDetail
-        kind="cabins"
-        stay={cabin}
-        related={related}
-        hotelName={dummyHotel.name}
-        hotelPhone={dummyHotel.phoneNumber}
-        basePath={`/s/${tenant}`}
-      />
-    </SiteShell>
-  );
+  return <PublicSiteView site={site} page="cabin-detail" detailId={cabinId} />;
 }

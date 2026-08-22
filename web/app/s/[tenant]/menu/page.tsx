@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
 
-import { MenuPageContent } from "@/features/site/components/menu/menu-page-content";
-import { SiteShell } from "@/features/site/components/site-shell";
-import { dummyHotel } from "@/features/site/lib/dummy-data";
+import { PublicSiteView } from "@/features/site/components/public-site-view";
+import { loadSite } from "@/features/site/lib/load-site";
 
-export function generateMetadata(): Metadata {
-  return { title: `Menu — ${dummyHotel.name}` };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}): Promise<Metadata> {
+  const { tenant } = await params;
+  const site = await loadSite(tenant);
+  return { title: `Menu — ${site.hotel.name}` };
 }
 
-export default async function MenuPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function MenuPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   const { tenant } = await params;
+  const site = await loadSite(tenant);
 
-  return (
-    <SiteShell tenant={tenant} active="menu">
-      <MenuPageContent hotelName={dummyHotel.name} hotelPhone={dummyHotel.phoneNumber} />
-    </SiteShell>
-  );
+  return <PublicSiteView site={site} page="restaurant" />;
 }

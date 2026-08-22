@@ -2,14 +2,21 @@
 
 import * as React from "react";
 
-import { HospitalitySite, type Page } from "@/features/tenant/website/templates/hospitality-site";
-import { TEMPLATE_MODE } from "@/features/tenant/website/templates/registry";
+import { TEMPLATES, TEMPLATE_MODE } from "@/features/tenant/website/templates/registry";
 import { SiteThemeProvider } from "@/features/tenant/website/templates/site-theme-provider";
-import { defaultSiteContent } from "@/features/tenant/website/types";
+import { defaultSiteContent, type Page } from "@/features/tenant/website/types";
 
 import type { PublicSiteResponse } from "../api/public-site";
 
-export function PublicSiteView({ site, page }: { site: PublicSiteResponse; page: Page }) {
+export function PublicSiteView({
+  site,
+  page,
+  detailId,
+}: {
+  site: PublicSiteResponse;
+  page: Page;
+  detailId?: string;
+}) {
   const { hotel, website, roomTypes, cabins, tables, menuItems, galleryImages, currency, mapUrl } = site;
 
   const content = React.useMemo(() => {
@@ -35,24 +42,28 @@ export function PublicSiteView({ site, page }: { site: PublicSiteResponse; page:
     cabins,
     tables,
     menuItems,
-    galleryImages: galleryImages.map((img) => img.url),
+    galleryImages: galleryImages.map((img) => ({ url: img.url, section: img.section })),
     mapUrl,
     formatMoney,
     content,
   };
 
+  const template = TEMPLATES.find((t) => t.id === website.template) ?? TEMPLATES[0];
+  const TemplateComponent = template.Component;
+
   return (
     <SiteThemeProvider
       themeId={website.theme}
-      mode={TEMPLATE_MODE[website.template] ?? "light"}
+      mode={TEMPLATE_MODE[template.id] ?? "light"}
       fontPairingId={website.fontPairing}
       className="h-screen overflow-y-auto scrollbar-none"
     >
-      <HospitalitySite
+      <TemplateComponent
         data={data}
         themeId={website.theme}
         page={page}
         basePath={`/s/${hotel.slug}`}
+        detailId={detailId}
       />
     </SiteThemeProvider>
   );
