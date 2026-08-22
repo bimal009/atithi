@@ -395,7 +395,7 @@ func (r *publicSiteRepo) ListSections(ctx context.Context, hotelID string) ([]mo
 
 func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (model.HotelSettings, error) {
 	query := `
-		SELECT currency, map_url, about_us, amenities, opening_time, closing_time, open_days
+		SELECT currency, map_url, about_us, amenities, opening_time, closing_time, open_days, whatsapp_number
 		FROM hotel_settings
 		WHERE hotel_id = $1::uuid
 	`
@@ -410,6 +410,7 @@ func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (model
 		&settings.OpeningTime,
 		&settings.ClosingTime,
 		&settings.OpenDays,
+		&settings.WhatsAppNumber,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

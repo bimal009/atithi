@@ -10,4 +10,5 @@ type UpdateHotelSettingsRequest struct {
 	OpeningTime          *string  `json:"openingTime,omitempty" validate:"omitempty,datetime=15:04"`
 	ClosingTime          *string  `json:"closingTime,omitempty" validate:"omitempty,datetime=15:04"`
 	OpenDays             []string `json:"openDays,omitempty" validate:"omitempty,dive,oneof=Monday Tuesday Wednesday Thursday Friday Saturday Sunday"`
+	WhatsAppNumber       *string  `json:"whatsappNumber,omitempty" validate:"omitempty,nepaliphone"`
 }

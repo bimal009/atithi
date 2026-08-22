@@ -134,7 +134,8 @@ export function timeSlotsBetween(opening?: string, closing?: string): string[] {
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 /** react-day-picker `dayOfWeek` indices (0 = Sunday) for days not in `openDays`. */
-export function closedWeekdayIndices(openDays: string[]): number[] {
+export function closedWeekdayIndices(openDays?: string[]): number[] {
+  if (!openDays || openDays.length === 0) return [];
   return WEEKDAYS.map((_, i) => i).filter((i) => !openDays.includes(WEEKDAYS[i]));
 }
 

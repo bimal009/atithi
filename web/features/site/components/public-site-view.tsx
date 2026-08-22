@@ -54,7 +54,7 @@ export function PublicSiteView({
     sections: sections.map((s) => ({ id: s.id, name: s.name })),
     openingTime,
     closingTime,
-    openDays,
+    openDays: openDays ?? [],
     mapUrl,
     formatMoney,
     content,

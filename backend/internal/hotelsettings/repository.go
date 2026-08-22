@@ -7,9 +7,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type UpdateParams struct {
+	Currency             *string
+	TaxPercent           *float64
+	ServiceChargePercent *float64
+	MapURL               *string
+	AboutUs              *string
+	Amenities            []string
+	OpeningTime          *string
+	ClosingTime          *string
+	OpenDays             []string
+	WhatsAppNumber       *string
+}
+
 type HotelSettingsRepo interface {
 	Get(ctx context.Context, hotelID string) (model.HotelSettings, error)
-	Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64, mapURL, aboutUs *string, amenities []string, openingTime, closingTime *string, openDays []string) (model.HotelSettings, error)
+	Update(ctx context.Context, hotelID string, p UpdateParams) (model.HotelSettings, error)
 }
 
 type hotelSettingsRepo struct {
@@ -25,7 +38,7 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 		INSERT INTO hotel_settings (hotel_id)
 		VALUES ($1::uuid)
 		ON CONFLICT (hotel_id) DO UPDATE SET hotel_id = EXCLUDED.hotel_id
-		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days, created_at, updated_at
+		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days, whatsapp_number, created_at, updated_at
 	`
 
 	var settings model.HotelSettings
@@ -41,6 +54,7 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 		&settings.OpeningTime,
 		&settings.ClosingTime,
 		&settings.OpenDays,
+		&settings.WhatsAppNumber,
 		&settings.CreatedAt,
 		&settings.UpdatedAt,
 	)
@@ -51,12 +65,12 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 	return settings, nil
 }
 
-func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64, mapURL, aboutUs *string, amenities []string, openingTime, closingTime *string, openDays []string) (model.HotelSettings, error) {
+func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, p UpdateParams) (model.HotelSettings, error) {
 	query := `
-		INSERT INTO hotel_settings (hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days)
+		INSERT INTO hotel_settings (hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days, whatsapp_number)
 		VALUES (
 			$1::uuid, COALESCE($2::text, 'NPR'), COALESCE($3::numeric, 0), COALESCE($4::numeric, 0), $5::text, $6::text, COALESCE($7::text[], '{}'),
-			$8::text, $9::text, COALESCE($10::text[], '{"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"}')
+			$8::text, $9::text, COALESCE($10::text[], '{"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"}'), $11::text
 		)
 		ON CONFLICT (hotel_id) DO UPDATE SET
 			currency = COALESCE($2::text, hotel_settings.currency),
@@ -68,13 +82,18 @@ func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, currency
 			opening_time = COALESCE($8::text, hotel_settings.opening_time),
 			closing_time = COALESCE($9::text, hotel_settings.closing_time),
 			open_days = COALESCE($10::text[], hotel_settings.open_days),
+			whatsapp_number = COALESCE($11::text, hotel_settings.whatsapp_number),
 			updated_at = now()
-		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days, created_at, updated_at
+		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, about_us, amenities, opening_time, closing_time, open_days, whatsapp_number, created_at, updated_at
 	`
 
 	var settings model.HotelSettings
 
-	err := r.DB.QueryRow(ctx, query, hotelID, currency, taxPercent, serviceChargePercent, mapURL, aboutUs, amenities, openingTime, closingTime, openDays).Scan(
+	err := r.DB.QueryRow(
+		ctx, query, hotelID,
+		p.Currency, p.TaxPercent, p.ServiceChargePercent, p.MapURL, p.AboutUs, p.Amenities,
+		p.OpeningTime, p.ClosingTime, p.OpenDays, p.WhatsAppNumber,
+	).Scan(
 		&settings.HotelID,
 		&settings.Currency,
 		&settings.TaxPercent,
@@ -85,6 +104,7 @@ func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, currency
 		&settings.OpeningTime,
 		&settings.ClosingTime,
 		&settings.OpenDays,
+		&settings.WhatsAppNumber,
 		&settings.CreatedAt,
 		&settings.UpdatedAt,
 	)
