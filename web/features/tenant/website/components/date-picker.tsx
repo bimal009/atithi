@@ -28,6 +28,7 @@ export function DatePicker({
   placeholder = "Select date",
   className,
   minDate,
+  disabledDaysOfWeek,
   variant = "outline",
 }: {
   value: string;
@@ -35,11 +36,15 @@ export function DatePicker({
   placeholder?: string;
   className?: string;
   minDate?: Date;
-  /** "ghost" has no border/fill of its own — use it when the field sits on a hairline underline instead of inside a boxed input. */
+  disabledDaysOfWeek?: number[];
   variant?: "outline" | "ghost";
 }) {
   const [open, setOpen] = React.useState(false);
   const selected = parseISODate(value);
+  const disabledMatchers = [
+    ...(minDate ? [{ before: minDate }] : []),
+    ...(disabledDaysOfWeek?.length ? [{ dayOfWeek: disabledDaysOfWeek }] : []),
+  ];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -66,7 +71,7 @@ export function DatePicker({
           mode="single"
           selected={selected}
           defaultMonth={selected}
-          disabled={minDate ? { before: minDate } : undefined}
+          disabled={disabledMatchers.length ? disabledMatchers : undefined}
           onSelect={(date) => {
             if (date) onChange(toISODate(date));
             setOpen(false);

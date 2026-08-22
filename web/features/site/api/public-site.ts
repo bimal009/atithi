@@ -28,6 +28,9 @@ export type PublicSiteResponse = {
   mapUrl?: string;
   aboutUs?: string;
   amenities: string[];
+  openingTime?: string;
+  closingTime?: string;
+  openDays: string[];
 };
 
 export async function getPublicSite(slug: string): Promise<PublicSiteResponse | null> {

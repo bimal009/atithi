@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { AboutSettingsForm } from "./about-settings-form";
 import { HotelSettingsForm } from "./hotel-settings-form";
+import { HoursSettingsForm } from "./hours-settings-form";
 import { LocationSettingsForm } from "./location-settings-form";
 import { ProfileSettingsForm } from "./profile-settings-form";
 
@@ -33,6 +34,7 @@ export function SettingsPageClient({ tenant }: { tenant: string }) {
             <>
               <HotelSettingsForm tenant={tenant} />
               <AboutSettingsForm tenant={tenant} />
+              <HoursSettingsForm tenant={tenant} />
               <LocationSettingsForm tenant={tenant} />
             </>
           )}

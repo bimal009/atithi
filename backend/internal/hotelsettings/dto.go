@@ -7,4 +7,7 @@ type UpdateHotelSettingsRequest struct {
 	MapURL               *string  `json:"mapUrl,omitempty" validate:"omitempty,url,max=2048"`
 	AboutUs              *string  `json:"aboutUs,omitempty" validate:"omitempty,max=5000"`
 	Amenities            []string `json:"amenities,omitempty"`
+	OpeningTime          *string  `json:"openingTime,omitempty" validate:"omitempty,datetime=15:04"`
+	ClosingTime          *string  `json:"closingTime,omitempty" validate:"omitempty,datetime=15:04"`
+	OpenDays             []string `json:"openDays,omitempty" validate:"omitempty,dive,oneof=Monday Tuesday Wednesday Thursday Friday Saturday Sunday"`
 }

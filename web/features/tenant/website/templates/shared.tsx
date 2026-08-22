@@ -107,6 +107,37 @@ export function googleMapEmbedSrc(lat: number, lng: number) {
   return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
 }
 
+/** Half-hour slots covering the full day — used when the hotel hasn't set opening/closing hours. */
+export const ALL_DAY_TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
+  const hours = String(Math.floor(i / 2)).padStart(2, "0");
+  const minutes = i % 2 === 0 ? "00" : "30";
+  return `${hours}:${minutes}`;
+});
+
+/** Half-hour slots between the hotel's configured opening/closing time, wrapping past midnight if closing < opening. */
+export function timeSlotsBetween(opening?: string, closing?: string): string[] {
+  if (!opening || !closing) return ALL_DAY_TIME_SLOTS;
+
+  const toIndex = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 2 + (m >= 30 ? 1 : 0);
+  };
+
+  const start = toIndex(opening);
+  const end = toIndex(closing);
+  const count = end > start ? end - start : 48 - start + end;
+  if (count <= 0) return ALL_DAY_TIME_SLOTS;
+
+  return Array.from({ length: count + 1 }, (_, i) => ALL_DAY_TIME_SLOTS[(start + i) % 48]);
+}
+
+export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+
+/** react-day-picker `dayOfWeek` indices (0 = Sunday) for days not in `openDays`. */
+export function closedWeekdayIndices(openDays: string[]): number[] {
+  return WEEKDAYS.map((_, i) => i).filter((i) => !openDays.includes(WEEKDAYS[i]));
+}
+
 const AMENITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   wifi: WifiIcon,
   internet: WifiIcon,

@@ -46,9 +46,11 @@ import {
   FOOD_TYPE_DOT,
   GalleryBento,
   WhatsAppIcon,
+  closedWeekdayIndices,
   googleMapEmbedSrc,
   pageHref,
   parseLatLng,
+  timeSlotsBetween,
   waLink,
 } from "./shared";
 
@@ -105,6 +107,21 @@ function StayCard({
   );
 }
 
+function FooterLink({ href, external, onClick, children }: { href?: string; external?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-auto w-fit justify-start gap-1.5 rounded-none bg-transparent p-0 text-sm font-normal hover:bg-transparent hover:text-[var(--site-bg)]"
+      nativeButton={!href}
+      onClick={onClick}
+      render={href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} /> : undefined}
+    >
+      {children}
+    </Button>
+  );
+}
+
 function SectionLabel({ index, children }: { index: string; children: React.ReactNode }) {
   return (
     <span className="flex items-center gap-2.5 text-xs font-medium tracking-[0.14em] text-[var(--site-muted)] uppercase lg:flex-col lg:items-start lg:gap-3">
@@ -134,7 +151,9 @@ export function MinimalTemplate({
   basePath,
   detailId,
 }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, mapUrl, content, formatMoney } = data;
+  const tbTimeSlots = React.useMemo(() => timeSlotsBetween(openingTime, closingTime), [openingTime, closingTime]);
+  const tbClosedDays = React.useMemo(() => closedWeekdayIndices(openDays), [openDays]);
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -567,14 +586,14 @@ export function MinimalTemplate({
                     <CalendarIcon className="size-3.5" strokeWidth={1.75} />
                     Check-in
                   </span>
-                  <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent" />
+                  <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent hover:text-current active:translate-y-0 aria-expanded:bg-transparent aria-expanded:text-current" />
                 </label>
                 <label className="flex flex-col gap-2 border-b border-[var(--site-border)] pb-2">
                   <span className="flex items-center gap-1.5 text-xs font-medium tracking-[0.1em] text-[var(--site-muted)] uppercase">
                     <CalendarIcon className="size-3.5" strokeWidth={1.75} />
                     Check-out
                   </span>
-                  <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent" />
+                  <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent hover:text-current active:translate-y-0 aria-expanded:bg-transparent aria-expanded:text-current" />
                 </label>
                 <div className="flex flex-col gap-2 border-b border-[var(--site-border)] pb-2">
                   <span className="text-xs font-medium tracking-[0.1em] text-[var(--site-muted)] uppercase">Guests</span>
@@ -859,14 +878,14 @@ export function MinimalTemplate({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Date</span>
-                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" minDate={new Date(new Date().setHours(0, 0, 0, 0))} />
+                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" minDate={new Date(new Date().setHours(0, 0, 0, 0))} disabledDaysOfWeek={tbClosedDays} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Time</span>
                   <Select value={tbTime} onValueChange={(v) => setTbTime(v ?? tbTime)}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"].map((t) => (
+                      {tbTimeSlots.map((t) => (
                         <SelectItem key={t} value={t}>{t}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1012,15 +1031,15 @@ export function MinimalTemplate({
             </div>
             <div className="flex flex-col gap-3">
               <span className="text-xs font-medium tracking-[0.12em] uppercase opacity-60">Explore</span>
-              <button type="button" onClick={() => goTo("home")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Home</button>
-              {showRooms && <button type="button" onClick={() => goTo("rooms")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Rooms</button>}
-              {showCabins && <button type="button" onClick={() => goTo("cabins")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Cabins</button>}
-              {showGallery && <button type="button" onClick={() => goTo("gallery")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Gallery</button>}
+              <FooterLink onClick={() => goTo("home")}>Home</FooterLink>
+              {showRooms && <FooterLink onClick={() => goTo("rooms")}>Rooms</FooterLink>}
+              {showCabins && <FooterLink onClick={() => goTo("cabins")}>Cabins</FooterLink>}
+              {showGallery && <FooterLink onClick={() => goTo("gallery")}>Gallery</FooterLink>}
             </div>
             {showRestaurant && (
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-medium tracking-[0.12em] uppercase opacity-60">Dining</span>
-                <button type="button" onClick={() => goTo("restaurant")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Menu</button>
+                <FooterLink onClick={() => goTo("restaurant")}>Menu</FooterLink>
               </div>
             )}
             <div className="flex flex-col gap-3">
@@ -1031,20 +1050,20 @@ export function MinimalTemplate({
                   {hotel.address}
                 </span>
               )}
-              <a href={`tel:${hotel.phoneNumber}`} className="flex items-center gap-1.5 text-sm hover:text-[var(--site-bg)]">
+              <FooterLink href={`tel:${hotel.phoneNumber}`}>
                 <PhoneIcon className="size-3.5 shrink-0" strokeWidth={1.75} />
                 {hotel.phoneNumber}
-              </a>
+              </FooterLink>
               {hotel.email && (
-                <a href={`mailto:${hotel.email}`} className="flex items-center gap-1.5 text-sm hover:text-[var(--site-bg)]">
+                <FooterLink href={`mailto:${hotel.email}`}>
                   <MailIcon className="size-3.5 shrink-0" strokeWidth={1.75} />
                   {hotel.email}
-                </a>
+                </FooterLink>
               )}
-              <a href={waLink(hotel.phoneNumber)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm hover:text-[var(--site-bg)]">
+              <FooterLink href={waLink(hotel.phoneNumber)} external>
                 <WhatsAppIcon className="size-3.5 shrink-0" />
                 WhatsApp
-              </a>
+              </FooterLink>
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--site-bg)]/10 pt-6 text-xs sm:flex-row">

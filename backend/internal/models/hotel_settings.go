@@ -10,6 +10,9 @@ type HotelSettings struct {
 	MapURL               *string   `db:"map_url" json:"mapUrl,omitempty"`
 	AboutUs              *string   `db:"about_us" json:"aboutUs,omitempty"`
 	Amenities            []string  `db:"amenities" json:"amenities"`
+	OpeningTime          *string   `db:"opening_time" json:"openingTime,omitempty"`
+	ClosingTime          *string   `db:"closing_time" json:"closingTime,omitempty"`
+	OpenDays             []string  `db:"open_days" json:"openDays"`
 	CreatedAt            time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `db:"updated_at" json:"updatedAt"`
 }

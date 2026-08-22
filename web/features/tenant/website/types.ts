@@ -107,6 +107,9 @@ export type SiteData = {
   amenities: string[];
   testimonials: SiteTestimonial[];
   sections: { id: string; name: string }[];
+  openingTime?: string;
+  closingTime?: string;
+  openDays: string[];
   mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;

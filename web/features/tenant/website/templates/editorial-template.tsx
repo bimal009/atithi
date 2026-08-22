@@ -21,7 +21,7 @@ import { DatePicker } from "../components/date-picker";
 import { EditableImage } from "../components/editable-image";
 import { EditableText } from "../components/editable-text";
 import { homeSectionOrder, isSectionEnabled, type HomeSectionId, type Page, type SiteContent, type TemplateComponentProps } from "../types";
-import { FOOD_TYPE_DOT, GalleryBento, WhatsAppIcon, googleMapEmbedSrc, pageHref, parseLatLng, waLink } from "./shared";
+import { FOOD_TYPE_DOT, GalleryBento, WhatsAppIcon, closedWeekdayIndices, googleMapEmbedSrc, pageHref, parseLatLng, timeSlotsBetween, waLink } from "./shared";
 
 function cnImg(extra?: string) {
   return ["size-full object-cover", extra].filter(Boolean).join(" ");
@@ -32,7 +32,7 @@ function FooterLink({ href, external, onClick, children }: { href?: string; exte
     <Button
       variant="ghost"
       size="sm"
-      className="h-auto w-fit justify-start gap-1.5 rounded-none bg-transparent p-0 text-sm font-normal text-neutral-400 hover:bg-transparent hover:text-white"
+      className="h-auto w-fit justify-start gap-1.5 rounded-none bg-transparent p-0 text-sm font-normal hover:bg-transparent hover:text-[var(--site-bg)]"
       nativeButton={!href}
       onClick={onClick}
       render={href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} /> : undefined}
@@ -81,7 +81,9 @@ function StayCard({ stay, kind, basePath, formatMoney }: { stay: RoomType | Cabi
 }
 
 export function EditorialTemplate({ data, editable = false, onContentChange, page: controlledPage, basePath, detailId }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, mapUrl, content, formatMoney } = data;
+  const tbTimeSlots = React.useMemo(() => timeSlotsBetween(openingTime, closingTime), [openingTime, closingTime]);
+  const tbClosedDays = React.useMemo(() => closedWeekdayIndices(openDays), [openDays]);
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -695,7 +697,7 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)]">Date</span>
-                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" className="bg-transparent" minDate={new Date(new Date().setHours(0, 0, 0, 0))} />
+                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" className="bg-transparent" minDate={new Date(new Date().setHours(0, 0, 0, 0))} disabledDaysOfWeek={tbClosedDays} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)]">Time</span>
@@ -704,7 +706,7 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {["18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"].map((t) => (
+                      {tbTimeSlots.map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}
                         </SelectItem>
@@ -833,15 +835,15 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
       )}
 
       {/* Footer */}
-      <footer className="mt-auto bg-[#0b0e14] px-6 py-14 text-neutral-400 sm:px-10">
+      <footer className="mt-auto bg-[var(--site-fg)] px-6 py-14 text-[var(--site-bg)]/60 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-col gap-10">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
-              <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-white">{hotel.name}</span>
+              <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--site-bg)]">{hotel.name}</span>
               {hotel.description && <p className="max-w-xs text-sm">{hotel.description}</p>}
             </div>
             <div className="flex flex-col gap-3">
-              <span className="text-sm font-medium text-white">Explore</span>
+              <span className="text-sm font-medium text-[var(--site-bg)]">Explore</span>
               <FooterLink onClick={() => goTo("home")}>Home</FooterLink>
               {showRooms && <FooterLink onClick={() => goTo("rooms")}>Rooms</FooterLink>}
               {showCabins && <FooterLink onClick={() => goTo("cabins")}>Cabins</FooterLink>}
@@ -849,12 +851,12 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
             </div>
             {showRestaurant && (
               <div className="flex flex-col gap-3">
-                <span className="text-sm font-medium text-white">Dining</span>
+                <span className="text-sm font-medium text-[var(--site-bg)]">Dining</span>
                 <FooterLink onClick={() => goTo("restaurant")}>Menu</FooterLink>
               </div>
             )}
             <div className="flex flex-col gap-3">
-              <span className="text-sm font-medium text-white">Get in touch</span>
+              <span className="text-sm font-medium text-[var(--site-bg)]">Get in touch</span>
               {hotel.address && (
                 <span className="flex items-start gap-1.5 text-sm">
                   <MapPinIcon className="mt-0.5 size-3.5 shrink-0" />
@@ -877,7 +879,7 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
               </FooterLink>
             </div>
           </div>
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs sm:flex-row">
+          <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--site-bg)]/10 pt-6 text-xs sm:flex-row">
             <span>
               © {new Date().getFullYear()} {hotel.name}. All rights reserved.
             </span>

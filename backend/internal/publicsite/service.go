@@ -64,7 +64,7 @@ func (s *publicSiteService) GetSite(ctx context.Context, slug string) (SiteRespo
 		return SiteResponse{}, err
 	}
 
-	currency, mapURL, aboutUs, amenities, err := s.repo.GetSettings(ctx, hotel.ID)
+	settings, err := s.repo.GetSettings(ctx, hotel.ID)
 	if err != nil {
 		return SiteResponse{}, err
 	}
@@ -79,9 +79,12 @@ func (s *publicSiteService) GetSite(ctx context.Context, slug string) (SiteRespo
 		GalleryImages: galleryImages,
 		Testimonials:  testimonials,
 		Sections:      sections,
-		Currency:      currency,
-		MapURL:        mapURL,
-		AboutUs:       aboutUs,
-		Amenities:     amenities,
+		Currency:      settings.Currency,
+		MapURL:        settings.MapURL,
+		AboutUs:       settings.AboutUs,
+		Amenities:     settings.Amenities,
+		OpeningTime:   settings.OpeningTime,
+		ClosingTime:   settings.ClosingTime,
+		OpenDays:      settings.OpenDays,
 	}, nil
 }

@@ -6,6 +6,9 @@ export type HotelSettings = {
   mapUrl?: string;
   aboutUs?: string;
   amenities: string[];
+  openingTime?: string;
+  closingTime?: string;
+  openDays: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -17,4 +20,7 @@ export type UpdateHotelSettingsInput = {
   mapUrl?: string;
   aboutUs?: string;
   amenities?: string[];
+  openingTime?: string;
+  closingTime?: string;
+  openDays?: string[];
 };

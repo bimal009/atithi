@@ -20,7 +20,7 @@ type PublicSiteRepo interface {
 	ListGalleryImages(ctx context.Context, hotelID string) ([]model.GalleryImage, error)
 	ListTestimonials(ctx context.Context, hotelID string) ([]model.Testimonial, error)
 	ListSections(ctx context.Context, hotelID string) ([]model.Section, error)
-	GetSettings(ctx context.Context, hotelID string) (currency string, mapURL, aboutUs *string, amenities []string, err error)
+	GetSettings(ctx context.Context, hotelID string) (model.HotelSettings, error)
 }
 
 type publicSiteRepo struct {
@@ -393,20 +393,34 @@ func (r *publicSiteRepo) ListSections(ctx context.Context, hotelID string) ([]mo
 	return list, rows.Err()
 }
 
-func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (string, *string, *string, []string, error) {
-	query := `SELECT currency, map_url, about_us, amenities FROM hotel_settings WHERE hotel_id = $1::uuid`
+func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (model.HotelSettings, error) {
+	query := `
+		SELECT currency, map_url, about_us, amenities, opening_time, closing_time, open_days
+		FROM hotel_settings
+		WHERE hotel_id = $1::uuid
+	`
 
-	var currency string
-	var mapURL, aboutUs *string
-	var amenities []string
+	var settings model.HotelSettings
 
-	err := r.DB.QueryRow(ctx, query, hotelID).Scan(&currency, &mapURL, &aboutUs, &amenities)
+	err := r.DB.QueryRow(ctx, query, hotelID).Scan(
+		&settings.Currency,
+		&settings.MapURL,
+		&settings.AboutUs,
+		&settings.Amenities,
+		&settings.OpeningTime,
+		&settings.ClosingTime,
+		&settings.OpenDays,
+	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "NPR", nil, nil, []string{}, nil
+			return model.HotelSettings{
+				Currency:  "NPR",
+				Amenities: []string{},
+				OpenDays:  []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"},
+			}, nil
 		}
-		return "", nil, nil, nil, err
+		return model.HotelSettings{}, err
 	}
 
-	return currency, mapURL, aboutUs, amenities, nil
+	return settings, nil
 }
