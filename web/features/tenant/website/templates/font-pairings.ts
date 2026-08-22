@@ -1,8 +1,8 @@
 import {
   auroraBody,
   auroraDisplay,
-  citrusBody,
-  citrusDisplay,
+  estateBody,
+  estateDisplay,
   onyxBody,
   onyxDisplay,
   verdantBody,
@@ -40,11 +40,11 @@ export const FONT_PAIRINGS: FontPairing[] = [
     className: `${onyxDisplay.variable} ${onyxBody.variable}`,
   },
   {
-    id: "fredoka-nunito",
-    label: "Fredoka / Nunito",
-    displayVar: "var(--font-citrus-display)",
-    bodyVar: "var(--font-citrus-body)",
-    className: `${citrusDisplay.variable} ${citrusBody.variable}`,
+    id: "instrument-work",
+    label: "Instrument Serif / Work Sans",
+    displayVar: "var(--font-estate-display)",
+    bodyVar: "var(--font-estate-body)",
+    className: `${estateDisplay.variable} ${estateBody.variable}`,
   },
 ];
 

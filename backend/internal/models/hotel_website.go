@@ -3,11 +3,25 @@ package model
 import "time"
 
 type SiteContent struct {
-	HeroHeading    string `json:"heroHeading"`
-	HeroSubheading string `json:"heroSubheading"`
-	AboutHeading   string `json:"aboutHeading"`
-	AboutBody      string `json:"aboutBody"`
-	CtaLabel       string `json:"ctaLabel"`
+	HeroEyebrow         string          `json:"heroEyebrow"`
+	HeroHeading         string          `json:"heroHeading"`
+	HeroSubheading      string          `json:"heroSubheading"`
+	CtaPrimaryLabel     string          `json:"ctaPrimaryLabel"`
+	CtaSecondaryLabel   string          `json:"ctaSecondaryLabel"`
+	AboutHeading        string          `json:"aboutHeading"`
+	AboutBody           string          `json:"aboutBody"`
+	RoomsHeading        string          `json:"roomsHeading"`
+	RoomsSubheading     string          `json:"roomsSubheading"`
+	CabinsHeading       string          `json:"cabinsHeading"`
+	CabinsSubheading    string          `json:"cabinsSubheading"`
+	GalleryHeading      string          `json:"galleryHeading"`
+	RestaurantHeading   string          `json:"restaurantHeading"`
+	RestaurantSubheading string         `json:"restaurantSubheading"`
+	ContactHeading      string          `json:"contactHeading"`
+	ContactBody         string          `json:"contactBody"`
+	HeroImageURL        string          `json:"heroImageUrl,omitempty"`
+	AboutImageURL       string          `json:"aboutImageUrl,omitempty"`
+	EnabledSections     map[string]bool `json:"enabledSections,omitempty"`
 }
 
 type HotelWebsite struct {

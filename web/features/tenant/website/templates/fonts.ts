@@ -1,12 +1,12 @@
 import {
   Bricolage_Grotesque,
   Fraunces,
-  Fredoka,
+  Instrument_Serif,
   Karla,
   Manrope,
   Newsreader,
-  Nunito,
   Public_Sans,
+  Work_Sans,
 } from "next/font/google";
 
 // Aurora — dark editorial luxury
@@ -47,14 +47,15 @@ export const onyxBody = Manrope({
   variable: "--font-onyx-body",
 });
 
-// Citrus — playful vibrant resort
-export const citrusDisplay = Fredoka({
+// Estate — grand editorial display, for hero-scale headlines
+export const estateDisplay = Instrument_Serif({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-citrus-display",
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-estate-display",
 });
-export const citrusBody = Nunito({
+export const estateBody = Work_Sans({
   subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-citrus-body",
+  weight: ["400", "500"],
+  variable: "--font-estate-body",
 });
