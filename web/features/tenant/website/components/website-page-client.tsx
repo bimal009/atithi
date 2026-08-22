@@ -5,12 +5,9 @@ import Link from "next/link";
 import {
   ArrowLeftIcon,
   GlobeIcon,
-  MonitorIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
   SlidersHorizontalIcon,
-  SmartphoneIcon,
-  TabletIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +26,7 @@ import {
 } from "@/features/tenant/hotelWebsite/client/useHotelWebsite";
 import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItems";
 import { useRoomTypesQuery } from "@/features/tenant/roomType/client/useRoomTypes";
+import { useSectionsQuery } from "@/features/tenant/section/client/useSections";
 import { useTablesQuery } from "@/features/tenant/table/client/useTables";
 import { useTestimonialsQuery } from "@/features/tenant/testimonial/client/useTestimonials";
 
@@ -44,12 +42,6 @@ import { FontPicker } from "./font-picker";
 import { SectionOrderEditor } from "./section-order-editor";
 import { TemplatePicker } from "./template-picker";
 import { ThemePicker } from "./theme-picker";
-
-const DEVICES = [
-  { id: "desktop", label: "Desktop", icon: MonitorIcon, width: "100%" },
-  { id: "tablet", label: "Tablet", icon: TabletIcon, width: "48rem" },
-  { id: "mobile", label: "Mobile", icon: SmartphoneIcon, width: "24rem" },
-] as const;
 
 function InspectorSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -81,6 +73,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   const roomTypesQuery = useRoomTypesQuery(tenant, { limit: 12 });
   const cabinsQuery = useCabinsQuery(tenant, { limit: 12 });
   const tablesQuery = useTablesQuery(tenant, { limit: 12 });
+  const sectionsQuery = useSectionsQuery(tenant, { limit: 50 });
   const menuItemsQuery = useMenuItemsQuery(tenant, { limit: 100 });
   const galleryQuery = useHotelImagesQuery(tenant, "gallery");
   const testimonialsQuery = useTestimonialsQuery(tenant, { limit: 20 });
@@ -92,7 +85,6 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   const [theme, setTheme] = React.useState(DEFAULT_THEME_BY_TEMPLATE[TEMPLATES[0].id]);
   const [fontPairing, setFontPairing] = React.useState(DEFAULT_FONT_PAIRING_BY_TEMPLATE[TEMPLATES[0].id]);
   const [content, setContent] = React.useState<SiteContent | null>(null);
-  const [device, setDevice] = React.useState<(typeof DEVICES)[number]["id"]>("desktop");
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const seeded = React.useRef(false);
 
@@ -124,7 +116,6 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
   const activeTemplate = TEMPLATES.find((t) => t.id === template) ?? TEMPLATES[0];
   const TemplateComponent = activeTemplate.Component;
-  const activeDevice = DEVICES.find((d) => d.id === device) ?? DEVICES[0];
 
   const siteData = {
     hotel,
@@ -135,6 +126,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     galleryImages: (galleryQuery.data ?? []).map((img) => ({ url: img.url, section: img.section || "General" })),
     amenities: settingsQuery.data?.amenities ?? [],
     testimonials: testimonialsQuery.data?.testimonials ?? [],
+    sections: sectionsQuery.data?.sections ?? [],
     mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,
@@ -271,12 +263,9 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Canvas */}
-          <div className="flex flex-1 justify-center overflow-auto bg-muted/30 p-6 sm:p-12">
-            <div style={{ width: activeDevice.width, maxWidth: "100%" }} className="shrink-0">
-              <span className="mb-2 block text-xs text-muted-foreground">
-                {activeTemplate.name} · {activeDevice.label}
-              </span>
-              <div className="relative overflow-hidden rounded-lg shadow-2xl ring-1 ring-border will-change-transform">
+          <div className="flex flex-1 justify-center overflow-hidden bg-muted/30 p-6 sm:p-12">
+            <div className="flex min-h-0 w-full max-w-7xl flex-col">
+              <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg shadow-2xl ring-1 ring-border will-change-transform">
                 <SiteThemeProvider
                   themeId={theme}
                   mode={TEMPLATE_MODE[template] ?? "light"}
@@ -299,29 +288,6 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
               {inspector}
             </div>
           )}
-        </div>
-
-        {/* Floating device toolbar */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
-          <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-popover px-1.5 py-1.5 ring-1 ring-border shadow-xl">
-            {DEVICES.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                title={d.label}
-                aria-label={d.label}
-                onClick={() => setDevice(d.id)}
-                className={cn(
-                  "flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors",
-                  device === d.id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <d.icon className="size-4" />
-              </button>
-            ))}
-          </div>
         </div>
       </div>
   );

@@ -5,6 +5,7 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { AboutSettingsForm } from "./about-settings-form";
 import { HotelSettingsForm } from "./hotel-settings-form";
 import { LocationSettingsForm } from "./location-settings-form";
 import { ProfileSettingsForm } from "./profile-settings-form";
@@ -31,6 +32,7 @@ export function SettingsPageClient({ tenant }: { tenant: string }) {
           ) : (
             <>
               <HotelSettingsForm tenant={tenant} />
+              <AboutSettingsForm tenant={tenant} />
               <LocationSettingsForm tenant={tenant} />
             </>
           )}

@@ -19,6 +19,7 @@ type PublicSiteRepo interface {
 	ListMenuItems(ctx context.Context, hotelID string) ([]model.MenuItem, error)
 	ListGalleryImages(ctx context.Context, hotelID string) ([]model.GalleryImage, error)
 	ListTestimonials(ctx context.Context, hotelID string) ([]model.Testimonial, error)
+	ListSections(ctx context.Context, hotelID string) ([]model.Section, error)
 	GetSettings(ctx context.Context, hotelID string) (currency string, mapURL, aboutUs *string, amenities []string, err error)
 }
 
@@ -361,6 +362,32 @@ func (r *publicSiteRepo) ListTestimonials(ctx context.Context, hotelID string) (
 			return nil, err
 		}
 		list = append(list, t)
+	}
+
+	return list, rows.Err()
+}
+
+func (r *publicSiteRepo) ListSections(ctx context.Context, hotelID string) ([]model.Section, error) {
+	query := `
+		SELECT id, hotel_id, name, created_at, updated_at
+		FROM sections
+		WHERE hotel_id = $1::uuid
+		ORDER BY name
+	`
+
+	rows, err := r.DB.Query(ctx, query, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]model.Section, 0)
+	for rows.Next() {
+		var s model.Section
+		if err := rows.Scan(&s.ID, &s.HotelID, &s.Name, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, s)
 	}
 
 	return list, rows.Err()

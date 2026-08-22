@@ -106,6 +106,7 @@ export type SiteData = {
   galleryImages: { url: string; section: string }[];
   amenities: string[];
   testimonials: SiteTestimonial[];
+  sections: { id: string; name: string }[];
   mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;

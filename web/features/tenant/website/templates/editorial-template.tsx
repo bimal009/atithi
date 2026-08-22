@@ -3,77 +3,46 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeftIcon,
-  CheckIcon,
-  HandCoinsIcon,
-  CalendarCheckIcon,
-  MailIcon,
-  MapPinIcon,
-  MenuIcon,
-  MessageCircleIcon,
-  MinusIcon,
-  PhoneIcon,
-  PlusIcon,
-  SearchIcon,
-  ShoppingBagIcon,
-  StarIcon,
-  UsersIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, MailIcon, MapPinIcon, MenuIcon, PhoneIcon, SearchIcon, StarIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { Cabin } from "@/features/tenant/cabin/types";
 import type { MenuItem } from "@/features/tenant/menuItem/types";
 import type { RoomType } from "@/features/tenant/roomType/types";
 
+import { DatePicker } from "../components/date-picker";
 import { EditableImage } from "../components/editable-image";
 import { EditableText } from "../components/editable-text";
-import {
-  homeSectionOrder,
-  isSectionEnabled,
-  type HomeSectionId,
-  type Page,
-  type SiteContent,
-  type TemplateComponentProps,
-} from "../types";
-import {
-  FOOD_TYPE_DOT,
-  GalleryBento,
-  WhatsAppIcon,
-  amenityIcon,
-  googleMapEmbedSrc,
-  pageHref,
-  parseLatLng,
-  waLink,
-} from "./shared";
+import { homeSectionOrder, isSectionEnabled, type HomeSectionId, type Page, type SiteContent, type TemplateComponentProps } from "../types";
+import { FOOD_TYPE_DOT, GalleryBento, WhatsAppIcon, googleMapEmbedSrc, pageHref, parseLatLng, waLink } from "./shared";
 
 function cnImg(extra?: string) {
   return ["size-full object-cover", extra].filter(Boolean).join(" ");
 }
 
-function StayCard({
-  stay,
-  kind,
-  basePath,
-  formatMoney,
-}: {
-  stay: RoomType | Cabin;
-  kind: "rooms" | "cabins";
-  basePath?: string;
-  formatMoney: (amount: number) => string;
-}) {
+function FooterLink({ href, external, onClick, children }: { href?: string; external?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-auto w-fit justify-start gap-1.5 rounded-none bg-transparent p-0 text-sm font-normal text-neutral-400 hover:bg-transparent hover:text-white"
+      nativeButton={!href}
+      onClick={onClick}
+      render={href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} /> : undefined}
+    >
+      {children}
+    </Button>
+  );
+}
+
+function StayCard({ stay, kind, basePath, formatMoney }: { stay: RoomType | Cabin; kind: "rooms" | "cabins"; basePath?: string; formatMoney: (amount: number) => string }) {
   const href = pageHref(basePath, kind === "rooms" ? "room-detail" : "cabin-detail", stay.id);
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)]">
@@ -97,22 +66,11 @@ function StayCard({
           </span>
           <div className="flex items-center gap-2">
             {basePath && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10"
-                nativeButton={false}
-                render={<Link href={href} />}
-              >
+              <Button size="sm" variant="outline" className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10" nativeButton={false} render={<Link href={href} />}>
                 Details
               </Button>
             )}
-            <Button
-              size="sm"
-              className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90"
-              nativeButton={!basePath}
-              render={basePath ? <Link href={href} /> : undefined}
-            >
+            <Button size="sm" className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" nativeButton={!basePath} render={basePath ? <Link href={href} /> : undefined}>
               Book now
             </Button>
           </div>
@@ -122,21 +80,15 @@ function StayCard({
   );
 }
 
-export function EditorialTemplate({
-  data,
-  editable = false,
-  onContentChange,
-  page: controlledPage,
-  basePath,
-  detailId,
-}: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, mapUrl, content, formatMoney } = data;
+export function EditorialTemplate({ data, editable = false, onContentChange, page: controlledPage, basePath, detailId }: TemplateComponentProps) {
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, mapUrl, content, formatMoney } = data;
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
+  const rootRef = React.useRef<HTMLDivElement>(null);
   const [internalPage, setInternalPage] = React.useState<Page>("home");
   const page = controlledPage ?? internalPage;
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const [cart, setCart] = React.useState<Record<string, number>>({});
+  const [selectedDish, setSelectedDish] = React.useState<MenuItem | null>(null);
   const [activeImage, setActiveImage] = React.useState(0);
   const [checkIn, setCheckIn] = React.useState("");
   const [checkOut, setCheckOut] = React.useState("");
@@ -146,13 +98,12 @@ export function EditorialTemplate({
   const [tbGuests, setTbGuests] = React.useState("2");
   const [tbSeating, setTbSeating] = React.useState("No preference");
 
-  const set = React.useCallback(
-    (key: keyof SiteContent) => (value: string) => onContentChange?.({ [key]: value }),
-    [onContentChange],
-  );
+  const set = React.useCallback((key: keyof SiteContent) => (value: string) => onContentChange?.({ [key]: value }), [onContentChange]);
   const setStyle = React.useCallback(
     (styleId: string, patch: Partial<NonNullable<SiteContent["textStyles"]>[string]>) => {
-      onContentChange?.({ textStyles: { ...content.textStyles, [styleId]: patch } });
+      onContentChange?.({
+        textStyles: { ...content.textStyles, [styleId]: patch },
+      });
     },
     [content.textStyles, onContentChange],
   );
@@ -185,59 +136,18 @@ export function EditorialTemplate({
     }
     return [...map.entries()];
   }, [menuItems]);
-  const topPickDishes = menuItems.filter((m) => m.isTopPick);
 
   function effectivePrice(item: MenuItem) {
     return Math.max(item.price - (item.discount ?? 0), 0);
   }
 
-  function setQty(itemId: string, qty: number) {
-    setCart((c) => {
-      if (qty <= 0) {
-        const next = { ...c };
-        delete next[itemId];
-        return next;
-      }
-      return { ...c, [itemId]: qty };
-    });
-  }
-
-  const cartEntries = Object.entries(cart)
-    .map(([id, qty]) => ({ item: menuItems.find((m) => m.id === id), qty }))
-    .filter((e): e is { item: MenuItem; qty: number } => !!e.item);
-  const cartCount = cartEntries.reduce((sum, e) => sum + e.qty, 0);
-  const cartTotal = cartEntries.reduce((sum, e) => sum + effectivePrice(e.item) * e.qty, 0);
-
-  function sendOrderOnWhatsApp() {
-    const lines = cartEntries.map((e) => `- ${e.item.name} x${e.qty} (${formatMoney(effectivePrice(e.item) * e.qty)})`);
-    const message = [`Order request for ${hotel.name}:`, ...lines, `Total: ${formatMoney(cartTotal)}`].join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
-  }
-
   function sendTableBookingOnWhatsApp(details: { name: string; phone: string; notes: string }) {
-    const message = [
-      `Table reservation request for ${hotel.name}:`,
-      `Name: ${details.name}`,
-      `Phone: ${details.phone}`,
-      `Date: ${tbDate || "flexible"}`,
-      `Time: ${tbTime}`,
-      `Guests: ${tbGuests}`,
-      `Seating: ${tbSeating}`,
-      details.notes ? `Notes: ${details.notes}` : undefined,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const message = [`Table reservation request for ${hotel.name}:`, `Name: ${details.name}`, `Phone: ${details.phone}`, `Date: ${tbDate || "flexible"}`, `Time: ${tbTime}`, `Guests: ${tbGuests}`, `Seating: ${tbSeating}`, details.notes ? `Notes: ${details.notes}` : undefined].filter(Boolean).join("\n");
     window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
   }
 
   function requestStayBooking(stay: RoomType | Cabin) {
-    const message = [
-      `Booking request for ${hotel.name}:`,
-      `- ${stay.name}`,
-      `Check-in: ${checkIn || "flexible"}`,
-      `Check-out: ${checkOut || "flexible"}`,
-      `Guests: ${guests}`,
-    ].join("\n");
+    const message = [`Booking request for ${hotel.name}:`, `- ${stay.name}`, `Check-in: ${checkIn || "flexible"}`, `Check-out: ${checkOut || "flexible"}`, `Guests: ${guests}`].join("\n");
     window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
   }
 
@@ -262,61 +172,31 @@ export function EditorialTemplate({
 
   const homeSections: Record<HomeSectionId, () => React.ReactNode> = {
     about: () => (
-      <section key="about" className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-16 sm:grid-cols-2 sm:gap-12 sm:px-6 sm:py-20 lg:px-10">
-        <EditableImage
-          src={content.aboutImageUrl || galleryImages[0]?.url}
-          fileId={content.aboutImageFileId}
-          editable={editable}
-          onChange={(url, fileId) => onContentChange?.({ aboutImageUrl: url, aboutImageFileId: fileId })}
-          folder="/hotel-website"
-          className="aspect-4/5 overflow-hidden rounded-2xl"
-        />
-        <div className="flex flex-col gap-4">
-          <EditableText
-            value={content.aboutHeading}
-            onChange={editable ? set("aboutHeading") : undefined}
+      <section key="about" className="px-6 py-16 sm:px-10 sm:py-20">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 sm:grid-cols-2 sm:gap-12">
+          <EditableImage
+            src={content.aboutImageUrl || galleryImages[0]?.url}
+            fileId={content.aboutImageFileId}
             editable={editable}
-            as="h2"
-            className="font-[family-name:var(--font-display)] text-3xl font-semibold"
-            styleId="aboutHeading"
-            style={content.textStyles?.aboutHeading}
-            onStyleChange={editable ? setStyle : undefined}
+            onChange={(url, fileId) =>
+              onContentChange?.({
+                aboutImageUrl: url,
+                aboutImageFileId: fileId,
+              })
+            }
+            folder="/hotel-website"
+            className="h-80 w-full overflow-hidden rounded-2xl sm:h-[28rem]"
           />
-          <EditableText
-            value={content.aboutBody}
-            onChange={editable ? set("aboutBody") : undefined}
-            editable={editable}
-            as="p"
-            multiline
-            className="text-[var(--site-muted)]"
-            styleId="aboutBody"
-            style={content.textStyles?.aboutBody}
-            onStyleChange={editable ? setStyle : undefined}
-          />
-          {(() => {
-            const pool = [...new Set(roomTypes.flatMap((r) => r.amenities))].slice(0, 4);
-            return pool.length > 0 ? (
-              <div className="mt-2 grid grid-cols-2 gap-4">
-                {pool.map((a) => {
-                  const Icon = amenityIcon(a);
-                  return (
-                    <div key={a} className="flex items-center gap-2.5 text-sm">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)]/10 text-[var(--site-primary)]">
-                        <Icon className="size-4" />
-                      </span>
-                      {a}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null;
-          })()}
+          <div className="flex flex-col gap-4">
+            <EditableText value={content.aboutHeading} onChange={editable ? set("aboutHeading") : undefined} editable={editable} as="h2" className="font-[family-name:var(--font-display)] text-3xl font-semibold" styleId="aboutHeading" style={content.textStyles?.aboutHeading} onStyleChange={editable ? setStyle : undefined} />
+            <EditableText value={content.aboutBody} onChange={editable ? set("aboutBody") : undefined} editable={editable} as="p" multiline className="text-[var(--site-muted)]" styleId="aboutBody" style={content.textStyles?.aboutBody} onStyleChange={editable ? setStyle : undefined} />
+          </div>
         </div>
       </section>
     ),
     topPicks: () =>
       topPickRooms.length > 0 ? (
-        <section key="topPicks" className="border-t border-[var(--site-border)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
+        <section key="topPicks" className="border-t border-[var(--site-border)] px-6 py-16 sm:px-10 sm:py-20">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
             <span className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-[var(--site-primary)] uppercase">
               <StarIcon className="size-3.5 fill-current" />
@@ -325,12 +205,7 @@ export function EditorialTemplate({
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Guest favorites</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {topPickRooms.slice(0, 4).map((room) => (
-                <button
-                  key={room.id}
-                  type="button"
-                  onClick={() => (basePath ? router.push(pageHref(basePath, "room-detail", room.id)) : goTo("rooms"))}
-                  className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] text-left"
-                >
+                <button key={room.id} type="button" onClick={() => (basePath ? router.push(pageHref(basePath, "room-detail", room.id)) : goTo("rooms"))} className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] text-left">
                   <div className="aspect-square overflow-hidden">
                     {room.images[0] && (
                       // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
@@ -349,85 +224,41 @@ export function EditorialTemplate({
       ) : null,
     rooms: () =>
       showRooms ? (
-        <section key="rooms" className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <EditableText
-                value={content.roomsHeading}
-                onChange={editable ? set("roomsHeading") : undefined}
-                editable={editable}
-                as="h2"
-                className="font-[family-name:var(--font-display)] text-3xl font-semibold"
-                styleId="roomsHeading"
-                style={content.textStyles?.roomsHeading}
-                onStyleChange={editable ? setStyle : undefined}
-              />
-              <EditableText
-                value={content.roomsSubheading}
-                onChange={editable ? set("roomsSubheading") : undefined}
-                editable={editable}
-                as="p"
-                className="text-[var(--site-muted)]"
-                styleId="roomsSubheading"
-                style={content.textStyles?.roomsSubheading}
-                onStyleChange={editable ? setStyle : undefined}
-              />
+        <section key="rooms" className="border-t border-[var(--site-border)] px-6 py-16 sm:px-10 sm:py-20">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <EditableText value={content.roomsHeading} onChange={editable ? set("roomsHeading") : undefined} editable={editable} as="h2" className="font-[family-name:var(--font-display)] text-3xl font-semibold" styleId="roomsHeading" style={content.textStyles?.roomsHeading} onStyleChange={editable ? setStyle : undefined} />
+                <EditableText value={content.roomsSubheading} onChange={editable ? set("roomsSubheading") : undefined} editable={editable} as="p" className="text-[var(--site-muted)]" styleId="roomsSubheading" style={content.textStyles?.roomsSubheading} onStyleChange={editable ? setStyle : undefined} />
+              </div>
+              {roomTypes.length > 0 && (
+                <Button variant="outline" className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10" onClick={() => goTo("rooms")}>
+                  View all rooms
+                </Button>
+              )}
             </div>
-            {roomTypes.length > 0 && (
-              <Button
-                variant="outline"
-                className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10"
-                onClick={() => goTo("rooms")}
-              >
-                View all rooms
-              </Button>
+            {roomTypes.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {roomTypes.slice(0, 3).map((room) => (
+                  <StayCard key={room.id} stay={room} kind="rooms" basePath={basePath} formatMoney={formatMoney} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--site-border)] p-10 text-center text-sm text-[var(--site-muted)]">Room types will appear here once they&apos;re added.</div>
             )}
           </div>
-          {roomTypes.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {roomTypes.slice(0, 3).map((room) => (
-                <StayCard key={room.id} stay={room} kind="rooms" basePath={basePath} formatMoney={formatMoney} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--site-border)] p-10 text-center text-sm text-[var(--site-muted)]">
-              Room types will appear here once they&apos;re added.
-            </div>
-          )}
         </section>
       ) : null,
     cabins: () =>
       showCabins ? (
-        <section key="cabins" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
+        <section key="cabins" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-6 py-16 sm:px-10 sm:py-20">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="flex flex-col gap-2">
-                <EditableText
-                  value={content.cabinsHeading}
-                  onChange={editable ? set("cabinsHeading") : undefined}
-                  editable={editable}
-                  as="h2"
-                  className="font-[family-name:var(--font-display)] text-3xl font-semibold"
-                  styleId="cabinsHeading"
-                  style={content.textStyles?.cabinsHeading}
-                  onStyleChange={editable ? setStyle : undefined}
-                />
-                <EditableText
-                  value={content.cabinsSubheading}
-                  onChange={editable ? set("cabinsSubheading") : undefined}
-                  editable={editable}
-                  as="p"
-                  className="text-[var(--site-muted)]"
-                  styleId="cabinsSubheading"
-                  style={content.textStyles?.cabinsSubheading}
-                  onStyleChange={editable ? setStyle : undefined}
-                />
+                <EditableText value={content.cabinsHeading} onChange={editable ? set("cabinsHeading") : undefined} editable={editable} as="h2" className="font-[family-name:var(--font-display)] text-3xl font-semibold" styleId="cabinsHeading" style={content.textStyles?.cabinsHeading} onStyleChange={editable ? setStyle : undefined} />
+                <EditableText value={content.cabinsSubheading} onChange={editable ? set("cabinsSubheading") : undefined} editable={editable} as="p" className="text-[var(--site-muted)]" styleId="cabinsSubheading" style={content.textStyles?.cabinsSubheading} onStyleChange={editable ? setStyle : undefined} />
               </div>
-              <Button
-                variant="outline"
-                className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10"
-                onClick={() => goTo("cabins")}
-              >
+              <Button variant="outline" className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10" onClick={() => goTo("cabins")}>
                 View all cabins
               </Button>
             </div>
@@ -441,7 +272,7 @@ export function EditorialTemplate({
       ) : null,
     testimonials: () =>
       showTestimonials ? (
-        <section key="testimonials" className="border-t border-[var(--site-border)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
+        <section key="testimonials" className="border-t border-[var(--site-border)] px-6 py-16 sm:px-10 sm:py-20">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
             <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-semibold">What guests say</h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -465,21 +296,15 @@ export function EditorialTemplate({
       ) : null,
     amenities: () =>
       showAmenities ? (
-        <section key="amenities" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
+        <section key="amenities" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-6 py-16 sm:px-10 sm:py-20">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Amenities</h2>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-              {amenities.map((label) => {
-                const Icon = amenityIcon(label);
-                return (
-                  <div key={label} className="flex items-center gap-2.5 text-sm">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)]/10 text-[var(--site-primary)]">
-                      <Icon className="size-4" />
-                    </span>
-                    {label}
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
+              {amenities.map((label) => (
+                <span key={label} className="text-sm font-medium">
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
         </section>
@@ -487,7 +312,7 @@ export function EditorialTemplate({
   };
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div ref={rootRef} className="flex min-h-full flex-col">
       {/* Nav */}
       <nav className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--site-border)] bg-[var(--site-bg)]/95 px-6 py-4 backdrop-blur sm:px-10">
         <div className="flex items-center gap-2.5">
@@ -498,21 +323,13 @@ export function EditorialTemplate({
               editable={editable}
               onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
               folder="/hotel-website"
-              className={
-                logoDisplay === "logo"
-                  ? "h-9 w-40 shrink-0"
-                  : "size-9 shrink-0 overflow-hidden rounded-full"
-              }
-              imgClassName={logoDisplay === "logo" ? "object-contain object-left" : undefined}
+              className={logoDisplay === "logo" ? "h-9 w-40 shrink-0" : "size-9 shrink-0 overflow-hidden rounded-full"}
+              imgClassName="object-contain object-left"
               fallback={<span className={logoDisplay === "logo" ? "h-9 w-40" : "size-9"} />}
             />
           )}
           {logoDisplay !== "logo" && (
-            <button
-              type="button"
-              onClick={() => goTo("home")}
-              className="cursor-pointer font-[family-name:var(--font-display)] text-lg font-semibold"
-            >
+            <button type="button" onClick={() => goTo("home")} className="cursor-pointer font-[family-name:var(--font-display)] text-lg font-semibold">
               {hotel.name}
             </button>
           )}
@@ -520,28 +337,14 @@ export function EditorialTemplate({
 
         <div className="hidden items-center gap-7 text-sm md:flex">
           {NAV.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => goTo(item.id)}
-              className={
-                page === item.id
-                  ? "font-medium text-[var(--site-primary)]"
-                  : "cursor-pointer text-[var(--site-muted)] transition-colors hover:text-[var(--site-fg)]"
-              }
-            >
+            <button key={item.id} type="button" onClick={() => goTo(item.id)} className={page === item.id ? "font-medium text-[var(--site-primary)]" : "cursor-pointer text-[var(--site-muted)] transition-colors hover:text-[var(--site-fg)]"}>
               {item.label}
             </button>
           ))}
         </div>
 
         <div className="flex items-center gap-1.5">
-
-          <Button
-            size="sm"
-            className="hidden rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90 sm:inline-flex"
-            onClick={() => goTo("contact")}
-          >
+          <Button size="sm" className="hidden rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90 sm:inline-flex" onClick={() => goTo("contact")}>
             <EditableText value={content.ctaPrimaryLabel} onChange={editable ? set("ctaPrimaryLabel") : undefined} editable={editable} />
           </Button>
 
@@ -553,20 +356,11 @@ export function EditorialTemplate({
                 </Button>
               }
             />
-            <SheetContent side="right" className="bg-[var(--site-bg)] p-0 text-[var(--site-fg)]">
+            <SheetContent side="right" container={rootRef} className="bg-[var(--site-bg)] p-0 text-[var(--site-fg)]">
               <SheetTitle className="sr-only">Site navigation</SheetTitle>
               <div className="flex flex-col gap-1 p-6">
                 {NAV.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => goTo(item.id)}
-                    className={
-                      page === item.id
-                        ? "rounded-lg bg-[var(--site-primary)]/10 px-3 py-2.5 text-left font-medium text-[var(--site-primary)]"
-                        : "cursor-pointer rounded-lg px-3 py-2.5 text-left text-[var(--site-muted)] hover:bg-[var(--site-primary)]/10"
-                    }
-                  >
+                  <button key={item.id} type="button" onClick={() => goTo(item.id)} className={page === item.id ? "rounded-lg bg-[var(--site-primary)]/10 px-3 py-2.5 text-left font-medium text-[var(--site-primary)]" : "cursor-pointer rounded-lg px-3 py-2.5 text-left text-[var(--site-muted)] hover:bg-[var(--site-primary)]/10"}>
                     {item.label}
                   </button>
                 ))}
@@ -578,113 +372,103 @@ export function EditorialTemplate({
 
       {page === "home" && (
         <div className="flex flex-col">
-          <section className="px-6 pt-8 sm:px-10">
-            <div className="relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-[2rem] sm:min-h-[32rem] lg:min-h-[38rem]">
-              <EditableImage
-                src={content.heroImageUrl || hotel.logoUrl}
-                fileId={content.heroImageFileId}
-                editable={editable}
-                onChange={(url, fileId) => onContentChange?.({ heroImageUrl: url, heroImageFileId: fileId })}
-                folder="/hotel-website"
-                className="absolute inset-0"
-                imgClassName="size-full object-cover"
-                fallback={<div className="absolute inset-0 size-full bg-[var(--site-primary)]/15" />}
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-              <div className="relative flex flex-col gap-4 p-8 text-white sm:p-14">
-                <EditableText
-                  value={content.heroEyebrow}
-                  onChange={editable ? set("heroEyebrow") : undefined}
+          <section className="px-6 py-16 sm:px-10 sm:py-20">
+            <div className="mx-auto w-full max-w-7xl">
+              <div className="relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-[2rem] sm:min-h-[32rem] lg:min-h-[38rem]">
+                <EditableImage
+                  src={content.heroImageUrl || hotel.logoUrl}
+                  fileId={content.heroImageFileId}
                   editable={editable}
-                  as="span"
-                  className="text-xs font-medium tracking-[0.2em] text-white/80 uppercase"
+                  onChange={(url, fileId) =>
+                    onContentChange?.({
+                      heroImageUrl: url,
+                      heroImageFileId: fileId,
+                    })
+                  }
+                  folder="/hotel-website"
+                  className="absolute inset-0"
+                  imgClassName="size-full object-cover"
+                  fallback={<div className="absolute inset-0 size-full bg-[var(--site-primary)]/15" />}
                 />
-                <EditableText
-                  value={content.heroHeading}
-                  onChange={editable ? set("heroHeading") : undefined}
-                  editable={editable}
-                  as="h1"
-                  className="max-w-2xl text-balance font-[family-name:var(--font-display)] text-4xl leading-[1.05] font-semibold sm:text-6xl"
-                  styleId="heroHeading"
-                  style={content.textStyles?.heroHeading}
-                  onStyleChange={editable ? setStyle : undefined}
-                />
-                <EditableText
-                  value={content.heroSubheading}
-                  onChange={editable ? set("heroSubheading") : undefined}
-                  editable={editable}
-                  as="p"
-                  multiline
-                  className="max-w-lg text-balance text-white/85"
-                  styleId="heroSubheading"
-                  style={content.textStyles?.heroSubheading}
-                  onStyleChange={editable ? setStyle : undefined}
-                />
-                <div className="mt-2 flex flex-wrap gap-3">
-                  <Button size="lg" className="rounded-full bg-white text-black hover:bg-white/90" onClick={() => goTo("contact")}>
-                    <EditableText value={content.ctaPrimaryLabel} onChange={editable ? set("ctaPrimaryLabel") : undefined} editable={editable} />
-                  </Button>
-                  {showRooms && (
-                    <Button size="lg" variant="outline" className="rounded-full border-white/50 bg-transparent text-white hover:bg-white/10" onClick={() => goTo("rooms")}>
-                      <EditableText value={content.ctaSecondaryLabel} onChange={editable ? set("ctaSecondaryLabel") : undefined} editable={editable} />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                <div className="relative flex flex-col gap-4 p-8 pb-16 text-white sm:p-14 sm:pb-20">
+                  <EditableText value={content.heroEyebrow} onChange={editable ? set("heroEyebrow") : undefined} editable={editable} as="span" className="text-xs font-medium tracking-[0.2em] text-white/80 uppercase" />
+                  <EditableText value={content.heroHeading} onChange={editable ? set("heroHeading") : undefined} editable={editable} as="h1" className="max-w-2xl text-balance font-[family-name:var(--font-display)] text-4xl leading-[1.05] font-semibold sm:text-6xl" styleId="heroHeading" style={content.textStyles?.heroHeading} onStyleChange={editable ? setStyle : undefined} />
+                  <EditableText value={content.heroSubheading} onChange={editable ? set("heroSubheading") : undefined} editable={editable} as="p" multiline className="max-w-lg text-balance text-white/85" styleId="heroSubheading" style={content.textStyles?.heroSubheading} onStyleChange={editable ? setStyle : undefined} />
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <Button size="lg" className="rounded-full bg-white text-black hover:bg-white/90" onClick={() => goTo("contact")}>
+                      <EditableText value={content.ctaPrimaryLabel} onChange={editable ? set("ctaPrimaryLabel") : undefined} editable={editable} />
                     </Button>
-                  )}
+                    {showRooms && (
+                      <Button size="lg" variant="outline" className="rounded-full border-white/50 bg-transparent text-white hover:bg-white/10" onClick={() => goTo("rooms")}>
+                        <EditableText value={content.ctaSecondaryLabel} onChange={editable ? set("ctaSecondaryLabel") : undefined} editable={editable} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="relative z-10 mx-4 -mt-8 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--site-card)] p-5 shadow-xl ring-1 ring-[var(--site-border)] sm:mx-10 sm:-mt-9 sm:grid-cols-5 sm:items-end">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-[var(--site-muted)]">Check-in</span>
-                <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="bg-transparent" />
+              <div className="relative z-10 -mt-8 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--site-card)] p-5 shadow-xl ring-1 ring-[var(--site-border)] sm:-mt-9 sm:grid-cols-5 sm:items-end">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--site-muted)]">Check-in</span>
+                  <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" className="bg-transparent" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--site-muted)]">Check-out</span>
+                  <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" className="bg-transparent" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--site-muted)]">Guests</span>
+                  <Input type="number" min={1} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="bg-transparent" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-[var(--site-muted)]">Rooms</span>
+                  <Input type="number" min={1} defaultValue={1} className="bg-transparent" />
+                </div>
+                <Button className="col-span-2 w-full justify-center gap-2 rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90 sm:col-span-1 sm:w-auto" onClick={() => goTo(showRooms ? "rooms" : "contact")}>
+                  <SearchIcon className="size-4" />
+                  Search availability
+                </Button>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-[var(--site-muted)]">Check-out</span>
-                <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="bg-transparent" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-[var(--site-muted)]">Guests</span>
-                <Input type="number" min={1} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="bg-transparent" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-[var(--site-muted)]">Rooms</span>
-                <Input type="number" min={1} defaultValue={1} className="bg-transparent" />
-              </div>
-              <Button className="gap-2 rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => goTo(showRooms ? "rooms" : "contact")}>
-                <SearchIcon className="size-4" />
-                Search availability
-              </Button>
             </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-8 px-6 py-14 text-center sm:grid-cols-3 sm:px-10">
-            {[
-              { Icon: HandCoinsIcon, title: "Direct rates", body: "No third-party booking fees — you deal with us directly." },
-              { Icon: MessageCircleIcon, title: "Personal service", body: "Reach us on WhatsApp or by phone and we'll sort out the details." },
-              { Icon: CalendarCheckIcon, title: "Flexible dates", body: "Check availability and we'll confirm what works for your stay." },
-            ].map(({ Icon, title, body }) => (
-              <div key={title} className="flex flex-col items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-full bg-[var(--site-primary)]/10 text-[var(--site-primary)]">
-                  <Icon className="size-5" />
-                </span>
-                <span className="font-medium">{title}</span>
-                <span className="max-w-56 text-sm text-[var(--site-muted)]">{body}</span>
-              </div>
-            ))}
           </section>
 
           {homeSectionOrder(content).map((id) => homeSections[id]())}
 
           {isSectionEnabled(content, "contact") && (
-            <section className="flex flex-col items-center gap-5 border-t border-[var(--site-border)] px-6 py-20 text-center sm:px-10">
-              <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold sm:text-4xl">Your stay starts here.</h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button size="lg" className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => goTo("contact")}>
-                  Check availability
-                </Button>
-                <Button size="lg" variant="outline" className="rounded-full border-[var(--site-border)] bg-transparent hover:bg-[var(--site-primary)]/10" onClick={() => goTo("contact")}>
-                  Contact us
-                </Button>
+            <section className="px-6 py-16 sm:px-10 sm:py-20">
+              <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center gap-3 overflow-hidden rounded-[2rem] bg-[var(--site-primary)] px-6 py-16 text-center text-[var(--site-primary-fg)] sm:py-24">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div className="absolute top-1/4 -left-16 size-64 rounded-full bg-white/10 blur-3xl" />
+                  <div className="absolute top-0 right-0 size-72 rounded-full bg-black/15 blur-3xl" />
+                  <div className="absolute bottom-0 left-1/3 size-56 rounded-full bg-white/10 blur-3xl" />
+                </div>
+                <div className="relative flex flex-col items-center gap-3">
+                  <EditableText
+                    value={content.contactHeading}
+                    onChange={editable ? set("contactHeading") : undefined}
+                    editable={editable}
+                    as="h2"
+                    className="font-[family-name:var(--font-display)] text-3xl font-semibold sm:text-4xl"
+                    styleId="contactHeading"
+                    style={content.textStyles?.contactHeading}
+                    onStyleChange={editable ? setStyle : undefined}
+                  />
+                  <EditableText
+                    value={content.contactBody}
+                    onChange={editable ? set("contactBody") : undefined}
+                    editable={editable}
+                    as="p"
+                    multiline
+                    className="max-w-md text-sm opacity-85 sm:text-base"
+                    styleId="contactBody"
+                    style={content.textStyles?.contactBody}
+                    onStyleChange={editable ? setStyle : undefined}
+                  />
+                  <Button size="lg" className="mt-2 rounded-full bg-black/80 text-white hover:bg-black/90" onClick={() => goTo("contact")}>
+                    Contact us
+                  </Button>
+                </div>
               </div>
             </section>
           )}
@@ -704,9 +488,7 @@ export function EditorialTemplate({
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--site-border)] p-10 text-center text-sm text-[var(--site-muted)]">
-              Room types will appear here once they&apos;re added.
-            </div>
+            <div className="rounded-2xl border border-dashed border-[var(--site-border)] p-10 text-center text-sm text-[var(--site-muted)]">Room types will appear here once they&apos;re added.</div>
           )}
         </div>
       )}
@@ -789,9 +571,9 @@ export function EditorialTemplate({
                       <span className="font-[family-name:var(--font-display)] text-3xl font-semibold text-[var(--site-fg)]">{formatMoney(stay.basePrice)}</span> / night
                     </p>
                     <span className="text-xs font-medium text-[var(--site-muted)]">Check-in</span>
-                    <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="bg-transparent" />
+                    <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" className="bg-transparent" />
                     <span className="text-xs font-medium text-[var(--site-muted)]">Check-out</span>
-                    <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="bg-transparent" />
+                    <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" className="bg-transparent" />
                     <span className="text-xs font-medium text-[var(--site-muted)]">Guests</span>
                     <Input type="number" min={1} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="bg-transparent" />
                     <Button className="mt-1 rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => requestStayBooking(stay)}>
@@ -831,7 +613,7 @@ export function EditorialTemplate({
           {gallerySections.map(([section, urls]) => (
             <div key={section} className="flex flex-col gap-6">
               <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">{section}</h2>
-              <GalleryBento images={urls} />
+              <GalleryBento images={urls} containerRef={rootRef} />
             </div>
           ))}
         </div>
@@ -842,9 +624,6 @@ export function EditorialTemplate({
           <div className="flex flex-col gap-2">
             <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold">{content.restaurantHeading}</h1>
             <p className="text-[var(--site-muted)]">{content.restaurantSubheading}</p>
-            <Button className="mt-2 w-fit rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => goTo("table-booking")}>
-              Reserve a table
-            </Button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map(([categoryName]) => (
@@ -853,85 +632,36 @@ export function EditorialTemplate({
               </a>
             ))}
           </div>
-          {topPickDishes.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <h3 className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl font-semibold">
-                <StarIcon className="size-4 fill-[var(--site-primary)] text-[var(--site-primary)]" />
-                Chef&apos;s picks
-              </h3>
-              <div className="flex gap-4 overflow-x-auto pb-1">
-                {topPickDishes.map((item) => (
-                  <div key={item.id} className="flex w-56 shrink-0 flex-col gap-2 rounded-xl border border-[var(--site-border)] bg-[var(--site-card)] p-4">
-                    <span className="font-medium">{item.name}</span>
-                    <span className="text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <div className="flex flex-col gap-10">
             {categories.map(([categoryName, items]) => (
               <div key={categoryName} id={`menu-${categoryName}`} className="flex scroll-mt-20 flex-col gap-4">
                 <h3 className="font-[family-name:var(--font-display)] text-xl font-semibold">{categoryName}</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((item) => {
-                    const qty = cart[item.id] ?? 0;
-                    return (
-                      <div key={item.id} className="flex flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)]">
-                        <div className="aspect-video">
-                          {item.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
-                          ) : (
-                            <div className="size-full bg-[var(--site-primary)]/10" />
-                          )}
-                        </div>
-                        <div className="flex flex-1 flex-col gap-2 p-4">
-                          <span className="flex items-center gap-2 font-medium">
-                            <span className={`size-2 shrink-0 rounded-full ${FOOD_TYPE_DOT[item.foodType] ?? "bg-muted-foreground"}`} />
-                            <span className="line-clamp-1">{item.name}</span>
-                            {item.isTopPick && <Badge className="shrink-0 bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
-                          </span>
-                          {item.description && <p className="line-clamp-2 min-h-10 text-sm text-[var(--site-muted)]">{item.description}</p>}
-                          <div className="mt-auto flex items-center justify-between pt-2">
-                            <span className="font-medium text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
-                            {qty === 0 ? (
-                              <Button size="sm" className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => setQty(item.id, 1)}>
-                                Add to order
-                              </Button>
-                            ) : (
-                              <div className="flex items-center gap-2 rounded-full border border-[var(--site-border)] px-1 py-1">
-                                <button type="button" onClick={() => setQty(item.id, qty - 1)} className="flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-[var(--site-primary)]/10" aria-label="Decrease quantity">
-                                  <MinusIcon className="size-3.5" />
-                                </button>
-                                <span className="w-4 text-center text-sm font-medium">{qty}</span>
-                                <button type="button" onClick={() => setQty(item.id, qty + 1)} className="flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-[var(--site-primary)]/10" aria-label="Increase quantity">
-                                  <PlusIcon className="size-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {items.map((item) => (
+                    <button key={item.id} type="button" onClick={() => setSelectedDish(item)} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] text-left transition-colors hover:bg-[var(--site-primary)]/5">
+                      <div className="h-56 w-full shrink-0 overflow-hidden">
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                          <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+                        ) : (
+                          <div className="size-full bg-[var(--site-primary)]/10" />
+                        )}
                       </div>
-                    );
-                  })}
+                      <div className="flex flex-1 flex-col gap-2 p-4">
+                        <span className="flex items-center gap-2 font-medium">
+                          <span className={`size-2 shrink-0 rounded-full ${FOOD_TYPE_DOT[item.foodType] ?? "bg-muted-foreground"}`} />
+                          <span className="line-clamp-1">{item.name}</span>
+                          {item.isTopPick && <Badge className="shrink-0 bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
+                        </span>
+                        <p className="line-clamp-2 min-h-10 text-sm text-[var(--site-muted)]">{item.description}</p>
+                        <span className="mt-auto pt-2 font-medium text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
-          {cartCount > 0 && (
-            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--site-border)] bg-[var(--site-bg)] px-6 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] sm:px-10">
-              <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-                <span className="flex items-center gap-2 text-sm">
-                  <ShoppingBagIcon className="size-4 text-[var(--site-primary)]" />
-                  {cartCount} item{cartCount > 1 ? "s" : ""} · {formatMoney(cartTotal)}
-                </span>
-                <Button size="sm" className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={sendOrderOnWhatsApp}>
-                  Send order on WhatsApp
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -947,7 +677,11 @@ export function EditorialTemplate({
               onSubmit={(e) => {
                 e.preventDefault();
                 const data2 = new FormData(e.currentTarget);
-                sendTableBookingOnWhatsApp({ name: String(data2.get("name") ?? ""), phone: String(data2.get("phone") ?? ""), notes: String(data2.get("notes") ?? "") });
+                sendTableBookingOnWhatsApp({
+                  name: String(data2.get("name") ?? ""),
+                  phone: String(data2.get("phone") ?? ""),
+                  notes: String(data2.get("notes") ?? ""),
+                });
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -961,7 +695,7 @@ export function EditorialTemplate({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)]">Date</span>
-                  <Input type="date" value={tbDate} onChange={(e) => setTbDate(e.target.value)} className="bg-transparent" />
+                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" className="bg-transparent" minDate={new Date(new Date().setHours(0, 0, 0, 0))} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)]">Time</span>
@@ -1000,9 +734,12 @@ export function EditorialTemplate({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Indoor">Indoor</SelectItem>
-                      <SelectItem value="Outdoor">Outdoor</SelectItem>
                       <SelectItem value="No preference">No preference</SelectItem>
+                      {sections.map((s) => (
+                        <SelectItem key={s.id} value={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1036,27 +773,8 @@ export function EditorialTemplate({
       {page === "contact" && (
         <div className="flex flex-col gap-10 px-6 py-14 sm:px-10">
           <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
-            <EditableText
-              value={content.contactHeading}
-              onChange={editable ? set("contactHeading") : undefined}
-              editable={editable}
-              as="h1"
-              className="font-[family-name:var(--font-display)] text-4xl font-semibold"
-              styleId="contactHeading"
-              style={content.textStyles?.contactHeading}
-              onStyleChange={editable ? setStyle : undefined}
-            />
-            <EditableText
-              value={content.contactBody}
-              onChange={editable ? set("contactBody") : undefined}
-              editable={editable}
-              as="p"
-              multiline
-              className="text-[var(--site-muted)]"
-              styleId="contactBody"
-              style={content.textStyles?.contactBody}
-              onStyleChange={editable ? setStyle : undefined}
-            />
+            <EditableText value={content.contactHeading} onChange={editable ? set("contactHeading") : undefined} editable={editable} as="h1" className="font-[family-name:var(--font-display)] text-4xl font-semibold" styleId="contactHeading" style={content.textStyles?.contactHeading} onStyleChange={editable ? setStyle : undefined} />
+            <EditableText value={content.contactBody} onChange={editable ? set("contactBody") : undefined} editable={editable} as="p" multiline className="text-[var(--site-muted)]" styleId="contactBody" style={content.textStyles?.contactBody} onStyleChange={editable ? setStyle : undefined} />
           </div>
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
@@ -1124,34 +842,15 @@ export function EditorialTemplate({
             </div>
             <div className="flex flex-col gap-3">
               <span className="text-sm font-medium text-white">Explore</span>
-              <button type="button" onClick={() => goTo("home")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                Home
-              </button>
-              {showRooms && (
-                <button type="button" onClick={() => goTo("rooms")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                  Rooms
-                </button>
-              )}
-              {showCabins && (
-                <button type="button" onClick={() => goTo("cabins")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                  Cabins
-                </button>
-              )}
-              {showGallery && (
-                <button type="button" onClick={() => goTo("gallery")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                  Gallery
-                </button>
-              )}
+              <FooterLink onClick={() => goTo("home")}>Home</FooterLink>
+              {showRooms && <FooterLink onClick={() => goTo("rooms")}>Rooms</FooterLink>}
+              {showCabins && <FooterLink onClick={() => goTo("cabins")}>Cabins</FooterLink>}
+              {showGallery && <FooterLink onClick={() => goTo("gallery")}>Gallery</FooterLink>}
             </div>
             {showRestaurant && (
               <div className="flex flex-col gap-3">
                 <span className="text-sm font-medium text-white">Dining</span>
-                <button type="button" onClick={() => goTo("restaurant")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                  Menu
-                </button>
-                <button type="button" onClick={() => goTo("table-booking")} className="w-fit cursor-pointer text-left text-sm hover:text-white">
-                  Reserve a table
-                </button>
+                <FooterLink onClick={() => goTo("restaurant")}>Menu</FooterLink>
               </div>
             )}
             <div className="flex flex-col gap-3">
@@ -1162,20 +861,20 @@ export function EditorialTemplate({
                   {hotel.address}
                 </span>
               )}
-              <a href={`tel:${hotel.phoneNumber}`} className="flex items-center gap-1.5 text-sm hover:text-white">
+              <FooterLink href={`tel:${hotel.phoneNumber}`}>
                 <PhoneIcon className="size-3.5 shrink-0" />
                 {hotel.phoneNumber}
-              </a>
+              </FooterLink>
               {hotel.email && (
-                <a href={`mailto:${hotel.email}`} className="flex items-center gap-1.5 text-sm hover:text-white">
+                <FooterLink href={`mailto:${hotel.email}`}>
                   <MailIcon className="size-3.5 shrink-0" />
                   {hotel.email}
-                </a>
+                </FooterLink>
               )}
-              <a href={waLink(hotel.phoneNumber)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm hover:text-white">
+              <FooterLink href={waLink(hotel.phoneNumber)} external>
                 <WhatsAppIcon className="size-3.5 shrink-0" />
                 WhatsApp
-              </a>
+              </FooterLink>
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs sm:flex-row">
@@ -1186,19 +885,41 @@ export function EditorialTemplate({
         </div>
       </footer>
 
-      <a
-        href={waLink(hotel.phoneNumber)}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp"
-        className={
-          page === "restaurant" && cartCount > 0
-            ? "fixed right-4 bottom-24 z-30 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-transform hover:scale-105 sm:right-6 sm:bottom-28"
-            : "fixed right-4 bottom-4 z-30 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-transform hover:scale-105 sm:right-6 sm:bottom-6"
-        }
-      >
+      <a href={waLink(hotel.phoneNumber)} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" className="fixed right-4 bottom-4 z-30 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-transform hover:scale-105 sm:right-6 sm:bottom-6">
         <WhatsAppIcon className="size-7" />
       </a>
+
+      <Dialog open={!!selectedDish} onOpenChange={(open) => !open && setSelectedDish(null)}>
+        <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden p-0" showCloseButton>
+          {selectedDish && (
+            <>
+              <div className="h-48 w-full shrink-0 overflow-hidden">
+                {selectedDish.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                  <img src={selectedDish.imageUrl} alt={selectedDish.name} className="size-full object-cover" />
+                ) : (
+                  <div className="size-full bg-[var(--site-primary)]/10" />
+                )}
+              </div>
+              <div className="flex flex-col gap-3 p-6 pt-0">
+                <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--site-fg)]">
+                  <span className={`size-2 shrink-0 rounded-full ${FOOD_TYPE_DOT[selectedDish.foodType] ?? "bg-muted-foreground"}`} />
+                  {selectedDish.name}
+                  {selectedDish.isTopPick && <Badge className="bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
+                </DialogTitle>
+                {selectedDish.description && <p className="text-sm text-[var(--site-muted)]">{selectedDish.description}</p>}
+                {selectedDish.ingredients && (
+                  <p className="text-xs text-[var(--site-muted)]">
+                    <span className="font-medium text-[var(--site-fg)]">Ingredients: </span>
+                    {selectedDish.ingredients}
+                  </p>
+                )}
+                <span className="font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--site-primary)]">{formatMoney(effectivePrice(selectedDish))}</span>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

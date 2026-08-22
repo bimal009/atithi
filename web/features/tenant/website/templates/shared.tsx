@@ -1,4 +1,7 @@
-import { DumbbellIcon, SparklesIcon, UtensilsIcon, WavesIcon, WifiIcon } from "lucide-react";
+import { useState, type RefObject } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, DumbbellIcon, SparklesIcon, UtensilsIcon, WavesIcon, WifiIcon } from "lucide-react";
+
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 import type { Page } from "../types";
 
@@ -14,46 +17,65 @@ export function pageHref(basePath: string | undefined, target: Page, id?: string
   return target === "home" ? (basePath ?? "") : `${basePath}/${segment}`;
 }
 
-export function GalleryBento({ images, radius = "rounded-2xl" }: { images: string[]; radius?: string }) {
-  const shown = images.slice(0, 8);
+export function GalleryBento({
+  images,
+  radius = "rounded-2xl",
+  containerRef,
+}: {
+  images: string[];
+  radius?: string;
+  containerRef?: RefObject<HTMLElement | null>;
+}) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // The 2x2-hero mosaic only reads as intentional once the primary block (5 photos)
-  // is fully filled — fewer than that leaves visible blank grid cells, so fall back
-  // to a plain wrapping grid instead.
-  if (shown.length < 5) {
-    return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {shown.map((url, i) => (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img key={url + i} src={url} alt="" className={`aspect-square ${radius} object-cover`} />
-        ))}
-      </div>
-    );
-  }
-
-  const [a, b, c, d, e, f, g, h] = shown;
-  const row2 = [f, g, h].filter(Boolean);
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:grid-rows-2 sm:h-[32rem]">
-        {a && (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img src={a} alt="" className={`col-span-2 row-span-2 aspect-square ${radius} object-cover sm:aspect-auto`} />
-        )}
-        {[b, c, d, e].filter(Boolean).map((url, i) => (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img key={url + i} src={url} alt="" className={`aspect-square ${radius} object-cover sm:aspect-auto`} />
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {images.map((url, i) => (
+          <button
+            key={url + i}
+            type="button"
+            onClick={() => setOpenIndex(i)}
+            aria-label="View photo"
+            className={`group aspect-square cursor-pointer overflow-hidden ${radius}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
+            <img src={url} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          </button>
         ))}
       </div>
-      {row2.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {row2.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-            <img key={url + i} src={url} alt="" className={`aspect-video ${radius} object-cover`} />
-          ))}
-        </div>
-      )}
-    </div>
+
+      <Dialog open={openIndex !== null} onOpenChange={(open) => !open && setOpenIndex(null)}>
+        <DialogContent container={containerRef} className="max-w-4xl border-none bg-transparent p-0 shadow-none ring-0" showCloseButton>
+          {openIndex !== null && (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
+              <img src={images[openIndex]} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" />
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))}
+                    aria-label="Previous photo"
+                    className="absolute top-1/2 left-2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                  >
+                    <ChevronLeftIcon className="size-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex((i) => (i === null ? i : (i + 1) % images.length))}
+                    aria-label="Next photo"
+                    className="absolute top-1/2 right-2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                  >
+                    <ChevronRightIcon className="size-5" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

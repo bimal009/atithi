@@ -151,9 +151,18 @@ textarea:-webkit-autofill,
 select:-webkit-autofill {
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-fill-color: var(--foreground);
-  caret-color: var(--foreground);
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
   transition:
     background-color 600000s 0s,
     color 600000s 0s;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }

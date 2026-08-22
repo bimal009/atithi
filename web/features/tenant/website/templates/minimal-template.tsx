@@ -6,19 +6,15 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  CalendarCheckIcon,
   CalendarIcon,
   CheckIcon,
-  HandCoinsIcon,
   MailIcon,
   MapPinIcon,
   MenuIcon,
-  MessageCircleIcon,
   MinusIcon,
   PhoneIcon,
   PlusIcon,
   SearchIcon,
-  ShoppingBagIcon,
   StarIcon,
   UsersIcon,
 } from "lucide-react";
@@ -26,6 +22,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -34,6 +31,7 @@ import type { Cabin } from "@/features/tenant/cabin/types";
 import type { MenuItem } from "@/features/tenant/menuItem/types";
 import type { RoomType } from "@/features/tenant/roomType/types";
 
+import { DatePicker } from "../components/date-picker";
 import { EditableImage } from "../components/editable-image";
 import { EditableText } from "../components/editable-text";
 import {
@@ -48,7 +46,6 @@ import {
   FOOD_TYPE_DOT,
   GalleryBento,
   WhatsAppIcon,
-  amenityIcon,
   googleMapEmbedSrc,
   pageHref,
   parseLatLng,
@@ -137,13 +134,14 @@ export function MinimalTemplate({
   basePath,
   detailId,
 }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, mapUrl, content, formatMoney } = data;
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
+  const rootRef = React.useRef<HTMLDivElement>(null);
   const [internalPage, setInternalPage] = React.useState<Page>("home");
   const page = controlledPage ?? internalPage;
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const [cart, setCart] = React.useState<Record<string, number>>({});
+  const [selectedDish, setSelectedDish] = React.useState<MenuItem | null>(null);
   const [activeImage, setActiveImage] = React.useState(0);
   const [checkIn, setCheckIn] = React.useState("");
   const [checkOut, setCheckOut] = React.useState("");
@@ -192,33 +190,9 @@ export function MinimalTemplate({
     }
     return [...map.entries()];
   }, [menuItems]);
-  const topPickDishes = menuItems.filter((m) => m.isTopPick);
 
   function effectivePrice(item: MenuItem) {
     return Math.max(item.price - (item.discount ?? 0), 0);
-  }
-  function setQty(itemId: string, qty: number) {
-    setCart((c) => {
-      if (qty <= 0) {
-        const next = { ...c };
-        delete next[itemId];
-        return next;
-      }
-      return { ...c, [itemId]: qty };
-    });
-  }
-  const cartEntries = Object.entries(cart)
-    .map(([id, qty]) => ({ item: menuItems.find((m) => m.id === id), qty }))
-    .filter((e): e is { item: MenuItem; qty: number } => !!e.item);
-  const cartCount = cartEntries.reduce((sum, e) => sum + e.qty, 0);
-  const cartTotal = cartEntries.reduce((sum, e) => sum + effectivePrice(e.item) * e.qty, 0);
-
-  const whatsAppRaised = page === "restaurant" && cartCount > 0;
-
-  function sendOrderOnWhatsApp() {
-    const lines = cartEntries.map((e) => `- ${e.item.name} x${e.qty} (${formatMoney(effectivePrice(e.item) * e.qty)})`);
-    const message = [`Order request for ${hotel.name}:`, ...lines, `Total: ${formatMoney(cartTotal)}`].join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
   }
   function sendTableBookingOnWhatsApp(details: { name: string; phone: string; notes: string }) {
     const message = [
@@ -273,7 +247,7 @@ export function MinimalTemplate({
               editable={editable}
               onChange={(url, fileId) => onContentChange?.({ aboutImageUrl: url, aboutImageFileId: fileId })}
               folder="/hotel-website"
-              className="aspect-4/5 overflow-hidden rounded-sm"
+              className="h-80 w-full overflow-hidden rounded-sm sm:h-[28rem]"
             />
             <div className="flex flex-col gap-5">
               <EditableText
@@ -297,18 +271,6 @@ export function MinimalTemplate({
                 style={content.textStyles?.aboutBody}
                 onStyleChange={editable ? setStyle : undefined}
               />
-              <div className="mt-4 grid grid-cols-3 gap-6 border-t border-[var(--site-border)] pt-6">
-                {[
-                  { value: String(roomTypes.length), label: "Rooms" },
-                  { value: String(cabins.length), label: "Cabins" },
-                  { value: "24/7", label: "WhatsApp support" },
-                ].map((s) => (
-                  <div key={s.label} className="flex flex-col gap-1">
-                    <span className="font-[family-name:var(--font-display)] text-2xl font-semibold text-[var(--site-primary)]">{s.value}</span>
-                    <span className="text-xs tracking-wide text-[var(--site-muted)] uppercase">{s.label}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </Rail>
@@ -449,16 +411,12 @@ export function MinimalTemplate({
       showAmenities ? (
         <section key="amenities" className="border-t border-[var(--site-border)] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
           <Rail index={String(i + 2).padStart(2, "0")} label="Amenities">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
-              {amenities.map((label) => {
-                const Icon = amenityIcon(label);
-                return (
-                  <div key={label} className="flex items-center gap-3">
-                    <Icon className="size-5 shrink-0 text-[var(--site-primary)]" strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{label}</span>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+              {amenities.map((label) => (
+                <span key={label} className="text-sm font-medium">
+                  {label}
+                </span>
+              ))}
             </div>
           </Rail>
         </section>
@@ -466,7 +424,7 @@ export function MinimalTemplate({
   };
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div ref={rootRef} className="flex min-h-full flex-col">
       <nav className="sticky top-0 z-30 border-b border-[var(--site-border)] bg-[var(--site-bg)]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-10">
           <div className="flex shrink-0 items-center gap-2.5">
@@ -482,7 +440,7 @@ export function MinimalTemplate({
                     ? "h-9 w-40 shrink-0"
                     : "size-8 shrink-0 overflow-hidden rounded-sm"
                 }
-                imgClassName={logoDisplay === "logo" ? "object-contain object-left" : undefined}
+                imgClassName="object-contain object-left"
                 fallback={<span className={logoDisplay === "logo" ? "h-9 w-40" : "size-8"} />}
               />
             )}
@@ -525,7 +483,7 @@ export function MinimalTemplate({
 
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger render={<Button variant="ghost" size="icon-sm" className="hover:bg-[var(--site-primary)]/10 md:hidden" aria-label="Open menu"><MenuIcon strokeWidth={1.75} /></Button>} />
-              <SheetContent side="right" className="w-72 bg-[var(--site-bg)] p-0 text-[var(--site-fg)]">
+              <SheetContent side="right" container={rootRef} className="w-72 bg-[var(--site-bg)] p-0 text-[var(--site-fg)]">
                 <SheetTitle className="sr-only">Site navigation</SheetTitle>
                 <div className="flex flex-col gap-1 p-5 pt-14">
                   {NAV.map((item) => (
@@ -598,7 +556,7 @@ export function MinimalTemplate({
                 editable={editable}
                 onChange={(url, fileId) => onContentChange?.({ heroImageUrl: url, heroImageFileId: fileId })}
                 folder="/hotel-website"
-                className="aspect-4/5 w-full overflow-hidden rounded-sm sm:aspect-3/4 lg:aspect-4/5"
+                className="h-80 w-full overflow-hidden rounded-sm sm:h-[26rem] lg:h-[32rem]"
               />
             </div>
 
@@ -609,14 +567,14 @@ export function MinimalTemplate({
                     <CalendarIcon className="size-3.5" strokeWidth={1.75} />
                     Check-in
                   </span>
-                  <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="h-auto border-none bg-transparent p-0 shadow-none focus-visible:ring-0" />
+                  <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent" />
                 </label>
                 <label className="flex flex-col gap-2 border-b border-[var(--site-border)] pb-2">
                   <span className="flex items-center gap-1.5 text-xs font-medium tracking-[0.1em] text-[var(--site-muted)] uppercase">
                     <CalendarIcon className="size-3.5" strokeWidth={1.75} />
                     Check-out
                   </span>
-                  <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="h-auto border-none bg-transparent p-0 shadow-none focus-visible:ring-0" />
+                  <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" variant="ghost" className="h-auto p-0 hover:bg-transparent" />
                 </label>
                 <div className="flex flex-col gap-2 border-b border-[var(--site-border)] pb-2">
                   <span className="text-xs font-medium tracking-[0.1em] text-[var(--site-muted)] uppercase">Guests</span>
@@ -638,32 +596,42 @@ export function MinimalTemplate({
             </div>
           </section>
 
-          <section className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 py-20 sm:grid-cols-3 sm:px-6 sm:py-28 lg:px-10">
-            {[
-              { Icon: HandCoinsIcon, title: "Direct rates", body: "No third-party booking fees — you deal with us directly." },
-              { Icon: MessageCircleIcon, title: "Personal service", body: "Reach us on WhatsApp or by phone and we'll sort out the details." },
-              { Icon: CalendarCheckIcon, title: "Flexible dates", body: "Check availability and we'll confirm what works for your stay." },
-            ].map(({ Icon, title, body }) => (
-              <div key={title} className="flex flex-col gap-3">
-                <Icon className="size-5 text-[var(--site-primary)]" strokeWidth={1.5} />
-                <span className="font-[family-name:var(--font-display)] text-base font-semibold">{title}</span>
-                <span className="text-sm text-[var(--site-muted)]">{body}</span>
-              </div>
-            ))}
-          </section>
-
           {homeSectionOrder(content).map((id, i) => homeSections[id](i))}
 
           {isSectionEnabled(content, "contact") && (
-            <section className="flex flex-col items-center gap-6 border-t border-[var(--site-border)] bg-[var(--site-fg)] px-4 py-20 text-center text-[var(--site-bg)] sm:px-6 sm:py-28 lg:px-10">
-              <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold sm:text-4xl">Your stay starts here.</h2>
-              <div className="flex flex-wrap items-center justify-center gap-6">
-                <Button size="lg" className="rounded-sm bg-[var(--site-bg)] px-6 text-[var(--site-fg)] hover:opacity-90" onClick={() => goTo("contact")}>
-                  Check availability
-                </Button>
-                <button type="button" onClick={() => goTo("contact")} className="text-sm font-medium opacity-70 hover:opacity-100">
-                  Contact us
-                </button>
+            <section className="px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+              <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center gap-3 overflow-hidden rounded-sm bg-[var(--site-primary)] px-6 py-20 text-center text-[var(--site-primary-fg)] sm:py-28">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div className="absolute top-1/4 -left-16 size-64 rounded-full bg-white/10 blur-3xl" />
+                  <div className="absolute top-0 right-0 size-72 rounded-full bg-black/15 blur-3xl" />
+                  <div className="absolute bottom-0 left-1/3 size-56 rounded-full bg-white/10 blur-3xl" />
+                </div>
+                <div className="relative flex flex-col items-center gap-3">
+                  <EditableText
+                    value={content.contactHeading}
+                    onChange={editable ? set("contactHeading") : undefined}
+                    editable={editable}
+                    as="h2"
+                    className="font-[family-name:var(--font-display)] text-3xl font-semibold sm:text-4xl"
+                    styleId="contactHeading"
+                    style={content.textStyles?.contactHeading}
+                    onStyleChange={editable ? setStyle : undefined}
+                  />
+                  <EditableText
+                    value={content.contactBody}
+                    onChange={editable ? set("contactBody") : undefined}
+                    editable={editable}
+                    as="p"
+                    multiline
+                    className="max-w-md text-sm opacity-85 sm:text-base"
+                    styleId="contactBody"
+                    style={content.textStyles?.contactBody}
+                    onStyleChange={editable ? setStyle : undefined}
+                  />
+                  <Button size="lg" className="mt-2 rounded-sm bg-black/80 text-white hover:bg-black/90" onClick={() => goTo("contact")}>
+                    Contact us
+                  </Button>
+                </div>
               </div>
             </section>
           )}
@@ -766,9 +734,9 @@ export function MinimalTemplate({
                       <span className="font-[family-name:var(--font-display)] text-3xl font-semibold text-[var(--site-fg)]">{formatMoney(stay.basePrice)}</span> / night
                     </p>
                     <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Check-in</span>
-                    <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+                    <DatePicker value={checkIn} onChange={setCheckIn} placeholder="Add date" />
                     <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Check-out</span>
-                    <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+                    <DatePicker value={checkOut} onChange={setCheckOut} placeholder="Add date" />
                     <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Guests</span>
                     <Input type="number" min={1} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} />
                     <Button className="mt-1 rounded-sm bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={() => requestStayBooking(stay)}>
@@ -810,7 +778,7 @@ export function MinimalTemplate({
           {gallerySections.map(([section, urls]) => (
             <div key={section} className="flex flex-col gap-6">
               <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">{section}</h2>
-              <GalleryBento images={urls} radius="rounded-sm" />
+              <GalleryBento images={urls} radius="rounded-sm" containerRef={rootRef} />
             </div>
           ))}
         </div>
@@ -829,83 +797,39 @@ export function MinimalTemplate({
               </a>
             ))}
           </div>
-          {topPickDishes.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <h3 className="flex items-center gap-2 font-[family-name:var(--font-display)] text-lg font-semibold">
-                <StarIcon className="size-4 fill-[var(--site-primary)] text-[var(--site-primary)]" />
-                Chef&apos;s picks
-              </h3>
-              <div className="flex gap-6 overflow-x-auto pb-1">
-                {topPickDishes.map((item) => (
-                  <div key={item.id} className="flex w-52 shrink-0 flex-col gap-1 border-l-2 border-[var(--site-primary)] pl-3">
-                    <span className="font-semibold">{item.name}</span>
-                    <span className="text-sm text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <div className="flex flex-col gap-10">
             {categories.map(([categoryName, items]) => (
               <div key={categoryName} id={`menu-${categoryName}`} className="flex scroll-mt-24 flex-col gap-5">
                 <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold">{categoryName}</h3>
-                <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((item) => {
-                    const qty = cart[item.id] ?? 0;
-                    return (
-                      <div key={item.id} className="flex flex-col gap-3">
-                        <div className="aspect-video overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
-                          {item.imageUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <span className="flex items-center gap-2 font-semibold">
-                            <span className={`size-1.5 shrink-0 rounded-full ${FOOD_TYPE_DOT[item.foodType] ?? "bg-muted-foreground"}`} />
-                            <span className="line-clamp-1">{item.name}</span>
-                            {item.isTopPick && <Badge className="shrink-0 rounded-sm bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
-                          </span>
-                          {item.description && <p className="line-clamp-2 min-h-10 text-sm text-[var(--site-muted)]">{item.description}</p>}
-                          <div className="mt-1 flex items-center justify-between">
-                            <span className="font-semibold text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
-                            {qty === 0 ? (
-                              <Button size="sm" variant="outline" className="rounded-sm hover:bg-[var(--site-primary)]/10" onClick={() => setQty(item.id, 1)}>
-                                Add to order
-                              </Button>
-                            ) : (
-                              <div className="flex items-center gap-3">
-                                <button type="button" onClick={() => setQty(item.id, qty - 1)} className="flex size-7 cursor-pointer items-center justify-center rounded-full hover:bg-[var(--site-primary)]/10" aria-label="Decrease quantity">
-                                  <MinusIcon className="size-3.5" />
-                                </button>
-                                <span className="w-4 text-center text-sm font-semibold">{qty}</span>
-                                <button type="button" onClick={() => setQty(item.id, qty + 1)} className="flex size-7 cursor-pointer items-center justify-center rounded-full hover:bg-[var(--site-primary)]/10" aria-label="Increase quantity">
-                                  <PlusIcon className="size-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedDish(item)}
+                      className="flex h-full cursor-pointer flex-col gap-3 text-left"
+                    >
+                      <div className="h-56 w-full shrink-0 overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
+                        {item.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                          <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+                        )}
                       </div>
-                    );
-                  })}
+                      <div className="flex flex-1 flex-col gap-1.5">
+                        <span className="flex items-center gap-2 font-semibold">
+                          <span className={`size-1.5 shrink-0 rounded-full ${FOOD_TYPE_DOT[item.foodType] ?? "bg-muted-foreground"}`} />
+                          <span className="line-clamp-1">{item.name}</span>
+                          {item.isTopPick && <Badge className="shrink-0 rounded-sm bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
+                        </span>
+                        <p className="line-clamp-2 min-h-10 text-sm text-[var(--site-muted)]">{item.description}</p>
+                        <span className="mt-auto font-semibold text-[var(--site-primary)]">{formatMoney(effectivePrice(item))}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
-          {cartCount > 0 && (
-            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--site-border)] bg-[var(--site-bg)] px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)] sm:px-6 lg:px-10">
-              <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-                <span className="flex items-center gap-2 text-sm">
-                  <ShoppingBagIcon className="size-4 text-[var(--site-primary)]" />
-                  {cartCount} item{cartCount > 1 ? "s" : ""} · {formatMoney(cartTotal)}
-                </span>
-                <Button size="sm" className="rounded-sm bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:bg-[var(--site-primary)]/90" onClick={sendOrderOnWhatsApp}>
-                  Send order on WhatsApp
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -935,7 +859,7 @@ export function MinimalTemplate({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Date</span>
-                  <Input type="date" value={tbDate} onChange={(e) => setTbDate(e.target.value)} />
+                  <DatePicker value={tbDate} onChange={setTbDate} placeholder="Pick a date" minDate={new Date(new Date().setHours(0, 0, 0, 0))} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-[var(--site-muted)] uppercase">Time</span>
@@ -964,9 +888,10 @@ export function MinimalTemplate({
                   <Select value={tbSeating} onValueChange={(v) => setTbSeating(v ?? tbSeating)}>
                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Indoor">Indoor</SelectItem>
-                      <SelectItem value="Outdoor">Outdoor</SelectItem>
                       <SelectItem value="No preference">No preference</SelectItem>
+                      {sections.map((s) => (
+                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1096,7 +1021,6 @@ export function MinimalTemplate({
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-medium tracking-[0.12em] uppercase opacity-60">Dining</span>
                 <button type="button" onClick={() => goTo("restaurant")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Menu</button>
-                <button type="button" onClick={() => goTo("table-booking")} className="w-fit cursor-pointer text-left text-sm hover:text-[var(--site-bg)]">Reserve a table</button>
               </div>
             )}
             <div className="flex flex-col gap-3">
@@ -1134,12 +1058,46 @@ export function MinimalTemplate({
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className={`fixed right-4 z-40 flex size-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/15 transition-[bottom,transform] duration-200 hover:scale-105 sm:right-6 ${
-          whatsAppRaised ? "bottom-24 sm:bottom-28" : "bottom-4 sm:bottom-6"
-        }`}
+        className="fixed right-4 bottom-4 z-40 flex size-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/15 transition-transform duration-200 hover:scale-105 sm:right-6 sm:bottom-6"
       >
         <WhatsAppIcon className="size-6" />
       </a>
+
+      <Dialog open={!!selectedDish} onOpenChange={(open) => !open && setSelectedDish(null)}>
+        <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden rounded-sm p-0" showCloseButton>
+          {selectedDish && (
+            <>
+              <div className="h-48 w-full shrink-0 overflow-hidden">
+                {selectedDish.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
+                  <img src={selectedDish.imageUrl} alt={selectedDish.name} className="size-full object-cover" />
+                ) : (
+                  <div className="size-full bg-[var(--site-primary)]/10" />
+                )}
+              </div>
+              <div className="flex flex-col gap-3 p-6 pt-0">
+                <DialogTitle className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--site-fg)]">
+                  <span className={`size-2 shrink-0 rounded-full ${FOOD_TYPE_DOT[selectedDish.foodType] ?? "bg-muted-foreground"}`} />
+                  {selectedDish.name}
+                  {selectedDish.isTopPick && <Badge className="rounded-sm bg-[var(--site-primary)] text-[var(--site-primary-fg)]">Top pick</Badge>}
+                </DialogTitle>
+                {selectedDish.description && (
+                  <p className="text-sm text-[var(--site-muted)]">{selectedDish.description}</p>
+                )}
+                {selectedDish.ingredients && (
+                  <p className="text-xs text-[var(--site-muted)]">
+                    <span className="font-medium text-[var(--site-fg)]">Ingredients: </span>
+                    {selectedDish.ingredients}
+                  </p>
+                )}
+                <span className="font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--site-primary)]">
+                  {formatMoney(effectivePrice(selectedDish))}
+                </span>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
