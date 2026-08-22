@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { useHotelBySlugQuery } from "@/features/hotel/client/useHotels";
 import { useCabinsQuery } from "@/features/tenant/cabin/client/useCabins";
-import { useGalleryImagesQuery } from "@/features/tenant/gallery/client/useGallery";
+import { useHotelImagesQuery } from "@/features/tenant/hotelImages/client/useHotelImages";
 import { useHotelSettingsQuery } from "@/features/tenant/hotelSettings/client/useHotelSettings";
 import {
   useHotelWebsiteQuery,
@@ -79,7 +79,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   const cabinsQuery = useCabinsQuery(tenant, { limit: 12 });
   const tablesQuery = useTablesQuery(tenant, { limit: 12 });
   const menuItemsQuery = useMenuItemsQuery(tenant, { limit: 100 });
-  const galleryQuery = useGalleryImagesQuery(tenant);
+  const galleryQuery = useHotelImagesQuery(tenant, "gallery");
   const updateWebsite = useUpdateHotelWebsite(tenant);
 
   const hotel = hotelQuery.data;
@@ -128,7 +128,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     cabins: cabinsQuery.data?.cabins ?? [],
     tables: tablesQuery.data?.tables ?? [],
     menuItems: menuItemsQuery.data?.menuItems ?? [],
-    galleryImages: (galleryQuery.data ?? []).map((img) => ({ url: img.url, section: img.section })),
+    galleryImages: (galleryQuery.data ?? []).map((img) => ({ url: img.url, section: img.section || "General" })),
     mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,

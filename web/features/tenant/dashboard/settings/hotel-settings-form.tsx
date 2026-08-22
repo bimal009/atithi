@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CheckIcon, CloudUploadIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 
 import { NepalFlag } from "@/components/shared/nepal-flag";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
 } from "@/features/hotel/client/useHotels";
 import { CreateHotelValues, createHotelSchema } from "@/features/hotel/schema";
 import type { Hotel } from "@/features/hotel/types";
-import { AvatarUpload } from "@/features/upload/components/avatar-upload";
+import { HotelLogoUpload } from "@/features/tenant/hotelImages/components/hotel-logo-upload";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 import { SettingsRow } from "./settings-row";
@@ -41,7 +41,6 @@ function valuesOf(hotel: Hotel): CreateHotelValues {
     city: hotel.city ?? "",
     email: hotel.email ?? "",
     description: hotel.description ?? "",
-    logoUrl: hotel.logoUrl ?? "",
   };
 }
 
@@ -51,7 +50,6 @@ function HotelForm({ hotel }: { hotel: Hotel }) {
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     formState: { errors, isDirty },
   } = useForm<CreateHotelValues>({
@@ -62,7 +60,6 @@ function HotelForm({ hotel }: { hotel: Hotel }) {
   const slugField = register("slug");
   const phoneField = register("phoneNumber");
   const slug = watch("slug") || "";
-  const logoUrl = watch("logoUrl");
 
   const debouncedSlug = useDebouncedValue(slug, 400);
   const slugAvailability = useSlugAvailability(debouncedSlug, { ignore: hotel.slug });
@@ -83,7 +80,6 @@ function HotelForm({ hotel }: { hotel: Hotel }) {
         city: values.city || undefined,
         email: values.email || undefined,
         description: values.description || undefined,
-        logoUrl: values.logoUrl || undefined,
       },
     });
   });
@@ -97,14 +93,7 @@ function HotelForm({ hotel }: { hotel: Hotel }) {
               label="Hotel logo"
               description="Shown on guest-facing pages and documents."
             >
-              <AvatarUpload
-                value={logoUrl || undefined}
-                onChange={(url) => setValue("logoUrl", url ?? "", { shouldValidate: true })}
-                fallback={<CloudUploadIcon className="size-8" aria-hidden="true" />}
-                folder="/hotel-logos"
-                disabled={update.isPending}
-                className="items-start"
-              />
+              <HotelLogoUpload tenant={hotel.slug} disabled={update.isPending} className="items-start" />
             </SettingsRow>
 
             <SettingsRow label="Hotel name" description="Shown across the dashboard.">

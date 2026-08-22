@@ -3,7 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CheckIcon, CloudUploadIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import { debounce, parseAsString, useQueryState } from "nuqs";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { NepalFlag } from "@/components/shared/nepal-flag";
 import { NEPAL_DIAL_CODE, normalizePhoneNumber } from "@/features/auth/schema";
-import { AvatarUpload } from "@/features/upload/components/avatar-upload";
+import { HotelLogoUpload } from "@/features/tenant/hotelImages/components/hotel-logo-upload";
 
 import {
   useCreateHotel,
@@ -52,7 +52,6 @@ const emptyValues: CreateHotelValues = {
   city: "",
   email: "",
   description: "",
-  logoUrl: "",
 };
 
 function valuesOf(hotel?: Hotel): CreateHotelValues {
@@ -65,7 +64,6 @@ function valuesOf(hotel?: Hotel): CreateHotelValues {
     city: hotel.city ?? "",
     email: hotel.email ?? "",
     description: hotel.description ?? "",
-    logoUrl: hotel.logoUrl ?? "",
   };
 }
 
@@ -155,7 +153,6 @@ export function HotelFormDialog({
       city: values.city || undefined,
       email: values.email || undefined,
       description: values.description || undefined,
-      logoUrl: values.logoUrl || undefined,
     };
 
     if (hotel) {
@@ -181,15 +178,7 @@ export function HotelFormDialog({
           </DialogHeader>
 
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
-            <AvatarUpload
-              value={watch("logoUrl") || undefined}
-              onChange={(url) =>
-                setValue("logoUrl", url ?? "", { shouldValidate: true })
-              }
-              fallback={<CloudUploadIcon className="size-8" aria-hidden />}
-              folder="/hotel-logos"
-              disabled={pending}
-            />
+            <HotelLogoUpload tenant={hotel?.slug} disabled={pending} />
 
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="hotel-name">Hotel name</FieldLabel>

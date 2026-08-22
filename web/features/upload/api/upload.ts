@@ -45,3 +45,7 @@ export const uploadImage = async (
 
   return data;
 };
+
+export const deleteImage = async (fileId: string): Promise<void> => {
+  await axiosInstance.delete(`/uploads/imagekit/${fileId}`);
+};

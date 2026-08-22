@@ -26,8 +26,11 @@ type SiteContent struct {
 	ContactHeading       string                       `json:"contactHeading"`
 	ContactBody          string                       `json:"contactBody"`
 	HeroImageURL         string                       `json:"heroImageUrl,omitempty"`
+	HeroImageFileID      string                       `json:"heroImageFileId,omitempty"`
 	AboutImageURL        string                       `json:"aboutImageUrl,omitempty"`
+	AboutImageFileID     string                       `json:"aboutImageFileId,omitempty"`
 	LogoURL              string                       `json:"logoUrl,omitempty"`
+	LogoFileID           string                       `json:"logoFileId,omitempty"`
 	LogoDisplay          string                       `json:"logoDisplay,omitempty"`
 	EnabledSections      map[string]bool              `json:"enabledSections,omitempty"`
 	SectionOrder         []string                     `json:"sectionOrder,omitempty"`

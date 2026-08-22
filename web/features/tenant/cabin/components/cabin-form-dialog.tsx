@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
+import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
 
 import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useCreateCabin, useUpdateCabin } from "../client/useCabins";
@@ -85,8 +85,6 @@ export function CabinFormDialog({
     [billingTypesQuery.data],
   );
 
-  const [images, setImages] = React.useState<string[]>([]);
-
   const {
     register,
     handleSubmit,
@@ -104,7 +102,6 @@ export function CabinFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(cabin, billingTypes[0]?.id));
-    setImages(cabin?.images ?? []);
   }, [open, cabin, reset, billingTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -123,7 +120,6 @@ export function CabinFormDialog({
         .split(",")
         .map((r) => r.trim())
         .filter(Boolean),
-      images,
     };
 
     const response = cabin
@@ -150,7 +146,13 @@ export function CabinFormDialog({
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
-              <MultiImageUpload value={images} onChange={setImages} folder="/cabins" maxCount={5} />
+              <EntityImageManager
+                tenant={tenant}
+                entityType="cabin"
+                entityId={cabin?.id}
+                folder="/cabins"
+                maxCount={5}
+              />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>
 

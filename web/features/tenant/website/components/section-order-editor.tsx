@@ -30,10 +30,9 @@ import {
   type SiteContent,
 } from "../types";
 
-const TOGGLEABLE: Partial<Record<HomeSectionId, "rooms" | "cabins" | "gallery" | "testimonials">> = {
+const TOGGLEABLE: Partial<Record<HomeSectionId, "rooms" | "cabins" | "testimonials">> = {
   rooms: "rooms",
   cabins: "cabins",
-  gallery: "gallery",
   testimonials: "testimonials",
 };
 

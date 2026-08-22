@@ -40,3 +40,18 @@ func (i *ImageHandler) CreateToken(c *gin.Context) {
 
 	c.JSON(http.StatusOK, responses.Success("auth token generated", data))
 }
+
+func (i *ImageHandler) DeleteFile(c *gin.Context) {
+	fileID := c.Param("fileId")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, responses.BadRequest("fileId is required"))
+		return
+	}
+
+	if err := DeleteFile(c.Request.Context(), i.cfg, fileID); err != nil {
+		c.JSON(http.StatusInternalServerError, responses.InternalServerError(fmt.Sprintf("failed to delete file: %s", err.Error())))
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success[any]("file deleted", nil))
+}

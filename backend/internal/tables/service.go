@@ -35,11 +35,6 @@ func (s *tableService) Create(ctx context.Context, hotelID, userID string, req *
 		return model.Table{}, err
 	}
 
-	images := req.Images
-	if images == nil {
-		images = []string{}
-	}
-
 	newTable := &model.Table{
 		ID:        uuid.NewString(),
 		HotelID:   hotelID,
@@ -47,7 +42,6 @@ func (s *tableService) Create(ctx context.Context, hotelID, userID string, req *
 		Capacity:  req.Capacity,
 		SectionID: req.SectionID,
 		Status:    StatusAvailable,
-		Images:    images,
 	}
 
 	created, err := s.repo.Create(ctx, newTable, userID)
@@ -106,9 +100,6 @@ func (s *tableService) Update(ctx context.Context, id, hotelID, userID string, r
 	}
 	if req.SectionID != nil {
 		existing.SectionID = *req.SectionID
-	}
-	if req.Images != nil {
-		existing.Images = req.Images
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)

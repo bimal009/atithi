@@ -27,15 +27,63 @@ func NewTableRepo(db *pgxpool.Pool) TableRepo {
 	return &tableRepo{DB: db}
 }
 
+func (r *tableRepo) imagesForTable(ctx context.Context, tableID string) ([]string, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT url FROM hotel_images
+		WHERE entity_type = 'table' AND entity_id = $1::uuid
+		ORDER BY position, created_at
+	`, tableID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	images := []string{}
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		images = append(images, url)
+	}
+	return images, rows.Err()
+}
+
+func (r *tableRepo) imagesForTables(ctx context.Context, hotelID string) (map[string][]string, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT entity_id, url FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = 'table'
+		ORDER BY position, created_at
+	`, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byTable := map[string][]string{}
+	for rows.Next() {
+		var tableID *string
+		var url string
+		if err := rows.Scan(&tableID, &url); err != nil {
+			return nil, err
+		}
+		if tableID == nil {
+			continue
+		}
+		byTable[*tableID] = append(byTable[*tableID], url)
+	}
+	return byTable, rows.Err()
+}
+
 func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID string) (model.Table, error) {
 	query := `
-		INSERT INTO dining_tables (id, hotel_id, name, capacity, section_id, status, images)
-		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7
+		INSERT INTO dining_tables (id, hotel_id, name, capacity, section_id, status)
+		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $8::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $7::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, created_at, updated_at
 	`
 
 	var created model.Table
@@ -48,7 +96,6 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 		table.Capacity,
 		table.SectionID,
 		table.Status,
-		table.Images,
 		userID,
 	).Scan(
 		&created.ID,
@@ -57,7 +104,6 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 		&created.Capacity,
 		&created.SectionID,
 		&created.Status,
-		&created.Images,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 	)
@@ -72,12 +118,13 @@ func (r *tableRepo) Create(ctx context.Context, table *model.Table, userID strin
 		return model.Table{}, err
 	}
 
+	created.Images = []string{}
 	return created, nil
 }
 
 func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Table, error) {
 	query := `
-		SELECT id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
+		SELECT id, hotel_id, name, capacity, section_id, status, created_at, updated_at
 		FROM dining_tables
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -95,7 +142,6 @@ func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 		&table.Capacity,
 		&table.SectionID,
 		&table.Status,
-		&table.Images,
 		&table.CreatedAt,
 		&table.UpdatedAt,
 	)
@@ -107,12 +153,18 @@ func (r *tableRepo) Get(ctx context.Context, id, hotelID, userID string) (model.
 		return model.Table{}, err
 	}
 
+	images, err := r.imagesForTable(ctx, table.ID)
+	if err != nil {
+		return model.Table{}, err
+	}
+	table.Images = images
+
 	return table, nil
 }
 
 func (r *tableRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Table, int, error) {
 	query := `
-		SELECT id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at,
+		SELECT id, hotel_id, name, capacity, section_id, status, created_at, updated_at,
 		       COUNT(*) OVER() AS total
 		FROM dining_tables
 		WHERE hotel_id = $1::uuid
@@ -144,7 +196,6 @@ func (r *tableRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 			&table.Capacity,
 			&table.SectionID,
 			&table.Status,
-			&table.Images,
 			&table.CreatedAt,
 			&table.UpdatedAt,
 			&total,
@@ -158,6 +209,18 @@ func (r *tableRepo) ListForHotel(ctx context.Context, hotelID, userID, status st
 		return nil, 0, err
 	}
 
+	imagesByTable, err := r.imagesForTables(ctx, hotelID)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range list {
+		if imgs, ok := imagesByTable[list[i].ID]; ok {
+			list[i].Images = imgs
+		} else {
+			list[i].Images = []string{}
+		}
+	}
+
 	return list, total, nil
 }
 
@@ -168,14 +231,13 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 			name = $1,
 			capacity = $2,
 			section_id = $3,
-			images = $4,
 			updated_at = now()
-		WHERE id = $5::uuid AND hotel_id = $6::uuid
+		WHERE id = $4::uuid AND hotel_id = $5::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = dining_tables.hotel_id AND m.user_id = $7::uuid AND m.status = 'active'
+			WHERE m.hotel_id = dining_tables.hotel_id AND m.user_id = $6::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, created_at, updated_at
 	`
 
 	var updated model.Table
@@ -185,7 +247,6 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		table.Name,
 		table.Capacity,
 		table.SectionID,
-		table.Images,
 		table.ID,
 		table.HotelID,
 		userID,
@@ -196,7 +257,6 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		&updated.Capacity,
 		&updated.SectionID,
 		&updated.Status,
-		&updated.Images,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)
@@ -211,6 +271,12 @@ func (r *tableRepo) Update(ctx context.Context, table *model.Table, userID strin
 		return model.Table{}, err
 	}
 
+	images, err := r.imagesForTable(ctx, updated.ID)
+	if err != nil {
+		return model.Table{}, err
+	}
+	updated.Images = images
+
 	return updated, nil
 }
 
@@ -223,7 +289,7 @@ func (r *tableRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = dining_tables.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
+		RETURNING id, hotel_id, name, capacity, section_id, status, created_at, updated_at
 	`
 
 	var updated model.Table
@@ -235,7 +301,6 @@ func (r *tableRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 		&updated.Capacity,
 		&updated.SectionID,
 		&updated.Status,
-		&updated.Images,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)
@@ -246,6 +311,12 @@ func (r *tableRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, statu
 		}
 		return model.Table{}, err
 	}
+
+	images, err := r.imagesForTable(ctx, updated.ID)
+	if err != nil {
+		return model.Table{}, err
+	}
+	updated.Images = images
 
 	return updated, nil
 }
@@ -267,6 +338,10 @@ func (r *tableRepo) Delete(ctx context.Context, id, hotelID, userID string) erro
 
 	if result.RowsAffected() == 0 {
 		return apperr.ErrTableNotFound
+	}
+
+	if _, err := r.DB.Exec(ctx, `DELETE FROM hotel_images WHERE entity_type = 'table' AND entity_id = $1::uuid`, id); err != nil {
+		return err
 	}
 
 	return nil

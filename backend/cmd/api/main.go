@@ -18,10 +18,9 @@ import (
 	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/hotel"
+	"github.com/bimal009/atithi/internal/hotelimages"
 	"github.com/bimal009/atithi/internal/hotelsettings"
-	"github.com/bimal009/atithi/internal/gallery"
 	"github.com/bimal009/atithi/internal/hotelwebsite"
-	"github.com/bimal009/atithi/internal/publicsite"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
@@ -31,6 +30,7 @@ import (
 	"github.com/bimal009/atithi/internal/orderitems"
 	"github.com/bimal009/atithi/internal/orders"
 	"github.com/bimal009/atithi/internal/permission"
+	"github.com/bimal009/atithi/internal/publicsite"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
@@ -125,9 +125,9 @@ func main() {
 	hotelWebsiteService := hotelwebsite.NewHotelWebsiteService(slog, hotelWebsiteRepo)
 	hotelWebsiteHandler := hotelwebsite.NewHotelWebsiteHandler(slog, hotelWebsiteService)
 
-	galleryRepo := gallery.NewGalleryRepo(pool)
-	galleryService := gallery.NewGalleryService(slog, galleryRepo)
-	galleryHandler := gallery.NewGalleryHandler(slog, galleryService)
+	hotelImageRepo := hotelimages.NewHotelImageRepo(pool)
+	hotelImageService := hotelimages.NewHotelImageService(slog, hotelImageRepo, cfg)
+	hotelImageHandler := hotelimages.NewHotelImageHandler(slog, hotelImageService)
 
 	publicSiteRepo := publicsite.NewPublicSiteRepo(pool)
 	publicSiteService := publicsite.NewPublicSiteService(slog, publicSiteRepo)
@@ -213,7 +213,7 @@ func main() {
 		Hotel:          hotelHandler,
 		HotelSettings:  hotelSettingsHandler,
 		HotelWebsite:   hotelWebsiteHandler,
-		Gallery:        galleryHandler,
+		HotelImage:     hotelImageHandler,
 		PublicSite:     publicSiteHandler,
 		BillingType:    billingTypeHandler,
 		Category:       categoryHandler,

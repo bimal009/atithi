@@ -31,11 +31,58 @@ func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
 	}
 }
 
+func (r *hotelRepo) logoForHotel(ctx context.Context, hotelID string) (*string, error) {
+	var url string
+	err := r.DB.QueryRow(ctx, `
+		SELECT url FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = 'logo'
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, hotelID).Scan(&url)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &url, nil
+}
+
+func (r *hotelRepo) logosForHotels(ctx context.Context, hotelIDs []string) (map[string]string, error) {
+	if len(hotelIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	rows, err := r.DB.Query(ctx, `
+		SELECT hotel_id, url FROM hotel_images
+		WHERE hotel_id = ANY($1::uuid[]) AND entity_type = 'logo'
+		ORDER BY created_at DESC
+	`, hotelIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byHotel := map[string]string{}
+	for rows.Next() {
+		var hotelID, url string
+		if err := rows.Scan(&hotelID, &url); err != nil {
+			return nil, err
+		}
+		if _, ok := byHotel[hotelID]; !ok {
+			byHotel[hotelID] = url
+		}
+	}
+	return byHotel, rows.Err()
+}
+
 func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
-		INSERT INTO hotels (id, name, slug, description, logo_url, address, city, phone_number, email, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		INSERT INTO hotels (id, name, slug, description, address, city, phone_number, email, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 	`
 
 	var created model.Hotel
@@ -46,7 +93,6 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 		hotel.Name,
 		hotel.Slug,
 		hotel.Description,
-		hotel.LogoURL,
 		hotel.Address,
 		hotel.City,
 		hotel.PhoneNumber,
@@ -57,7 +103,6 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 		&created.Name,
 		&created.Slug,
 		&created.Description,
-		&created.LogoURL,
 		&created.Address,
 		&created.City,
 		&created.PhoneNumber,
@@ -80,7 +125,7 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 
 func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE id = $1::uuid
 		  AND EXISTS (
@@ -96,7 +141,6 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 		&hotel.Name,
 		&hotel.Slug,
 		&hotel.Description,
-		&hotel.LogoURL,
 		&hotel.Address,
 		&hotel.City,
 		&hotel.PhoneNumber,
@@ -114,12 +158,18 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 		return model.Hotel{}, err
 	}
 
+	logo, err := r.logoForHotel(ctx, hotel.ID)
+	if err != nil {
+		return model.Hotel{}, err
+	}
+	hotel.LogoURL = logo
+
 	return hotel, nil
 }
 
 func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE slug = $1
 		  AND EXISTS (
@@ -135,7 +185,6 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.H
 		&hotel.Name,
 		&hotel.Slug,
 		&hotel.Description,
-		&hotel.LogoURL,
 		&hotel.Address,
 		&hotel.City,
 		&hotel.PhoneNumber,
@@ -153,12 +202,18 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.H
 		return model.Hotel{}, err
 	}
 
+	logo, err := r.logoForHotel(ctx, hotel.ID)
+	if err != nil {
+		return model.Hotel{}, err
+	}
+	hotel.LogoURL = logo
+
 	return hotel, nil
 }
 
 func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE slug = $1
 	`
@@ -170,7 +225,6 @@ func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, e
 		&hotel.Name,
 		&hotel.Slug,
 		&hotel.Description,
-		&hotel.LogoURL,
 		&hotel.Address,
 		&hotel.City,
 		&hotel.PhoneNumber,
@@ -187,6 +241,12 @@ func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, e
 		}
 		return model.Hotel{}, err
 	}
+
+	logo, err := r.logoForHotel(ctx, hotel.ID)
+	if err != nil {
+		return model.Hotel{}, err
+	}
+	hotel.LogoURL = logo
 
 	return hotel, nil
 }
@@ -205,7 +265,7 @@ func (r *hotelRepo) SlugExists(ctx context.Context, slug string) (bool, error) {
 
 func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE EXISTS (
 			SELECT 1 FROM members m
@@ -229,7 +289,6 @@ func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hot
 			&hotel.Name,
 			&hotel.Slug,
 			&hotel.Description,
-			&hotel.LogoURL,
 			&hotel.Address,
 			&hotel.City,
 			&hotel.PhoneNumber,
@@ -248,6 +307,20 @@ func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hot
 		return nil, err
 	}
 
+	ids := make([]string, len(hotels))
+	for i, h := range hotels {
+		ids[i] = h.ID
+	}
+	logos, err := r.logosForHotels(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range hotels {
+		if url, ok := logos[hotels[i].ID]; ok {
+			hotels[i].LogoURL = &url
+		}
+	}
+
 	return hotels, nil
 }
 
@@ -258,19 +331,18 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 			name = $1,
 			slug = $2,
 			description = $3,
-			logo_url = $4,
-			address = $5,
-			city = $6,
-			phone_number = $7,
-			email = $8,
-			is_active = $9,
+			address = $4,
+			city = $5,
+			phone_number = $6,
+			email = $7,
+			is_active = $8,
 			updated_at = now()
-		WHERE id = $10::uuid
+		WHERE id = $9::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = hotels.id AND m.user_id = $11::uuid AND m.status = 'active'
+			WHERE m.hotel_id = hotels.id AND m.user_id = $10::uuid AND m.status = 'active'
 		  )
-		RETURNING id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		RETURNING id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 	`
 
 	var updated model.Hotel
@@ -280,7 +352,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		hotel.Name,
 		hotel.Slug,
 		hotel.Description,
-		hotel.LogoURL,
 		hotel.Address,
 		hotel.City,
 		hotel.PhoneNumber,
@@ -293,7 +364,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		&updated.Name,
 		&updated.Slug,
 		&updated.Description,
-		&updated.LogoURL,
 		&updated.Address,
 		&updated.City,
 		&updated.PhoneNumber,
@@ -313,6 +383,12 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		}
 		return model.Hotel{}, err
 	}
+
+	logo, err := r.logoForHotel(ctx, updated.ID)
+	if err != nil {
+		return model.Hotel{}, err
+	}
+	updated.LogoURL = logo
 
 	return updated, nil
 }

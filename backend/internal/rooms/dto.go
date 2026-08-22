@@ -10,17 +10,15 @@ const (
 )
 
 type CreateRoomRequest struct {
-	RoomTypeID string   `json:"roomTypeId" validate:"required,uuid"`
-	Number     string   `json:"number" validate:"required,min=1,max=20"`
-	Floor      int      `json:"floor" validate:"gte=0"`
-	Images     []string `json:"images,omitempty" validate:"omitempty,max=10,dive,url"`
+	RoomTypeID string `json:"roomTypeId" validate:"required,uuid"`
+	Number     string `json:"number" validate:"required,min=1,max=20"`
+	Floor      int    `json:"floor" validate:"gte=0"`
 }
 
 type UpdateRoomRequest struct {
-	RoomTypeID *string  `json:"roomTypeId,omitempty" validate:"omitempty,uuid"`
-	Number     *string  `json:"number,omitempty" validate:"omitempty,min=1,max=20"`
-	Floor      *int     `json:"floor,omitempty" validate:"omitempty,gte=0"`
-	Images     []string `json:"images,omitempty" validate:"omitempty,max=10,dive,url"`
+	RoomTypeID *string `json:"roomTypeId,omitempty" validate:"omitempty,uuid"`
+	Number     *string `json:"number,omitempty" validate:"omitempty,min=1,max=20"`
+	Floor      *int    `json:"floor,omitempty" validate:"omitempty,gte=0"`
 }
 
 type UpdateRoomStatusRequest struct {

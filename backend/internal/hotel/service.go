@@ -80,7 +80,6 @@ func (s *hotelService) Create(ctx context.Context, userID string, req *CreateHot
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: req.Description,
-		LogoURL:     req.LogoURL,
 		Address:     req.Address,
 		City:        req.City,
 		PhoneNumber: req.PhoneNumber,
@@ -158,9 +157,6 @@ func (s *hotelService) Update(ctx context.Context, id, userID string, req *Updat
 	}
 	if req.Description != nil {
 		existingHotel.Description = req.Description
-	}
-	if req.LogoURL != nil {
-		existingHotel.LogoURL = req.LogoURL
 	}
 	if req.Address != nil {
 		existingHotel.Address = *req.Address

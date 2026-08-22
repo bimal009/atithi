@@ -19,7 +19,6 @@ export type CreateHotelInput = {
   address: string;
   phoneNumber: string;
   description?: string;
-  logoUrl?: string;
   city?: string;
   email?: string;
 };

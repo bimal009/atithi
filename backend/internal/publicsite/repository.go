@@ -31,7 +31,7 @@ func NewPublicSiteRepo(db *pgxpool.Pool) PublicSiteRepo {
 
 func (r *publicSiteRepo) GetHotelBySlug(ctx context.Context, slug string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, logo_url, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE slug = $1::text AND is_active = true
 	`
@@ -39,7 +39,7 @@ func (r *publicSiteRepo) GetHotelBySlug(ctx context.Context, slug string) (model
 	var hotel model.Hotel
 
 	err := r.DB.QueryRow(ctx, query, slug).Scan(
-		&hotel.ID, &hotel.Name, &hotel.Slug, &hotel.Description, &hotel.LogoURL,
+		&hotel.ID, &hotel.Name, &hotel.Slug, &hotel.Description,
 		&hotel.Address, &hotel.City, &hotel.PhoneNumber, &hotel.Email, &hotel.IsActive,
 		&hotel.CreatedBy, &hotel.CreatedAt, &hotel.UpdatedAt,
 	)
@@ -47,6 +47,19 @@ func (r *publicSiteRepo) GetHotelBySlug(ctx context.Context, slug string) (model
 		if err == pgx.ErrNoRows {
 			return model.Hotel{}, apperr.ErrHotelNotFound
 		}
+		return model.Hotel{}, err
+	}
+
+	var logoURL string
+	err = r.DB.QueryRow(ctx, `
+		SELECT url FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = 'logo'
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, hotel.ID).Scan(&logoURL)
+	if err == nil {
+		hotel.LogoURL = &logoURL
+	} else if err != pgx.ErrNoRows {
 		return model.Hotel{}, err
 	}
 
@@ -69,7 +82,7 @@ func (r *publicSiteRepo) GetWebsite(ctx context.Context, hotelID string) (model.
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return model.HotelWebsite{HotelID: hotelID, Template: "stonehouse", Theme: "tripto-blue", FontPairing: "tripto-roboto-inter"}, nil
+			return model.HotelWebsite{HotelID: hotelID, Template: "editorial", Theme: "amber", FontPairing: "fraunces-public"}, nil
 		}
 		return model.HotelWebsite{}, err
 	}
@@ -83,7 +96,7 @@ func (r *publicSiteRepo) GetWebsite(ctx context.Context, hotelID string) (model.
 
 func (r *publicSiteRepo) ListRoomTypes(ctx context.Context, hotelID string) ([]model.RoomType, error) {
 	query := `
-		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick, created_at, updated_at
+		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, is_top_pick, created_at, updated_at
 		FROM room_types
 		WHERE hotel_id = $1::uuid
 		ORDER BY created_at DESC
@@ -101,20 +114,54 @@ func (r *publicSiteRepo) ListRoomTypes(ctx context.Context, hotelID string) ([]m
 		var rt model.RoomType
 		if err := rows.Scan(
 			&rt.ID, &rt.HotelID, &rt.Name, &rt.BasePrice, &rt.BillingTypeID, &rt.PricingLabel,
-			&rt.Capacity, &rt.Description, &rt.Amenities, &rt.Restrictions, &rt.Images, &rt.IsTopPick,
+			&rt.Capacity, &rt.Description, &rt.Amenities, &rt.Restrictions, &rt.IsTopPick,
 			&rt.CreatedAt, &rt.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
+		rt.Images = []string{}
 		list = append(list, rt)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return list, rows.Err()
+	imgRows, err := r.DB.Query(ctx, `
+		SELECT ro.room_type_id, hi.url
+		FROM rooms ro
+		JOIN hotel_images hi ON hi.entity_type = 'room' AND hi.entity_id = ro.id
+		WHERE ro.hotel_id = $1::uuid
+		ORDER BY hi.position, hi.created_at
+	`, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer imgRows.Close()
+
+	byRoomType := map[string][]string{}
+	for imgRows.Next() {
+		var roomTypeID, url string
+		if err := imgRows.Scan(&roomTypeID, &url); err != nil {
+			return nil, err
+		}
+		byRoomType[roomTypeID] = append(byRoomType[roomTypeID], url)
+	}
+	if err := imgRows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i := range list {
+		if imgs, ok := byRoomType[list[i].ID]; ok {
+			list[i].Images = imgs
+		}
+	}
+
+	return list, nil
 }
 
 func (r *publicSiteRepo) ListCabins(ctx context.Context, hotelID string) ([]model.Cabin, error) {
 	query := `
-		SELECT id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, images, created_at, updated_at
+		SELECT id, hotel_id, name, number, base_price, billing_type_id, capacity, description, amenities, restrictions, status, created_at, updated_at
 		FROM cabins
 		WHERE hotel_id = $1::uuid
 		ORDER BY number
@@ -132,20 +179,34 @@ func (r *publicSiteRepo) ListCabins(ctx context.Context, hotelID string) ([]mode
 		var c model.Cabin
 		if err := rows.Scan(
 			&c.ID, &c.HotelID, &c.Name, &c.Number, &c.BasePrice, &c.BillingTypeID, &c.Capacity,
-			&c.Description, &c.Amenities, &c.Restrictions, &c.Status, &c.Images,
+			&c.Description, &c.Amenities, &c.Restrictions, &c.Status,
 			&c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
+		c.Images = []string{}
 		list = append(list, c)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return list, rows.Err()
+	imagesByCabin, err := r.imagesByEntity(ctx, hotelID, "cabin")
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if imgs, ok := imagesByCabin[list[i].ID]; ok {
+			list[i].Images = imgs
+		}
+	}
+
+	return list, nil
 }
 
 func (r *publicSiteRepo) ListTables(ctx context.Context, hotelID string) ([]model.Table, error) {
 	query := `
-		SELECT id, hotel_id, name, capacity, section_id, status, images, created_at, updated_at
+		SELECT id, hotel_id, name, capacity, section_id, status, created_at, updated_at
 		FROM dining_tables
 		WHERE hotel_id = $1::uuid
 		ORDER BY name
@@ -162,15 +223,55 @@ func (r *publicSiteRepo) ListTables(ctx context.Context, hotelID string) ([]mode
 	for rows.Next() {
 		var t model.Table
 		if err := rows.Scan(
-			&t.ID, &t.HotelID, &t.Name, &t.Capacity, &t.SectionID, &t.Status, &t.Images,
+			&t.ID, &t.HotelID, &t.Name, &t.Capacity, &t.SectionID, &t.Status,
 			&t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
+		t.Images = []string{}
 		list = append(list, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return list, rows.Err()
+	imagesByTable, err := r.imagesByEntity(ctx, hotelID, "table")
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if imgs, ok := imagesByTable[list[i].ID]; ok {
+			list[i].Images = imgs
+		}
+	}
+
+	return list, nil
+}
+
+func (r *publicSiteRepo) imagesByEntity(ctx context.Context, hotelID, entityType string) (map[string][]string, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT entity_id, url FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = $2
+		ORDER BY position, created_at
+	`, hotelID, entityType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byEntity := map[string][]string{}
+	for rows.Next() {
+		var entityID *string
+		var url string
+		if err := rows.Scan(&entityID, &url); err != nil {
+			return nil, err
+		}
+		if entityID == nil {
+			continue
+		}
+		byEntity[*entityID] = append(byEntity[*entityID], url)
+	}
+	return byEntity, rows.Err()
 }
 
 func (r *publicSiteRepo) ListMenuItems(ctx context.Context, hotelID string) ([]model.MenuItem, error) {
@@ -211,9 +312,9 @@ func (r *publicSiteRepo) ListMenuItems(ctx context.Context, hotelID string) ([]m
 
 func (r *publicSiteRepo) ListGalleryImages(ctx context.Context, hotelID string) ([]model.GalleryImage, error) {
 	query := `
-		SELECT id, hotel_id, url, section, position, created_at
-		FROM hotel_gallery_images
-		WHERE hotel_id = $1::uuid
+		SELECT id, hotel_id, url, file_id, COALESCE(section, ''), position, created_at
+		FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = 'gallery'
 		ORDER BY position, created_at
 	`
 
@@ -226,7 +327,7 @@ func (r *publicSiteRepo) ListGalleryImages(ctx context.Context, hotelID string) 
 	list := make([]model.GalleryImage, 0)
 	for rows.Next() {
 		var img model.GalleryImage
-		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.Section, &img.Position, &img.CreatedAt); err != nil {
+		if err := rows.Scan(&img.ID, &img.HotelID, &img.URL, &img.FileID, &img.Section, &img.Position, &img.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, img)

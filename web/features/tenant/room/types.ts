@@ -16,7 +16,6 @@ export type CreateRoomInput = {
   roomTypeId: string;
   number: string;
   floor: number;
-  images?: string[];
 };
 
 export type UpdateRoomInput = Partial<CreateRoomInput>;

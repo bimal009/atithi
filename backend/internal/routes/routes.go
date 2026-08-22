@@ -7,9 +7,8 @@ import (
 	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
-	"github.com/bimal009/atithi/internal/gallery"
 	"github.com/bimal009/atithi/internal/hotel"
-	"github.com/bimal009/atithi/internal/publicsite"
+	"github.com/bimal009/atithi/internal/hotelimages"
 	"github.com/bimal009/atithi/internal/hotelsettings"
 	"github.com/bimal009/atithi/internal/hotelwebsite"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
@@ -18,6 +17,7 @@ import (
 	"github.com/bimal009/atithi/internal/menusets"
 	"github.com/bimal009/atithi/internal/notifications"
 	"github.com/bimal009/atithi/internal/orders"
+	"github.com/bimal009/atithi/internal/publicsite"
 	"github.com/bimal009/atithi/internal/reservations"
 	"github.com/bimal009/atithi/internal/role"
 	roomtypes "github.com/bimal009/atithi/internal/roomTypes"
@@ -33,7 +33,7 @@ type Handlers struct {
 	Hotel          *hotel.HotelHandler
 	HotelSettings  *hotelsettings.HotelSettingsHandler
 	HotelWebsite   *hotelwebsite.HotelWebsiteHandler
-	Gallery        *gallery.GalleryHandler
+	HotelImage     *hotelimages.HotelImageHandler
 	PublicSite     *publicsite.PublicSiteHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
@@ -84,6 +84,7 @@ func registerUploadRoutes(
 	uploads := rg.Group("/uploads", requireAuth)
 	{
 		uploads.GET("/imagekit-auth", h.CreateToken)
+		uploads.DELETE("/imagekit/:fileId", h.DeleteFile)
 	}
 }
 
@@ -284,11 +285,11 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				websiteGroup.PATCH("", h.HotelWebsite.Update)
 			}
 
-			galleryGroup := scoped.Group("/gallery")
+			imagesGroup := scoped.Group("/images")
 			{
-				galleryGroup.POST("", h.Gallery.Create)
-				galleryGroup.GET("", h.Gallery.GetAll)
-				galleryGroup.DELETE("/:imageId", h.Gallery.Delete)
+				imagesGroup.POST("", h.HotelImage.Create)
+				imagesGroup.GET("", h.HotelImage.GetAll)
+				imagesGroup.DELETE("/:imageId", h.HotelImage.Delete)
 			}
 
 			notificationsGroup := scoped.Group("/notifications")

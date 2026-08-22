@@ -16,7 +16,6 @@ export type CreateTableInput = {
   name: string;
   capacity: number;
   sectionId: string;
-  images?: string[];
 };
 
 export type UpdateTableInput = Partial<CreateTableInput>;

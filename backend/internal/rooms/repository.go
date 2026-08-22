@@ -27,17 +27,65 @@ func NewRoomRepo(db *pgxpool.Pool) RoomRepo {
 	return &roomRepo{DB: db}
 }
 
+func (r *roomRepo) imagesForRoom(ctx context.Context, roomID string) ([]string, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT url FROM hotel_images
+		WHERE entity_type = 'room' AND entity_id = $1::uuid
+		ORDER BY position, created_at
+	`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	images := []string{}
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		images = append(images, url)
+	}
+	return images, rows.Err()
+}
+
+func (r *roomRepo) imagesForRooms(ctx context.Context, hotelID string) (map[string][]string, error) {
+	rows, err := r.DB.Query(ctx, `
+		SELECT entity_id, url FROM hotel_images
+		WHERE hotel_id = $1::uuid AND entity_type = 'room'
+		ORDER BY position, created_at
+	`, hotelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byRoom := map[string][]string{}
+	for rows.Next() {
+		var roomID *string
+		var url string
+		if err := rows.Scan(&roomID, &url); err != nil {
+			return nil, err
+		}
+		if roomID == nil {
+			continue
+		}
+		byRoom[*roomID] = append(byRoom[*roomID], url)
+	}
+	return byRoom, rows.Err()
+}
+
 func (r *roomRepo) Create(ctx context.Context, room *model.Room, userID string) (model.Room, error) {
 	query := `
-		INSERT INTO rooms (id, hotel_id, room_type_id, number, floor, status, images)
-		SELECT $1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7
+		INSERT INTO rooms (id, hotel_id, room_type_id, number, floor, status)
+		SELECT $1::uuid, $2::uuid, $3::uuid, $4, $5, $6
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $8::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $7::uuid AND m.status = 'active'
 		) AND EXISTS (
 			SELECT 1 FROM room_types rt WHERE rt.id = $3::uuid AND rt.hotel_id = $2::uuid
 		)
-		RETURNING id, hotel_id, room_type_id, number, floor, status, images, created_at, updated_at
+		RETURNING id, hotel_id, room_type_id, number, floor, status, created_at, updated_at
 	`
 
 	var created model.Room
@@ -50,7 +98,6 @@ func (r *roomRepo) Create(ctx context.Context, room *model.Room, userID string) 
 		room.Number,
 		room.Floor,
 		room.Status,
-		room.Images,
 		userID,
 	).Scan(
 		&created.ID,
@@ -59,7 +106,6 @@ func (r *roomRepo) Create(ctx context.Context, room *model.Room, userID string) 
 		&created.Number,
 		&created.Floor,
 		&created.Status,
-		&created.Images,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 	)
@@ -74,12 +120,13 @@ func (r *roomRepo) Create(ctx context.Context, room *model.Room, userID string) 
 		return model.Room{}, err
 	}
 
+	created.Images = []string{}
 	return created, nil
 }
 
 func (r *roomRepo) Get(ctx context.Context, id, hotelID, userID string) (model.Room, error) {
 	query := `
-		SELECT id, hotel_id, room_type_id, number, floor, status, images, created_at, updated_at
+		SELECT id, hotel_id, room_type_id, number, floor, status, created_at, updated_at
 		FROM rooms
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -97,7 +144,6 @@ func (r *roomRepo) Get(ctx context.Context, id, hotelID, userID string) (model.R
 		&room.Number,
 		&room.Floor,
 		&room.Status,
-		&room.Images,
 		&room.CreatedAt,
 		&room.UpdatedAt,
 	)
@@ -109,12 +155,18 @@ func (r *roomRepo) Get(ctx context.Context, id, hotelID, userID string) (model.R
 		return model.Room{}, err
 	}
 
+	images, err := r.imagesForRoom(ctx, room.ID)
+	if err != nil {
+		return model.Room{}, err
+	}
+	room.Images = images
+
 	return room, nil
 }
 
 func (r *roomRepo) ListForHotel(ctx context.Context, hotelID, userID, status string, pagination model.Pagination) ([]model.Room, int, error) {
 	query := `
-		SELECT id, hotel_id, room_type_id, number, floor, status, images, created_at, updated_at,
+		SELECT id, hotel_id, room_type_id, number, floor, status, created_at, updated_at,
 		       COUNT(*) OVER() AS total
 		FROM rooms
 		WHERE hotel_id = $1::uuid
@@ -146,7 +198,6 @@ func (r *roomRepo) ListForHotel(ctx context.Context, hotelID, userID, status str
 			&room.Number,
 			&room.Floor,
 			&room.Status,
-			&room.Images,
 			&room.CreatedAt,
 			&room.UpdatedAt,
 			&total,
@@ -160,6 +211,18 @@ func (r *roomRepo) ListForHotel(ctx context.Context, hotelID, userID, status str
 		return nil, 0, err
 	}
 
+	imagesByRoom, err := r.imagesForRooms(ctx, hotelID)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range list {
+		if imgs, ok := imagesByRoom[list[i].ID]; ok {
+			list[i].Images = imgs
+		} else {
+			list[i].Images = []string{}
+		}
+	}
+
 	return list, total, nil
 }
 
@@ -170,17 +233,16 @@ func (r *roomRepo) Update(ctx context.Context, room *model.Room, userID string) 
 			room_type_id = $1,
 			number = $2,
 			floor = $3,
-			images = $4,
 			updated_at = now()
-		WHERE id = $5::uuid AND hotel_id = $6::uuid
+		WHERE id = $4::uuid AND hotel_id = $5::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = rooms.hotel_id AND m.user_id = $7::uuid AND m.status = 'active'
+			WHERE m.hotel_id = rooms.hotel_id AND m.user_id = $6::uuid AND m.status = 'active'
 		  )
 		  AND EXISTS (
-			SELECT 1 FROM room_types rt WHERE rt.id = $1::uuid AND rt.hotel_id = $6::uuid
+			SELECT 1 FROM room_types rt WHERE rt.id = $1::uuid AND rt.hotel_id = $5::uuid
 		  )
-		RETURNING id, hotel_id, room_type_id, number, floor, status, images, created_at, updated_at
+		RETURNING id, hotel_id, room_type_id, number, floor, status, created_at, updated_at
 	`
 
 	var updated model.Room
@@ -190,7 +252,6 @@ func (r *roomRepo) Update(ctx context.Context, room *model.Room, userID string) 
 		room.RoomTypeID,
 		room.Number,
 		room.Floor,
-		room.Images,
 		room.ID,
 		room.HotelID,
 		userID,
@@ -201,7 +262,6 @@ func (r *roomRepo) Update(ctx context.Context, room *model.Room, userID string) 
 		&updated.Number,
 		&updated.Floor,
 		&updated.Status,
-		&updated.Images,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)
@@ -216,6 +276,12 @@ func (r *roomRepo) Update(ctx context.Context, room *model.Room, userID string) 
 		return model.Room{}, err
 	}
 
+	images, err := r.imagesForRoom(ctx, updated.ID)
+	if err != nil {
+		return model.Room{}, err
+	}
+	updated.Images = images
+
 	return updated, nil
 }
 
@@ -228,7 +294,7 @@ func (r *roomRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status
 			SELECT 1 FROM members m
 			WHERE m.hotel_id = rooms.hotel_id AND m.user_id = $4::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, room_type_id, number, floor, status, images, created_at, updated_at
+		RETURNING id, hotel_id, room_type_id, number, floor, status, created_at, updated_at
 	`
 
 	var updated model.Room
@@ -240,7 +306,6 @@ func (r *roomRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status
 		&updated.Number,
 		&updated.Floor,
 		&updated.Status,
-		&updated.Images,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)
@@ -251,6 +316,12 @@ func (r *roomRepo) UpdateStatus(ctx context.Context, id, hotelID, userID, status
 		}
 		return model.Room{}, err
 	}
+
+	images, err := r.imagesForRoom(ctx, updated.ID)
+	if err != nil {
+		return model.Room{}, err
+	}
+	updated.Images = images
 
 	return updated, nil
 }
@@ -272,6 +343,10 @@ func (r *roomRepo) Delete(ctx context.Context, id, hotelID, userID string) error
 
 	if result.RowsAffected() == 0 {
 		return apperr.ErrRoomNotFound
+	}
+
+	if _, err := r.DB.Exec(ctx, `DELETE FROM hotel_images WHERE entity_type = 'room' AND entity_id = $1::uuid`, id); err != nil {
+		return err
 	}
 
 	return nil

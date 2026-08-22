@@ -166,6 +166,16 @@ export function EditorialTemplate({
   const showGallery = isSectionEnabled(content, "gallery") && galleryImages.length > 0;
   const topPickRooms = roomTypes.filter((r) => r.isTopPick);
 
+  const gallerySections = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const img of galleryImages) {
+      const list = map.get(img.section) ?? [];
+      list.push(img.url);
+      map.set(img.section, list);
+    }
+    return [...map.entries()];
+  }, [galleryImages]);
+
   const categories = React.useMemo(() => {
     const map = new Map<string, MenuItem[]>();
     for (const item of menuItems) {
@@ -254,9 +264,10 @@ export function EditorialTemplate({
     about: () => (
       <section key="about" className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-16 sm:grid-cols-2 sm:gap-12 sm:px-6 sm:py-20 lg:px-10">
         <EditableImage
-          src={content.aboutImageUrl || galleryImages[0]}
+          src={content.aboutImageUrl || galleryImages[0]?.url}
+          fileId={content.aboutImageFileId}
           editable={editable}
-          onChange={(url) => onContentChange?.({ aboutImageUrl: url })}
+          onChange={(url, fileId) => onContentChange?.({ aboutImageUrl: url, aboutImageFileId: fileId })}
           folder="/hotel-website"
           className="aspect-4/5 overflow-hidden rounded-2xl"
         />
@@ -303,24 +314,6 @@ export function EditorialTemplate({
         </div>
       </section>
     ),
-    gallery: () =>
-      showGallery ? (
-        <section key="gallery" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-            <EditableText
-              value={content.galleryHeading}
-              onChange={editable ? set("galleryHeading") : undefined}
-              editable={editable}
-              as="h2"
-              className="font-[family-name:var(--font-display)] text-3xl font-semibold"
-              styleId="galleryHeading"
-              style={content.textStyles?.galleryHeading}
-              onStyleChange={editable ? setStyle : undefined}
-            />
-            <GalleryBento images={galleryImages} />
-          </div>
-        </section>
-      ) : null,
     topPicks: () =>
       topPickRooms.length > 0 ? (
         <section key="topPicks" className="border-t border-[var(--site-border)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
@@ -480,8 +473,9 @@ export function EditorialTemplate({
           {(editable || logoDisplay !== "text") && (
             <EditableImage
               src={content.logoUrl || hotel.logoUrl}
+              fileId={content.logoFileId}
               editable={editable}
-              onChange={(url) => onContentChange?.({ logoUrl: url })}
+              onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
               folder="/hotel-website"
               className="size-9 shrink-0 overflow-hidden rounded-full"
               fallback={<span className="size-9" />}
@@ -562,8 +556,9 @@ export function EditorialTemplate({
             <div className="relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-[2rem] sm:min-h-[32rem] lg:min-h-[38rem]">
               <EditableImage
                 src={content.heroImageUrl || hotel.logoUrl}
+                fileId={content.heroImageFileId}
                 editable={editable}
-                onChange={(url) => onContentChange?.({ heroImageUrl: url })}
+                onChange={(url, fileId) => onContentChange?.({ heroImageUrl: url, heroImageFileId: fileId })}
                 folder="/hotel-website"
                 className="absolute inset-0"
                 imgClassName="size-full object-cover"
@@ -805,9 +800,14 @@ export function EditorialTemplate({
         })()}
 
       {page === "gallery" && showGallery && (
-        <div className="flex flex-col gap-8 px-6 py-14 sm:px-10">
+        <div className="flex flex-col gap-14 px-6 py-14 sm:px-10">
           <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold">{content.galleryHeading}</h1>
-          <GalleryBento images={galleryImages} />
+          {gallerySections.map(([section, urls]) => (
+            <div key={section} className="flex flex-col gap-6">
+              <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">{section}</h2>
+              <GalleryBento images={urls} />
+            </div>
+          ))}
         </div>
       )}
 

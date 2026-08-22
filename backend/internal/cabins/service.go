@@ -45,11 +45,6 @@ func (s *cabinService) Create(ctx context.Context, hotelID, userID string, req *
 		restrictions = []string{}
 	}
 
-	images := req.Images
-	if images == nil {
-		images = []string{}
-	}
-
 	newCabin := &model.Cabin{
 		ID:            uuid.NewString(),
 		HotelID:       hotelID,
@@ -62,7 +57,6 @@ func (s *cabinService) Create(ctx context.Context, hotelID, userID string, req *
 		Amenities:     amenities,
 		Restrictions:  restrictions,
 		Status:        StatusAvailable,
-		Images:        images,
 	}
 
 	created, err := s.repo.Create(ctx, newCabin, userID)
@@ -136,9 +130,6 @@ func (s *cabinService) Update(ctx context.Context, id, hotelID, userID string, r
 	}
 	if req.Restrictions != nil {
 		existing.Restrictions = req.Restrictions
-	}
-	if req.Images != nil {
-		existing.Images = req.Images
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)

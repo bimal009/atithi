@@ -26,7 +26,6 @@ export type CreateCabinInput = {
   description?: string;
   amenities?: string[];
   restrictions?: string[];
-  images?: string[];
 };
 
 export type UpdateCabinInput = Partial<CreateCabinInput>;

@@ -7,7 +7,7 @@ type Hotel struct {
 	Name        string    `db:"name" json:"name"`
 	Slug        string    `db:"slug" json:"slug"`
 	Description *string   `db:"description" json:"description,omitempty"`
-	LogoURL     *string   `db:"logo_url" json:"logoUrl,omitempty"`
+	LogoURL     *string   `db:"-" json:"logoUrl,omitempty"`
 	Address     string    `db:"address" json:"address"`
 	City        *string   `db:"city" json:"city,omitempty"`
 	PhoneNumber string    `db:"phone_number" json:"phoneNumber"`

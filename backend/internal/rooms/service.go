@@ -35,11 +35,6 @@ func (s *roomService) Create(ctx context.Context, hotelID, userID string, req *C
 		return model.Room{}, err
 	}
 
-	images := req.Images
-	if images == nil {
-		images = []string{}
-	}
-
 	newRoom := &model.Room{
 		ID:         uuid.NewString(),
 		HotelID:    hotelID,
@@ -47,7 +42,6 @@ func (s *roomService) Create(ctx context.Context, hotelID, userID string, req *C
 		Number:     req.Number,
 		Floor:      req.Floor,
 		Status:     StatusAvailable,
-		Images:     images,
 	}
 
 	created, err := s.repo.Create(ctx, newRoom, userID)
@@ -106,9 +100,6 @@ func (s *roomService) Update(ctx context.Context, id, hotelID, userID string, re
 	}
 	if req.Floor != nil {
 		existing.Floor = *req.Floor
-	}
-	if req.Images != nil {
-		existing.Images = req.Images
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)

@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
+import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
 
 import { useSectionsQuery } from "../../section/client/useSections";
 import { useCreateTable, useUpdateTable } from "../client/useTables";
@@ -74,8 +74,6 @@ export function TableFormDialog({
     [sectionsQuery.data],
   );
 
-  const [images, setImages] = React.useState<string[]>([]);
-
   const {
     register,
     handleSubmit,
@@ -93,7 +91,6 @@ export function TableFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(table, sections[0]?.id));
-    setImages(table?.images ?? []);
   }, [open, table, reset, sections]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -101,7 +98,6 @@ export function TableFormDialog({
       name: values.name,
       capacity: values.capacity,
       sectionId: values.sectionId,
-      images,
     };
 
     const response = table
@@ -128,7 +124,13 @@ export function TableFormDialog({
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
-              <MultiImageUpload value={images} onChange={setImages} folder="/tables" maxCount={3} />
+              <EntityImageManager
+                tenant={tenant}
+                entityType="table"
+                entityId={table?.id}
+                folder="/tables"
+                maxCount={3}
+              />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>
 

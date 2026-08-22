@@ -21,7 +21,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
 import {
   Select,
   SelectContent,
@@ -88,8 +87,6 @@ export function RoomTypeFormDialog({
     [billingTypesQuery.data],
   );
 
-  const [images, setImages] = React.useState<string[]>([]);
-
   const {
     register,
     handleSubmit,
@@ -108,7 +105,6 @@ export function RoomTypeFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(roomType, billingTypes[0]?.id));
-    setImages(roomType?.images ?? []);
   }, [open, roomType, reset, billingTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -127,7 +123,6 @@ export function RoomTypeFormDialog({
         .split(",")
         .map((r) => r.trim())
         .filter(Boolean),
-      images,
       isTopPick: values.isTopPick,
     };
 
@@ -153,12 +148,6 @@ export function RoomTypeFormDialog({
           </DialogHeader>
 
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
-            <Field>
-              <FieldLabel>Photos</FieldLabel>
-              <MultiImageUpload value={images} onChange={setImages} folder="/room-types" maxCount={8} />
-              <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
-            </Field>
-
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="type-name">Name</FieldLabel>
               <Input

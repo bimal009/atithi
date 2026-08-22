@@ -18,7 +18,6 @@ type CreateCabinRequest struct {
 	Description   *string  `json:"description,omitempty" validate:"omitempty,max=2000"`
 	Amenities     []string `json:"amenities,omitempty"`
 	Restrictions  []string `json:"restrictions,omitempty"`
-	Images        []string `json:"images,omitempty" validate:"omitempty,max=5,dive,url"`
 }
 
 type UpdateCabinRequest struct {
@@ -30,7 +29,6 @@ type UpdateCabinRequest struct {
 	Description   *string  `json:"description,omitempty" validate:"omitempty,max=2000"`
 	Amenities     []string `json:"amenities,omitempty"`
 	Restrictions  []string `json:"restrictions,omitempty"`
-	Images        []string `json:"images,omitempty" validate:"omitempty,max=5,dive,url"`
 }
 
 type UpdateCabinStatusRequest struct {

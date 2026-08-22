@@ -5,12 +5,13 @@ import { ImagePlusIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
-import { uploadImage } from "@/features/upload/api/upload";
+import { deleteImage, uploadImage } from "@/features/upload/api/upload";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/features/upload/types";
 import { cn } from "@/lib/utils";
 
 export function EditableImage({
   src,
+  fileId,
   alt = "",
   editable = false,
   onChange,
@@ -20,9 +21,11 @@ export function EditableImage({
   fallback,
 }: {
   src?: string;
+  /** The ImageKit fileId for `src`, if known — lets replace/remove clean up the old file. */
+  fileId?: string;
   alt?: string;
   editable?: boolean;
-  onChange?: (url: string | undefined) => void;
+  onChange?: (url: string | undefined, fileId: string | undefined) => void;
   folder: string;
   className?: string;
   imgClassName?: string;
@@ -42,6 +45,10 @@ export function EditableImage({
     return <div className={className}>{image}</div>;
   }
 
+  function cleanupOldFile() {
+    if (fileId) void deleteImage(fileId).catch(() => {});
+  }
+
   async function handleFile(file: File) {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       toast.error(`${file.name} isn't a supported image type`);
@@ -54,7 +61,8 @@ export function EditableImage({
     setUploading(true);
     try {
       const uploaded = await uploadImage(file, { folder });
-      onChange?.(uploaded.url);
+      cleanupOldFile();
+      onChange?.(uploaded.url, uploaded.fileId);
     } catch {
       toast.error("Photo upload failed — try again");
     } finally {
@@ -90,13 +98,15 @@ export function EditableImage({
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
-            onChange?.(undefined);
+            cleanupOldFile();
+            onChange?.(undefined, undefined);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              onChange?.(undefined);
+              cleanupOldFile();
+              onChange?.(undefined, undefined);
             }
           }}
           aria-label="Remove photo"

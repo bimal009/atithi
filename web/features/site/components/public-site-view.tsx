@@ -42,7 +42,7 @@ export function PublicSiteView({
     cabins,
     tables,
     menuItems,
-    galleryImages: galleryImages.map((img) => ({ url: img.url, section: img.section })),
+    galleryImages: galleryImages.map((img) => ({ url: img.url, section: img.section || "General" })),
     mapUrl,
     formatMoney,
     content,

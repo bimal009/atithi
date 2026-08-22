@@ -12,8 +12,6 @@ export const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 255);
 
-const optionalUrl = z.union([z.url("Enter a valid URL"), z.literal("")]).optional();
-
 export const createHotelSchema = z.object({
   name: z.string().trim().min(2, "Enter the hotel name").max(255),
   slug: z
@@ -32,7 +30,6 @@ export const createHotelSchema = z.object({
   city: z.string().trim().max(100).optional(),
   email: z.union([z.email("Enter a valid email"), z.literal("")]).optional(),
   description: z.string().trim().max(2000).optional(),
-  logoUrl: optionalUrl,
 });
 
 export type CreateHotelValues = z.infer<typeof createHotelSchema>;

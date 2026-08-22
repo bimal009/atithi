@@ -172,6 +172,16 @@ export function MinimalTemplate({
   const showGallery = isSectionEnabled(content, "gallery") && galleryImages.length > 0;
   const topPickRooms = roomTypes.filter((r) => r.isTopPick);
 
+  const gallerySections = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const img of galleryImages) {
+      const list = map.get(img.section) ?? [];
+      list.push(img.url);
+      map.set(img.section, list);
+    }
+    return [...map.entries()];
+  }, [galleryImages]);
+
   const categories = React.useMemo(() => {
     const map = new Map<string, MenuItem[]>();
     for (const item of menuItems) {
@@ -257,9 +267,10 @@ export function MinimalTemplate({
         <Rail index={String(i + 2).padStart(2, "0")} label="About us">
           <div className="grid grid-cols-1 items-center gap-10 sm:grid-cols-[0.9fr_1.1fr] sm:gap-14">
             <EditableImage
-              src={content.aboutImageUrl || galleryImages[0]}
+              src={content.aboutImageUrl || galleryImages[0]?.url}
+              fileId={content.aboutImageFileId}
               editable={editable}
-              onChange={(url) => onContentChange?.({ aboutImageUrl: url })}
+              onChange={(url, fileId) => onContentChange?.({ aboutImageUrl: url, aboutImageFileId: fileId })}
               folder="/hotel-website"
               className="aspect-4/5 overflow-hidden rounded-sm"
             />
@@ -302,14 +313,6 @@ export function MinimalTemplate({
         </Rail>
       </section>
     ),
-    gallery: (i) =>
-      showGallery ? (
-        <section key="gallery" className="border-t border-[var(--site-border)] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
-          <Rail index={String(i + 2).padStart(2, "0")} label="Gallery">
-            <GalleryBento images={galleryImages} radius="rounded-sm" />
-          </Rail>
-        </section>
-      ) : null,
     topPicks: (i) =>
       topPickRooms.length > 0 ? (
         <section key="topPicks" className="border-t border-[var(--site-border)] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
@@ -451,8 +454,9 @@ export function MinimalTemplate({
             {(editable || logoDisplay !== "text") && (
               <EditableImage
                 src={content.logoUrl || hotel.logoUrl}
+                fileId={content.logoFileId}
                 editable={editable}
-                onChange={(url) => onContentChange?.({ logoUrl: url })}
+                onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
                 folder="/hotel-website"
                 className="size-8 shrink-0 overflow-hidden rounded-sm"
                 fallback={<span className="size-8" />}
@@ -566,8 +570,9 @@ export function MinimalTemplate({
               </div>
               <EditableImage
                 src={content.heroImageUrl || hotel.logoUrl}
+                fileId={content.heroImageFileId}
                 editable={editable}
-                onChange={(url) => onContentChange?.({ heroImageUrl: url })}
+                onChange={(url, fileId) => onContentChange?.({ heroImageUrl: url, heroImageFileId: fileId })}
                 folder="/hotel-website"
                 className="aspect-4/5 w-full overflow-hidden rounded-sm sm:aspect-3/4 lg:aspect-4/5"
               />
@@ -776,9 +781,14 @@ export function MinimalTemplate({
         })()}
 
       {page === "gallery" && showGallery && (
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-14 sm:px-6 sm:py-16 lg:px-10">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-14 px-4 py-14 sm:px-6 sm:py-16 lg:px-10">
           <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold">{content.galleryHeading}</h1>
-          <GalleryBento images={galleryImages} radius="rounded-sm" />
+          {gallerySections.map(([section, urls]) => (
+            <div key={section} className="flex flex-col gap-6">
+              <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">{section}</h2>
+              <GalleryBento images={urls} radius="rounded-sm" />
+            </div>
+          ))}
         </div>
       )}
 

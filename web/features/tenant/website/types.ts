@@ -63,8 +63,11 @@ export type SiteContent = {
   contactHeading: string;
   contactBody: string;
   heroImageUrl?: string;
+  heroImageFileId?: string;
   aboutImageUrl?: string;
+  aboutImageFileId?: string;
   logoUrl?: string;
+  logoFileId?: string;
   logoDisplay?: "logo" | "text" | "both";
   enabledSections?: Partial<Record<SectionKey, boolean>>;
   sectionOrder?: HomeSectionId[];

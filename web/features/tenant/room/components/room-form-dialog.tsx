@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { MultiImageUpload } from "@/features/upload/components/multi-image-upload";
+import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
 import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 
@@ -80,8 +80,6 @@ export function RoomFormDialog({
   const update = useUpdateRoom(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
 
-  const [images, setImages] = React.useState<string[]>([]);
-
   const {
     register,
     handleSubmit,
@@ -100,7 +98,6 @@ export function RoomFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(room, roomTypes[0]?.id));
-    setImages(room?.images ?? []);
   }, [open, room, reset, roomTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -108,7 +105,6 @@ export function RoomFormDialog({
       roomTypeId: values.roomTypeId,
       number: values.number,
       floor: values.floor,
-      images,
     };
 
     const response = room
@@ -135,7 +131,13 @@ export function RoomFormDialog({
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
             <Field>
               <FieldLabel>Photos</FieldLabel>
-              <MultiImageUpload value={images} onChange={setImages} folder="/rooms" maxCount={10} />
+              <EntityImageManager
+                tenant={tenant}
+                entityType="room"
+                entityId={room?.id}
+                folder="/rooms"
+                maxCount={10}
+              />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>
 
