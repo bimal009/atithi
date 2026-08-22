@@ -1,10 +1,6 @@
-export type SiteContent = {
-  heroHeading: string;
-  heroSubheading: string;
-  aboutHeading: string;
-  aboutBody: string;
-  ctaLabel: string;
-};
+import type { SiteContent } from "@/features/tenant/website/types";
+
+export type { SiteContent };
 
 export type HotelWebsite = {
   hotelId: string;

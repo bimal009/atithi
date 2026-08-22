@@ -71,6 +71,8 @@ var (
 	ErrCabinNotFound     = New(http.StatusNotFound, "not_found", "Cabin not found")
 	ErrCabinNumberExists = New(http.StatusConflict, "conflict", "Cabin number already exists")
 
+	ErrGalleryImageNotFound = New(http.StatusNotFound, "not_found", "Gallery image not found")
+
 	ErrTableNotFound               = New(http.StatusNotFound, "not_found", "Table not found")
 	ErrTableNameExists             = New(http.StatusConflict, "conflict", "Table name already exists")
 	ErrReservationNotFound         = New(http.StatusNotFound, "not_found", "Reservation not found")

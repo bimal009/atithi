@@ -456,7 +456,7 @@ export function MenuItemFormDialog({
               <div className="flex flex-col gap-0.5">
                 <FieldLabel htmlFor="item-top-pick">Top pick</FieldLabel>
                 <FieldDescription>
-                  Highlight this dish as a favorite on the hotel's website menu.
+                  Highlight this dish as a favorite on the hotel&apos;s website menu.
                 </FieldDescription>
               </div>
               <Switch

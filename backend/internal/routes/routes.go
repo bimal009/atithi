@@ -7,6 +7,7 @@ import (
 	"github.com/bimal009/atithi/internal/cabins"
 	"github.com/bimal009/atithi/internal/categories"
 	"github.com/bimal009/atithi/internal/customer"
+	"github.com/bimal009/atithi/internal/gallery"
 	"github.com/bimal009/atithi/internal/hotel"
 	"github.com/bimal009/atithi/internal/hotelsettings"
 	"github.com/bimal009/atithi/internal/hotelwebsite"
@@ -31,6 +32,7 @@ type Handlers struct {
 	Hotel          *hotel.HotelHandler
 	HotelSettings  *hotelsettings.HotelSettingsHandler
 	HotelWebsite   *hotelwebsite.HotelWebsiteHandler
+	Gallery        *gallery.GalleryHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
 	AddOn          *addons.AddOnHandler
@@ -270,6 +272,13 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 			{
 				websiteGroup.GET("", h.HotelWebsite.Get)
 				websiteGroup.PATCH("", h.HotelWebsite.Update)
+			}
+
+			galleryGroup := scoped.Group("/gallery")
+			{
+				galleryGroup.POST("", h.Gallery.Create)
+				galleryGroup.GET("", h.Gallery.GetAll)
+				galleryGroup.DELETE("/:imageId", h.Gallery.Delete)
 			}
 
 			notificationsGroup := scoped.Group("/notifications")
