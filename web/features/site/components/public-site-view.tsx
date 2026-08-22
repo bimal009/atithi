@@ -17,7 +17,7 @@ export function PublicSiteView({
   page: Page;
   detailId?: string;
 }) {
-  const { hotel, website, roomTypes, cabins, tables, menuItems, galleryImages, testimonials, sections, currency, mapUrl, amenities, openingTime, closingTime, openDays } = site;
+  const { hotel, website, roomTypes, cabins, tables, menuItems, galleryImages, testimonials, sections, currency, mapUrl, amenities, openingTime, closingTime, openDays, whatsappNumber } = site;
 
   const content = React.useMemo(() => {
     const hasSavedContent = website.content && Object.values(website.content).some((v) => v);
@@ -55,6 +55,7 @@ export function PublicSiteView({
     openingTime,
     closingTime,
     openDays: openDays ?? [],
+    whatsappNumber,
     mapUrl,
     formatMoney,
     content,

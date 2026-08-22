@@ -81,7 +81,7 @@ function StayCard({ stay, kind, basePath, formatMoney }: { stay: RoomType | Cabi
 }
 
 export function EditorialTemplate({ data, editable = false, onContentChange, page: controlledPage, basePath, detailId }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, whatsappNumber, mapUrl, content, formatMoney } = data;
   const tbTimeSlots = React.useMemo(() => timeSlotsBetween(openingTime, closingTime), [openingTime, closingTime]);
   const tbClosedDays = React.useMemo(() => closedWeekdayIndices(openDays), [openDays]);
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
@@ -144,13 +144,21 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
   }
 
   function sendTableBookingOnWhatsApp(details: { name: string; phone: string; notes: string }) {
+    if (!whatsappNumber) {
+      toast.error("This hotel hasn't set up WhatsApp yet");
+      return;
+    }
     const message = [`Table reservation request for ${hotel.name}:`, `Name: ${details.name}`, `Phone: ${details.phone}`, `Date: ${tbDate || "flexible"}`, `Time: ${tbTime}`, `Guests: ${tbGuests}`, `Seating: ${tbSeating}`, details.notes ? `Notes: ${details.notes}` : undefined].filter(Boolean).join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
+    window.open(waLink(whatsappNumber, message), "_blank", "noopener,noreferrer");
   }
 
   function requestStayBooking(stay: RoomType | Cabin) {
+    if (!whatsappNumber) {
+      toast.error("This hotel hasn't set up WhatsApp yet");
+      return;
+    }
     const message = [`Booking request for ${hotel.name}:`, `- ${stay.name}`, `Check-in: ${checkIn || "flexible"}`, `Check-out: ${checkOut || "flexible"}`, `Guests: ${guests}`].join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
+    window.open(waLink(whatsappNumber, message), "_blank", "noopener,noreferrer");
   }
 
   const NAV: { id: Page; label: string }[] = [
@@ -873,10 +881,12 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
                   {hotel.email}
                 </FooterLink>
               )}
-              <FooterLink href={waLink(hotel.phoneNumber)} external>
-                <WhatsAppIcon className="size-3.5 shrink-0" />
-                WhatsApp
-              </FooterLink>
+              {whatsappNumber && (
+                <FooterLink href={waLink(whatsappNumber)} external>
+                  <WhatsAppIcon className="size-3.5 shrink-0" />
+                  WhatsApp
+                </FooterLink>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--site-bg)]/10 pt-6 text-xs sm:flex-row">
@@ -887,9 +897,11 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
         </div>
       </footer>
 
-      <a href={waLink(hotel.phoneNumber)} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" className="fixed right-4 bottom-4 z-30 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-transform hover:scale-105 sm:right-6 sm:bottom-6">
-        <WhatsAppIcon className="size-7" />
-      </a>
+      {whatsappNumber && (
+        <a href={waLink(whatsappNumber)} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" className="fixed right-4 bottom-4 z-30 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-transform hover:scale-105 sm:right-6 sm:bottom-6">
+          <WhatsAppIcon className="size-7" />
+        </a>
+      )}
 
       <Dialog open={!!selectedDish} onOpenChange={(open) => !open && setSelectedDish(null)}>
         <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden p-0" showCloseButton>

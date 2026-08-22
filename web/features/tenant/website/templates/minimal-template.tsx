@@ -151,7 +151,7 @@ export function MinimalTemplate({
   basePath,
   detailId,
 }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, sections, openingTime, closingTime, openDays, whatsappNumber, mapUrl, content, formatMoney } = data;
   const tbTimeSlots = React.useMemo(() => timeSlotsBetween(openingTime, closingTime), [openingTime, closingTime]);
   const tbClosedDays = React.useMemo(() => closedWeekdayIndices(openDays), [openDays]);
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
@@ -214,6 +214,10 @@ export function MinimalTemplate({
     return Math.max(item.price - (item.discount ?? 0), 0);
   }
   function sendTableBookingOnWhatsApp(details: { name: string; phone: string; notes: string }) {
+    if (!whatsappNumber) {
+      toast.error("This hotel hasn't set up WhatsApp yet");
+      return;
+    }
     const message = [
       `Table reservation request for ${hotel.name}:`,
       `Name: ${details.name}`,
@@ -226,9 +230,13 @@ export function MinimalTemplate({
     ]
       .filter(Boolean)
       .join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
+    window.open(waLink(whatsappNumber, message), "_blank", "noopener,noreferrer");
   }
   function requestStayBooking(stay: RoomType | Cabin) {
+    if (!whatsappNumber) {
+      toast.error("This hotel hasn't set up WhatsApp yet");
+      return;
+    }
     const message = [
       `Booking request for ${hotel.name}:`,
       `- ${stay.name}`,
@@ -236,7 +244,7 @@ export function MinimalTemplate({
       `Check-out: ${checkOut || "flexible"}`,
       `Guests: ${guests}`,
     ].join("\n");
-    window.open(waLink(hotel.phoneNumber, message), "_blank", "noopener,noreferrer");
+    window.open(waLink(whatsappNumber, message), "_blank", "noopener,noreferrer");
   }
 
   const NAV: { id: Page; label: string }[] = [

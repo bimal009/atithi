@@ -130,6 +130,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     openingTime: settingsQuery.data?.openingTime,
     closingTime: settingsQuery.data?.closingTime,
     openDays: settingsQuery.data?.openDays ?? [],
+    whatsappNumber: settingsQuery.data?.whatsappNumber,
     mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,

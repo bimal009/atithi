@@ -110,6 +110,7 @@ export type SiteData = {
   openingTime?: string;
   closingTime?: string;
   openDays: string[];
+  whatsappNumber?: string;
   mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;

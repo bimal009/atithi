@@ -31,6 +31,7 @@ export type PublicSiteResponse = {
   openingTime?: string;
   closingTime?: string;
   openDays: string[];
+  whatsappNumber?: string;
 };
 
 export async function getPublicSite(slug: string): Promise<PublicSiteResponse | null> {

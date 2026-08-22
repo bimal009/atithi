@@ -20,6 +20,7 @@ import { SettingsRow } from "./settings-row";
 
 const locationSettingsSchema = z.object({
   mapUrl: z.string().trim().url("Paste a valid Google Maps link").optional().or(z.literal("")),
+  whatsappNumber: z.string().trim().optional().or(z.literal("")),
 });
 
 type LocationSettingsInput = z.input<typeof locationSettingsSchema>;
@@ -34,11 +35,14 @@ function LocationForm({ tenant, settings }: { tenant: string; settings: HotelSet
     formState: { errors, isDirty },
   } = useForm<LocationSettingsInput, unknown, LocationSettingsValues>({
     resolver: zodResolver(locationSettingsSchema),
-    defaultValues: { mapUrl: settings.mapUrl ?? "" },
+    defaultValues: { mapUrl: settings.mapUrl ?? "", whatsappNumber: settings.whatsappNumber ?? "" },
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    await update.mutateAsync({ mapUrl: values.mapUrl || undefined });
+    await update.mutateAsync({
+      mapUrl: values.mapUrl || undefined,
+      whatsappNumber: values.whatsappNumber || undefined,
+    });
   });
 
   return (
@@ -63,6 +67,21 @@ function LocationForm({ tenant, settings }: { tenant: string; settings: HotelSet
                 <FieldError errors={[errors.mapUrl]} />
               </Field>
             </SettingsRow>
+
+            <SettingsRow
+              label="WhatsApp number"
+              description="Used for the WhatsApp button and booking messages on your website. Leave blank to hide WhatsApp entirely — your hotel's regular phone number is never used as a fallback."
+            >
+              <Field data-invalid={!!errors.whatsappNumber}>
+                <Input
+                  id="location-whatsapp-number"
+                  placeholder="98XXXXXXXX"
+                  aria-invalid={!!errors.whatsappNumber}
+                  {...register("whatsappNumber")}
+                />
+                <FieldError errors={[errors.whatsappNumber]} />
+              </Field>
+            </SettingsRow>
           </FieldGroup>
         </form>
       </CardContent>
@@ -85,10 +104,12 @@ function LocationSettingsSkeleton() {
   return (
     <Card>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex items-center gap-8">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-9 max-w-md flex-1" />
-        </div>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-8">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-9 max-w-md flex-1" />
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

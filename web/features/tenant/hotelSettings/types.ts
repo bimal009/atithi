@@ -9,6 +9,7 @@ export type HotelSettings = {
   openingTime?: string;
   closingTime?: string;
   openDays: string[];
+  whatsappNumber?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,4 +24,5 @@ export type UpdateHotelSettingsInput = {
   openingTime?: string;
   closingTime?: string;
   openDays?: string[];
+  whatsappNumber?: string;
 };
