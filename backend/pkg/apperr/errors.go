@@ -71,6 +71,8 @@ var (
 	ErrCabinNotFound     = New(http.StatusNotFound, "not_found", "Cabin not found")
 	ErrCabinNumberExists = New(http.StatusConflict, "conflict", "Cabin number already exists")
 
+	ErrTestimonialNotFound = New(http.StatusNotFound, "not_found", "Testimonial not found")
+
 	ErrGalleryImageNotFound = New(http.StatusNotFound, "not_found", "Gallery image not found")
 	ErrHotelImageNotFound   = New(http.StatusNotFound, "not_found", "Image not found")
 	ErrInvalidEntityType    = New(http.StatusBadRequest, "invalid_input", "Invalid image entity type")

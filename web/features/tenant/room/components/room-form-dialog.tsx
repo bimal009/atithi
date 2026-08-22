@@ -30,13 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useQueryClient } from "@tanstack/react-query";
+import { attachPendingImages } from "@/features/tenant/hotelImages/api/hotel-images";
 import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
+import type { PendingHotelImage } from "@/features/tenant/hotelImages/types";
 import { billingTypeName } from "@/lib/billing";
 import { formatCurrency } from "@/lib/utils";
 
 import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
 import { useRoomTypesQuery } from "../../roomType/client/useRoomTypes";
-import { useCreateRoom, useUpdateRoom } from "../client/useRooms";
+import { roomKeys, useCreateRoom, useUpdateRoom } from "../client/useRooms";
 import { roomSchema, type RoomInput, type RoomValues } from "../schema";
 import type { Room } from "../types";
 
@@ -69,6 +72,7 @@ export function RoomFormDialog({
   onSaved?: (room: Room) => void;
 }) {
   const isEdit = !!room;
+  const queryClient = useQueryClient();
   const roomTypesQuery = useRoomTypesQuery(tenant, { limit: 100 });
   const roomTypes = React.useMemo(
     () => roomTypesQuery.data?.roomTypes ?? [],
@@ -79,6 +83,8 @@ export function RoomFormDialog({
   const create = useCreateRoom(tenant);
   const update = useUpdateRoom(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
+
+  const [pendingImages, setPendingImages] = React.useState<PendingHotelImage[]>([]);
 
   const {
     register,
@@ -98,6 +104,7 @@ export function RoomFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(room, roomTypes[0]?.id));
+    setPendingImages([]);
   }, [open, room, reset, roomTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -110,6 +117,11 @@ export function RoomFormDialog({
     const response = room
       ? await update.mutateAsync({ id: room.id, input: payload })
       : await create.mutateAsync(payload);
+
+    if (!room && pendingImages.length) {
+      await attachPendingImages(tenant, "room", response.data.id, pendingImages);
+      queryClient.invalidateQueries({ queryKey: roomKeys.all(tenant) });
+    }
 
     onSaved?.(response.data);
     onOpenChange(false);
@@ -136,7 +148,9 @@ export function RoomFormDialog({
                 entityType="room"
                 entityId={room?.id}
                 folder="/rooms"
-                maxCount={10}
+                maxCount={5}
+                pending={pendingImages}
+                onPendingChange={setPendingImages}
               />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>

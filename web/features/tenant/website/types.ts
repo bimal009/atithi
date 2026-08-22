@@ -12,6 +12,7 @@ export const SECTION_KEYS = [
   "gallery",
   "restaurant",
   "testimonials",
+  "amenities",
   "contact",
 ] as const;
 
@@ -23,17 +24,19 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   gallery: "Gallery",
   restaurant: "Restaurant & menu",
   testimonials: "Testimonials",
+  amenities: "Amenities",
   contact: "Contact",
 };
 
 /** Home-page preview blocks the owner can drag into any order. */
-export const HOME_SECTIONS = ["about", "topPicks", "rooms", "cabins", "testimonials"] as const;
+export const HOME_SECTIONS = ["about", "topPicks", "amenities", "rooms", "cabins", "testimonials"] as const;
 
 export type HomeSectionId = (typeof HOME_SECTIONS)[number];
 
 export const HOME_SECTION_LABELS: Record<HomeSectionId, string> = {
   about: "About",
   topPicks: "Top picks",
+  amenities: "Amenities",
   rooms: "Rooms",
   cabins: "Cabins",
   testimonials: "Testimonials",
@@ -86,6 +89,14 @@ export function homeSectionOrder(content: SiteContent): HomeSectionId[] {
   return [...known, ...missing];
 }
 
+export type SiteTestimonial = {
+  id: string;
+  guestName: string;
+  stayLabel?: string;
+  quote: string;
+  rating?: number;
+};
+
 export type SiteData = {
   hotel: Hotel;
   roomTypes: RoomType[];
@@ -93,6 +104,8 @@ export type SiteData = {
   tables: DiningTable[];
   menuItems: MenuItem[];
   galleryImages: { url: string; section: string }[];
+  amenities: string[];
+  testimonials: SiteTestimonial[];
   mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;

@@ -37,7 +37,7 @@ func (s *hotelSettingsService) Update(ctx context.Context, hotelID string, req *
 		req.Currency = &upper
 	}
 
-	updated, err := s.repo.Update(ctx, hotelID, req.Currency, req.TaxPercent, req.ServiceChargePercent, req.MapURL)
+	updated, err := s.repo.Update(ctx, hotelID, req.Currency, req.TaxPercent, req.ServiceChargePercent, req.MapURL, req.AboutUs, req.Amenities)
 	if err != nil {
 		s.slog.Error("failed to update hotel settings", "hotel_id", hotelID, "error", err)
 		return model.HotelSettings{}, err

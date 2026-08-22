@@ -8,6 +8,8 @@ type HotelSettings struct {
 	TaxPercent           float64   `db:"tax_percent" json:"taxPercent"`
 	ServiceChargePercent float64   `db:"service_charge_percent" json:"serviceChargePercent"`
 	MapURL               *string   `db:"map_url" json:"mapUrl,omitempty"`
+	AboutUs              *string   `db:"about_us" json:"aboutUs,omitempty"`
+	Amenities            []string  `db:"amenities" json:"amenities"`
 	CreatedAt            time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt            time.Time `db:"updated_at" json:"updatedAt"`
 }

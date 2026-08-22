@@ -11,13 +11,11 @@ import (
 	"github.com/bimal009/atithi/pkg/validator"
 )
 
-// maxPerEntityType caps how many images each entity type may hold. "logo"
-// isn't listed here — it has replace semantics instead (see Create).
 var maxPerEntityType = map[string]int{
-	"cabin":   5,
-	"room":    10,
-	"table":   5,
-	"gallery": 60,
+	"cabin":   3,
+	"room":    5,
+	"table":   3,
+	"gallery": 30,
 }
 
 type HotelImageService interface {

@@ -6,6 +6,7 @@ import type { SiteContent } from "@/features/tenant/hotelWebsite/types";
 import type { MenuItem } from "@/features/tenant/menuItem/types";
 import type { RoomType } from "@/features/tenant/roomType/types";
 import type { DiningTable } from "@/features/tenant/table/types";
+import type { Testimonial } from "@/features/tenant/testimonial/types";
 
 export type PublicSiteResponse = {
   hotel: Hotel;
@@ -20,8 +21,11 @@ export type PublicSiteResponse = {
   tables: DiningTable[];
   menuItems: MenuItem[];
   galleryImages: GalleryImage[];
+  testimonials: Testimonial[];
   currency: string;
   mapUrl?: string;
+  aboutUs?: string;
+  amenities: string[];
 };
 
 export async function getPublicSite(slug: string): Promise<PublicSiteResponse | null> {

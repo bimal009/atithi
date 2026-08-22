@@ -60,29 +60,30 @@ func (r *hotelWebsiteRepo) Get(ctx context.Context, hotelID string) (model.Hotel
 }
 
 func (r *hotelWebsiteRepo) Update(ctx context.Context, hotelID string, template, theme, fontPairing *string, content *model.SiteContent) (model.HotelWebsite, error) {
-	var contentJSON []byte
+	var contentJSON *string
 	if content != nil {
 		marshaled, err := json.Marshal(content)
 		if err != nil {
 			return model.HotelWebsite{}, err
 		}
-		contentJSON = marshaled
+		s := string(marshaled)
+		contentJSON = &s
 	}
 
 	query := `
 		INSERT INTO hotel_websites (hotel_id, template, theme, font_pairing, content)
 		VALUES (
 			$1::uuid,
-			COALESCE($2::text, 'aurora'),
-			COALESCE($3::text, 'midnight-gold'),
+			COALESCE($2::text, 'editorial'),
+			COALESCE($3::text, 'amber'),
 			COALESCE($4::text, 'fraunces-public'),
-			COALESCE($5::jsonb, '{}'::jsonb)
+			COALESCE($5::text::jsonb, '{}'::jsonb)
 		)
 		ON CONFLICT (hotel_id) DO UPDATE SET
 			template = COALESCE($2::text, hotel_websites.template),
 			theme = COALESCE($3::text, hotel_websites.theme),
 			font_pairing = COALESCE($4::text, hotel_websites.font_pairing),
-			content = COALESCE($5::jsonb, hotel_websites.content),
+			content = COALESCE($5::text::jsonb, hotel_websites.content),
 			updated_at = now()
 		RETURNING hotel_id, template, theme, font_pairing, content, created_at, updated_at
 	`

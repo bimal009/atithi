@@ -10,6 +10,9 @@ type SiteResponse struct {
 	Tables        []model.Table       `json:"tables"`
 	MenuItems     []model.MenuItem    `json:"menuItems"`
 	GalleryImages []model.GalleryImage `json:"galleryImages"`
+	Testimonials  []model.Testimonial `json:"testimonials"`
 	Currency      string              `json:"currency"`
 	MapURL        *string             `json:"mapUrl,omitempty"`
+	AboutUs       *string             `json:"aboutUs,omitempty"`
+	Amenities     []string            `json:"amenities"`
 }

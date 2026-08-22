@@ -6,6 +6,7 @@ import {
   HotelImage,
   HotelImageEntityType,
   ListHotelImagesResponse,
+  PendingHotelImage,
 } from "../types";
 
 export const getHotelImages = async (
@@ -39,4 +40,24 @@ export const deleteHotelImage = async (
     `/hotels/slug/${tenant}/images/${imageId}`,
   );
   return data;
+};
+
+/** Attaches photos staged before an entity existed — call once its id is known. */
+export const attachPendingImages = async (
+  tenant: string,
+  entityType: HotelImageEntityType,
+  entityId: string,
+  pending: PendingHotelImage[],
+): Promise<void> => {
+  await Promise.all(
+    pending.map((p) =>
+      createHotelImage(tenant, {
+        entityType,
+        entityId,
+        url: p.url,
+        fileId: p.fileId,
+        fileSize: p.fileSize,
+      }),
+    ),
+  );
 };

@@ -25,3 +25,10 @@ export type CreateHotelImageInput = {
 export type ListHotelImagesResponse = {
   images: HotelImage[];
 };
+
+/** A photo uploaded to storage before its owning entity has been created/saved. */
+export type PendingHotelImage = {
+  url: string;
+  fileId?: string;
+  fileSize?: number;
+};

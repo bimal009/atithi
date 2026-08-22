@@ -18,7 +18,8 @@ type PublicSiteRepo interface {
 	ListTables(ctx context.Context, hotelID string) ([]model.Table, error)
 	ListMenuItems(ctx context.Context, hotelID string) ([]model.MenuItem, error)
 	ListGalleryImages(ctx context.Context, hotelID string) ([]model.GalleryImage, error)
-	GetSettings(ctx context.Context, hotelID string) (currency string, mapURL *string, err error)
+	ListTestimonials(ctx context.Context, hotelID string) ([]model.Testimonial, error)
+	GetSettings(ctx context.Context, hotelID string) (currency string, mapURL, aboutUs *string, amenities []string, err error)
 }
 
 type publicSiteRepo struct {
@@ -336,19 +337,49 @@ func (r *publicSiteRepo) ListGalleryImages(ctx context.Context, hotelID string) 
 	return list, rows.Err()
 }
 
-func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (string, *string, error) {
-	query := `SELECT currency, map_url FROM hotel_settings WHERE hotel_id = $1::uuid`
+func (r *publicSiteRepo) ListTestimonials(ctx context.Context, hotelID string) ([]model.Testimonial, error) {
+	query := `
+		SELECT id, hotel_id, guest_name, stay_label, quote, rating, created_at, updated_at
+		FROM testimonials
+		WHERE hotel_id = $1::uuid
+		ORDER BY created_at DESC
+		LIMIT 20
+	`
 
-	var currency string
-	var mapURL *string
-
-	err := r.DB.QueryRow(ctx, query, hotelID).Scan(&currency, &mapURL)
+	rows, err := r.DB.Query(ctx, query, hotelID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return "NPR", nil, nil
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]model.Testimonial, 0)
+	for rows.Next() {
+		var t model.Testimonial
+		if err := rows.Scan(
+			&t.ID, &t.HotelID, &t.GuestName, &t.StayLabel, &t.Quote, &t.Rating, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, err
 		}
-		return "", nil, err
+		list = append(list, t)
 	}
 
-	return currency, mapURL, nil
+	return list, rows.Err()
+}
+
+func (r *publicSiteRepo) GetSettings(ctx context.Context, hotelID string) (string, *string, *string, []string, error) {
+	query := `SELECT currency, map_url, about_us, amenities FROM hotel_settings WHERE hotel_id = $1::uuid`
+
+	var currency string
+	var mapURL, aboutUs *string
+	var amenities []string
+
+	err := r.DB.QueryRow(ctx, query, hotelID).Scan(&currency, &mapURL, &aboutUs, &amenities)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "NPR", nil, nil, []string{}, nil
+		}
+		return "", nil, nil, nil, err
+	}
+
+	return currency, mapURL, aboutUs, amenities, nil
 }

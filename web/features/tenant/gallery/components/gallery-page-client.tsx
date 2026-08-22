@@ -31,7 +31,7 @@ import {
 } from "../../hotelImages/client/useHotelImages";
 import type { GalleryImage } from "../types";
 
-const MAX_GALLERY_IMAGES = 60;
+const MAX_GALLERY_IMAGES = 30;
 
 function NewSectionDialog({ existing, onCreate }: { existing: string[]; onCreate: (name: string) => void }) {
   const [open, setOpen] = React.useState(false);

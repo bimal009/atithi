@@ -7,11 +7,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { uploadImage } from "@/features/upload/api/upload";
+import { deleteImage, uploadImage } from "@/features/upload/api/upload";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/features/upload/types";
 
 import { useCreateHotelImage, useDeleteHotelImage, useHotelImagesQuery } from "../client/useHotelImages";
-import type { HotelImageEntityType } from "../types";
+import type { HotelImageEntityType, PendingHotelImage } from "../types";
 
 export function EntityImageManager({
   tenant,
@@ -22,6 +22,8 @@ export function EntityImageManager({
   maxCount = 10,
   className,
   disabledHint = "Save first, then add photos.",
+  pending,
+  onPendingChange,
 }: {
   tenant: string;
   entityType: HotelImageEntityType;
@@ -31,18 +33,24 @@ export function EntityImageManager({
   maxCount?: number;
   className?: string;
   disabledHint?: string;
+  /** Photos staged before the entity exists yet — uploaded to storage immediately, attached once `entityId` is known. */
+  pending?: PendingHotelImage[];
+  onPendingChange?: (next: PendingHotelImage[]) => void;
 }) {
   const singleton = entityType === "logo" || entityType === "gallery";
   const ready = singleton || !!entityId;
+  const stagingMode = !ready && !!onPendingChange;
 
   const imagesQuery = useHotelImagesQuery(tenant, entityType, entityId, { enabled: ready });
   const create = useCreateHotelImage(tenant, entityType, entityId);
   const remove = useDeleteHotelImage(tenant, entityType, entityId);
 
-  const images = imagesQuery.data ?? [];
+  const images = ready ? (imagesQuery.data ?? []) : [];
+  const stagedImages = stagingMode ? (pending ?? []) : [];
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(0);
-  const remaining = maxCount - images.length;
+  const currentCount = ready ? images.length : stagedImages.length;
+  const remaining = maxCount - currentCount;
   const atLimit = remaining <= 0;
 
   async function handleFiles(files: FileList) {
@@ -72,21 +80,31 @@ export function EntityImageManager({
     const failed = results.filter((r) => r.status === "rejected").length;
     if (failed > 0) toast.error(`${failed} photo${failed > 1 ? "s" : ""} failed to upload`);
 
-    for (const result of results) {
-      if (result.status !== "fulfilled") continue;
-      const uploaded = result.value;
+    const uploaded = results
+      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadImage>>> => r.status === "fulfilled")
+      .map((r) => r.value);
+
+    if (stagingMode) {
+      onPendingChange?.([
+        ...stagedImages,
+        ...uploaded.map((u) => ({ url: u.url, fileId: u.fileId, fileSize: u.size })),
+      ]);
+      return;
+    }
+
+    for (const u of uploaded) {
       await create.mutateAsync({
         entityType,
         entityId,
-        url: uploaded.url,
-        fileId: uploaded.fileId,
-        fileSize: uploaded.size,
+        url: u.url,
+        fileId: u.fileId,
+        fileSize: u.size,
         section,
       });
     }
   }
 
-  if (!ready) {
+  if (!ready && !stagingMode) {
     return (
       <div
         className={cn(
@@ -102,23 +120,44 @@ export function EntityImageManager({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="grid grid-cols-4 gap-2">
-        {images.map((img) => (
-          <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border">
-            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL, not a local static asset */}
-            <img src={img.url} alt="" className="size-full object-cover" />
-            <Button
-              type="button"
-              size="icon-xs"
-              variant="destructive"
-              className="absolute top-1 right-1 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
-              onClick={() => remove.mutate(img.id)}
-              disabled={remove.isPending}
-            >
-              <XIcon />
-              <span className="sr-only">Remove image</span>
-            </Button>
-          </div>
-        ))}
+        {ready &&
+          images.map((img) => (
+            <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border">
+              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL, not a local static asset */}
+              <img src={img.url} alt="" className="size-full object-cover" />
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="destructive"
+                className="absolute top-1 right-1 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={() => remove.mutate(img.id)}
+                disabled={remove.isPending}
+              >
+                <XIcon />
+                <span className="sr-only">Remove image</span>
+              </Button>
+            </div>
+          ))}
+        {stagingMode &&
+          stagedImages.map((img, index) => (
+            <div key={`${img.url}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border">
+              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL, not a local static asset */}
+              <img src={img.url} alt="" className="size-full object-cover" />
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="destructive"
+                className="absolute top-1 right-1 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={() => {
+                  if (img.fileId) void deleteImage(img.fileId).catch(() => {});
+                  onPendingChange?.(stagedImages.filter((_, i) => i !== index));
+                }}
+              >
+                <XIcon />
+                <span className="sr-only">Remove image</span>
+              </Button>
+            </div>
+          ))}
         {!atLimit && (
           <button
             type="button"
@@ -137,7 +176,7 @@ export function EntityImageManager({
       </div>
 
       <span className="text-xs text-muted-foreground">
-        {images.length}/{maxCount} photos
+        {currentCount}/{maxCount} photos
       </span>
 
       <input

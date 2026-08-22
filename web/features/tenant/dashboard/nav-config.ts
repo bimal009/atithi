@@ -21,6 +21,8 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   badge?: string
+  /** When true, `href` is resolved as `/s/{tenant}{href}` instead of nesting under the dashboard base path — for routes with their own layout, like the website editor. */
+  absolute?: boolean
   items?: { title: string; href: string; badge?: string }[]
 }
 
@@ -47,7 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       { title: "Notifications", href: "/notifications", icon: BellIcon },
-      { title: "Website", href: "/website", icon: GlobeIcon },
+      { title: "Website", href: "/website-editor", icon: GlobeIcon, absolute: true },
       { title: "Gallery", href: "/gallery", icon: ImagesIcon },
     ],
   },

@@ -40,6 +40,7 @@ import (
 	"github.com/bimal009/atithi/internal/session"
 	submenus "github.com/bimal009/atithi/internal/submenus"
 	"github.com/bimal009/atithi/internal/tables"
+	"github.com/bimal009/atithi/internal/testimonials"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/internal/ws"
 	"github.com/bimal009/atithi/pkg/db"
@@ -97,6 +98,7 @@ func main() {
 	roomRepo := rooms.NewRoomRepo(pool)
 	cabinRepo := cabins.NewCabinRepo(pool)
 	tableRepo := tables.NewTableRepo(pool)
+	testimonialRepo := testimonials.NewTestimonialRepo(pool)
 	reservationRepo := reservations.NewReservationRepo(pool)
 	customerRepo := customer.NewCustomerRepo(pool)
 	orderItemRepo := orderitems.NewOrderItemRepo()
@@ -166,6 +168,9 @@ func main() {
 	tableService := tables.NewTableService(slog, tableRepo, notificationService)
 	tableHandler := tables.NewTableHandler(slog, tableService)
 
+	testimonialService := testimonials.NewTestimonialService(slog, testimonialRepo)
+	testimonialHandler := testimonials.NewTestimonialHandler(slog, testimonialService)
+
 	reservationService := reservations.NewReservationService(slog, reservationRepo, notificationService)
 	reservationHandler := reservations.NewReservationHandler(slog, reservationService)
 
@@ -226,6 +231,7 @@ func main() {
 		Room:           roomHandler,
 		Cabin:          cabinHandler,
 		Table:          tableHandler,
+		Testimonial:    testimonialHandler,
 		Reservation:    reservationHandler,
 		Role:           roleHandler,
 		Member:         memberHandler,

@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Website · Atithi",
 };
 
-export default async function WebsitePage({
+export default async function WebsiteEditorPage({
   params,
 }: {
   params: Promise<{ tenant: string }>;

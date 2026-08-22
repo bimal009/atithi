@@ -47,8 +47,8 @@ import {
 import {
   FOOD_TYPE_DOT,
   GalleryBento,
-  TESTIMONIALS,
   WhatsAppIcon,
+  amenityIcon,
   googleMapEmbedSrc,
   pageHref,
   parseLatLng,
@@ -137,7 +137,7 @@ export function MinimalTemplate({
   basePath,
   detailId,
 }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, mapUrl, content, formatMoney } = data;
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
   const [internalPage, setInternalPage] = React.useState<Page>("home");
@@ -168,7 +168,8 @@ export function MinimalTemplate({
   const showRooms = isSectionEnabled(content, "rooms");
   const showCabins = isSectionEnabled(content, "cabins") && cabins.length > 0;
   const showRestaurant = isSectionEnabled(content, "restaurant") && menuItems.length > 0;
-  const showTestimonials = isSectionEnabled(content, "testimonials");
+  const showTestimonials = isSectionEnabled(content, "testimonials") && testimonials.length > 0;
+  const showAmenities = isSectionEnabled(content, "amenities") && amenities.length > 0;
   const showGallery = isSectionEnabled(content, "gallery") && galleryImages.length > 0;
   const topPickRooms = roomTypes.filter((r) => r.isTopPick);
 
@@ -426,20 +427,38 @@ export function MinimalTemplate({
         <section key="testimonials" className="border-t border-[var(--site-border)] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
           <Rail index={String(i + 2).padStart(2, "0")} label="What guests say">
             <div className="grid grid-cols-1 gap-10 sm:grid-cols-3">
-              {TESTIMONIALS.map((t) => (
-                <div key={t.name} className="flex flex-col gap-4">
+              {testimonials.slice(0, 6).map((t) => (
+                <div key={t.id} className="flex flex-col gap-4">
                   <div className="flex gap-0.5 text-[var(--site-primary)]">
-                    {Array.from({ length: 5 }).map((_, idx) => (
+                    {Array.from({ length: t.rating ?? 5 }).map((_, idx) => (
                       <StarIcon key={idx} className="size-3.5 fill-current" />
                     ))}
                   </div>
                   <p className="text-[15px] text-[var(--site-fg)]/85">&ldquo;{t.quote}&rdquo;</p>
                   <div className="mt-auto flex flex-col text-sm">
-                    <span className="font-semibold">{t.name}</span>
-                    <span className="text-xs text-[var(--site-muted)]">{t.stay}</span>
+                    <span className="font-semibold">{t.guestName}</span>
+                    {t.stayLabel && <span className="text-xs text-[var(--site-muted)]">{t.stayLabel}</span>}
                   </div>
                 </div>
               ))}
+            </div>
+          </Rail>
+        </section>
+      ) : null,
+    amenities: (i) =>
+      showAmenities ? (
+        <section key="amenities" className="border-t border-[var(--site-border)] px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+          <Rail index={String(i + 2).padStart(2, "0")} label="Amenities">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
+              {amenities.map((label) => {
+                const Icon = amenityIcon(label);
+                return (
+                  <div key={label} className="flex items-center gap-3">
+                    <Icon className="size-5 shrink-0 text-[var(--site-primary)]" strokeWidth={1.5} />
+                    <span className="text-sm font-medium">{label}</span>
+                  </div>
+                );
+              })}
             </div>
           </Rail>
         </section>
@@ -451,18 +470,23 @@ export function MinimalTemplate({
       <nav className="sticky top-0 z-30 border-b border-[var(--site-border)] bg-[var(--site-bg)]/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-10">
           <div className="flex shrink-0 items-center gap-2.5">
-            {(editable || logoDisplay !== "text") && (
+            {logoDisplay !== "text" && (
               <EditableImage
                 src={content.logoUrl || hotel.logoUrl}
                 fileId={content.logoFileId}
                 editable={editable}
                 onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
                 folder="/hotel-website"
-                className="size-8 shrink-0 overflow-hidden rounded-sm"
-                fallback={<span className="size-8" />}
+                className={
+                  logoDisplay === "logo"
+                    ? "h-9 w-40 shrink-0"
+                    : "size-8 shrink-0 overflow-hidden rounded-sm"
+                }
+                imgClassName={logoDisplay === "logo" ? "object-contain object-left" : undefined}
+                fallback={<span className={logoDisplay === "logo" ? "h-9 w-40" : "size-8"} />}
               />
             )}
-            {(editable || logoDisplay !== "logo") && (
+            {logoDisplay !== "logo" && (
               <button
                 type="button"
                 onClick={() => goTo("home")}

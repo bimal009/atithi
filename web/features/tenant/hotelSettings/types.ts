@@ -4,6 +4,8 @@ export type HotelSettings = {
   taxPercent: number;
   serviceChargePercent: number;
   mapUrl?: string;
+  aboutUs?: string;
+  amenities: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -13,4 +15,6 @@ export type UpdateHotelSettingsInput = {
   taxPercent?: number;
   serviceChargePercent?: number;
   mapUrl?: string;
+  aboutUs?: string;
+  amenities?: string[];
 };

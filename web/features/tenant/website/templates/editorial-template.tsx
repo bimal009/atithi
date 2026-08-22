@@ -51,7 +51,6 @@ import {
 import {
   FOOD_TYPE_DOT,
   GalleryBento,
-  TESTIMONIALS,
   WhatsAppIcon,
   amenityIcon,
   googleMapEmbedSrc,
@@ -131,7 +130,7 @@ export function EditorialTemplate({
   basePath,
   detailId,
 }: TemplateComponentProps) {
-  const { hotel, roomTypes, cabins, menuItems, galleryImages, mapUrl, content, formatMoney } = data;
+  const { hotel, roomTypes, cabins, menuItems, galleryImages, amenities, testimonials, mapUrl, content, formatMoney } = data;
   const coords = React.useMemo(() => parseLatLng(mapUrl), [mapUrl]);
   const router = useRouter();
   const [internalPage, setInternalPage] = React.useState<Page>("home");
@@ -162,7 +161,8 @@ export function EditorialTemplate({
   const showRooms = isSectionEnabled(content, "rooms");
   const showCabins = isSectionEnabled(content, "cabins") && cabins.length > 0;
   const showRestaurant = isSectionEnabled(content, "restaurant") && menuItems.length > 0;
-  const showTestimonials = isSectionEnabled(content, "testimonials");
+  const showTestimonials = isSectionEnabled(content, "testimonials") && testimonials.length > 0;
+  const showAmenities = isSectionEnabled(content, "amenities") && amenities.length > 0;
   const showGallery = isSectionEnabled(content, "gallery") && galleryImages.length > 0;
   const topPickRooms = roomTypes.filter((r) => r.isTopPick);
 
@@ -445,20 +445,41 @@ export function EditorialTemplate({
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
             <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-semibold">What guests say</h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-              {TESTIMONIALS.map((t) => (
-                <div key={t.name} className="flex flex-col gap-4 rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] p-6">
+              {testimonials.slice(0, 6).map((t) => (
+                <div key={t.id} className="flex flex-col gap-4 rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] p-6">
                   <div className="flex gap-0.5 text-[var(--site-primary)]">
-                    {Array.from({ length: 5 }).map((_, i) => (
+                    {Array.from({ length: t.rating ?? 5 }).map((_, i) => (
                       <StarIcon key={i} className="size-3.5 fill-current" />
                     ))}
                   </div>
                   <p className="text-sm">&ldquo;{t.quote}&rdquo;</p>
                   <div className="mt-auto flex flex-col text-sm">
-                    <span className="font-medium">{t.name}</span>
-                    <span className="text-xs text-[var(--site-muted)]">{t.stay}</span>
+                    <span className="font-medium">{t.guestName}</span>
+                    {t.stayLabel && <span className="text-xs text-[var(--site-muted)]">{t.stayLabel}</span>}
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+      ) : null,
+    amenities: () =>
+      showAmenities ? (
+        <section key="amenities" className="border-t border-[var(--site-border)] bg-[var(--site-card)] px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Amenities</h2>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+              {amenities.map((label) => {
+                const Icon = amenityIcon(label);
+                return (
+                  <div key={label} className="flex items-center gap-2.5 text-sm">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--site-primary)]/10 text-[var(--site-primary)]">
+                      <Icon className="size-4" />
+                    </span>
+                    {label}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -470,18 +491,23 @@ export function EditorialTemplate({
       {/* Nav */}
       <nav className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--site-border)] bg-[var(--site-bg)]/95 px-6 py-4 backdrop-blur sm:px-10">
         <div className="flex items-center gap-2.5">
-          {(editable || logoDisplay !== "text") && (
+          {logoDisplay !== "text" && (
             <EditableImage
               src={content.logoUrl || hotel.logoUrl}
               fileId={content.logoFileId}
               editable={editable}
               onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
               folder="/hotel-website"
-              className="size-9 shrink-0 overflow-hidden rounded-full"
-              fallback={<span className="size-9" />}
+              className={
+                logoDisplay === "logo"
+                  ? "h-9 w-40 shrink-0"
+                  : "size-9 shrink-0 overflow-hidden rounded-full"
+              }
+              imgClassName={logoDisplay === "logo" ? "object-contain object-left" : undefined}
+              fallback={<span className={logoDisplay === "logo" ? "h-9 w-40" : "size-9"} />}
             />
           )}
-          {(editable || logoDisplay !== "logo") && (
+          {logoDisplay !== "logo" && (
             <button
               type="button"
               onClick={() => goTo("home")}

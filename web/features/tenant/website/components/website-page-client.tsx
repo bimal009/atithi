@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
+  ArrowLeftIcon,
   GlobeIcon,
   MonitorIcon,
   PanelRightCloseIcon,
@@ -28,6 +30,7 @@ import {
 import { useMenuItemsQuery } from "@/features/tenant/menuItem/client/useMenuItems";
 import { useRoomTypesQuery } from "@/features/tenant/roomType/client/useRoomTypes";
 import { useTablesQuery } from "@/features/tenant/table/client/useTables";
+import { useTestimonialsQuery } from "@/features/tenant/testimonial/client/useTestimonials";
 
 import {
   DEFAULT_FONT_PAIRING_BY_TEMPLATE,
@@ -61,12 +64,12 @@ function InspectorSection({ title, children }: { title: string; children: React.
 
 function WebsiteEditorSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full flex-col gap-4 p-6">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-7 w-40" />
         <Skeleton className="h-4 w-64" />
       </div>
-      <Skeleton className="h-[75vh] w-full rounded-2xl" />
+      <Skeleton className="flex-1 w-full rounded-2xl" />
     </div>
   );
 }
@@ -80,6 +83,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   const tablesQuery = useTablesQuery(tenant, { limit: 12 });
   const menuItemsQuery = useMenuItemsQuery(tenant, { limit: 100 });
   const galleryQuery = useHotelImagesQuery(tenant, "gallery");
+  const testimonialsQuery = useTestimonialsQuery(tenant, { limit: 20 });
   const updateWebsite = useUpdateHotelWebsite(tenant);
 
   const hotel = hotelQuery.data;
@@ -129,6 +133,8 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     tables: tablesQuery.data?.tables ?? [],
     menuItems: menuItemsQuery.data?.menuItems ?? [],
     galleryImages: (galleryQuery.data ?? []).map((img) => ({ url: img.url, section: img.section || "General" })),
+    amenities: settingsQuery.data?.amenities ?? [],
+    testimonials: testimonialsQuery.data?.testimonials ?? [],
     mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,
@@ -192,18 +198,17 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-xl font-semibold tracking-tight">Website</h1>
-        <p className="text-sm text-muted-foreground">
-          Click any text or photo on the preview to edit it directly. Pick a template, theme and
-          font pairing on the right.
-        </p>
-      </div>
-
-      <div className="relative flex h-[calc(100vh-var(--header-height)-10rem)] min-h-[540px] flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
-        {/* Top bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+    <div className="relative flex h-full flex-col overflow-hidden bg-background text-foreground">
+      {/* Top bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            render={<Link href={`/s/${tenant}/dashboard`} aria-label="Back to dashboard" />}
+          >
+            <ArrowLeftIcon />
+          </Button>
           <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
             <GlobeIcon className="size-4 shrink-0 text-primary" />
             <span className="truncate text-sm font-medium">{hotel.name}</span>
@@ -211,6 +216,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
               / {activeTemplate.name}
             </span>
           </div>
+        </div>
 
           <div className="flex items-center gap-1.5">
             <Button
@@ -318,6 +324,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
           </div>
         </div>
       </div>
-    </div>
   );
 }
+
+

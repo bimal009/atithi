@@ -2,9 +2,6 @@ package hotelimages
 
 import model "github.com/bimal009/atithi/internal/models"
 
-// ValidEntityTypes are the kinds of images this hotel can own. "logo" and
-// "gallery" are hotel-singletons (EntityID is nil); the rest belong to one
-// cabin/room/table via EntityID.
 var ValidEntityTypes = map[string]bool{
 	"logo":    true,
 	"cabin":   true,

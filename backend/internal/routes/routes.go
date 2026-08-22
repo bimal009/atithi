@@ -25,6 +25,7 @@ import (
 	"github.com/bimal009/atithi/internal/sections"
 	submenus "github.com/bimal009/atithi/internal/submenus"
 	"github.com/bimal009/atithi/internal/tables"
+	"github.com/bimal009/atithi/internal/testimonials"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,6 +47,7 @@ type Handlers struct {
 	Room           *rooms.RoomHandler
 	Cabin          *cabins.CabinHandler
 	Table          *tables.TableHandler
+	Testimonial    *testimonials.TestimonialHandler
 	Reservation    *reservations.ReservationHandler
 	Role           *role.RoleHandler
 	Member         *member.MemberHandler
@@ -214,6 +216,15 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 				tablesGroup.PATCH("/:tableId", h.Table.Update)
 				tablesGroup.PATCH("/:tableId/status", h.Table.UpdateStatus)
 				tablesGroup.DELETE("/:tableId", h.Table.Delete)
+			}
+
+			testimonialsGroup := scoped.Group("/testimonials")
+			{
+				testimonialsGroup.POST("", h.Testimonial.Create)
+				testimonialsGroup.GET("", h.Testimonial.GetAll)
+				testimonialsGroup.GET("/:testimonialId", h.Testimonial.Get)
+				testimonialsGroup.PATCH("/:testimonialId", h.Testimonial.Update)
+				testimonialsGroup.DELETE("/:testimonialId", h.Testimonial.Delete)
 			}
 
 			reservationsGroup := scoped.Group("/reservations")

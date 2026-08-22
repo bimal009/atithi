@@ -108,23 +108,3 @@ export const FOOD_TYPE_DOT: Record<string, string> = {
   "non-veg": "bg-red-500",
   egg: "bg-amber-500",
 };
-
-export const TESTIMONIALS = [
-  {
-    quote:
-      "Every detail felt considered — the room, the quiet, the way breakfast just appeared when we wanted it.",
-    name: "Priya S.",
-    stay: "Weekend getaway",
-  },
-  {
-    quote:
-      "We came for one night and stayed for three. The staff anticipated things before we thought to ask.",
-    name: "Anish R.",
-    stay: "Family trip",
-  },
-  {
-    quote: "Simple, calm, and genuinely well run. Exactly what a good stay should feel like.",
-    name: "Meera T.",
-    stay: "Solo travel",
-  },
-];

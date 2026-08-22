@@ -3,6 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { attachPendingImages } from "@/features/tenant/hotelImages/api/hotel-images";
 import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
+import type { PendingHotelImage } from "@/features/tenant/hotelImages/types";
 
 import { useSectionsQuery } from "../../section/client/useSections";
-import { useCreateTable, useUpdateTable } from "../client/useTables";
+import { tableKeys, useCreateTable, useUpdateTable } from "../client/useTables";
 import { tableSchema, type TableInput, type TableValues } from "../schema";
 import type { DiningTable } from "../types";
 
@@ -65,6 +68,7 @@ export function TableFormDialog({
   onSaved?: (table: DiningTable) => void;
 }) {
   const isEdit = !!table;
+  const queryClient = useQueryClient();
   const create = useCreateTable(tenant);
   const update = useUpdateTable(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
@@ -73,6 +77,8 @@ export function TableFormDialog({
     () => sectionsQuery.data?.sections ?? [],
     [sectionsQuery.data],
   );
+
+  const [pendingImages, setPendingImages] = React.useState<PendingHotelImage[]>([]);
 
   const {
     register,
@@ -91,6 +97,7 @@ export function TableFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(table, sections[0]?.id));
+    setPendingImages([]);
   }, [open, table, reset, sections]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -103,6 +110,11 @@ export function TableFormDialog({
     const response = table
       ? await update.mutateAsync({ id: table.id, input: payload })
       : await create.mutateAsync(payload);
+
+    if (!table && pendingImages.length) {
+      await attachPendingImages(tenant, "table", response.data.id, pendingImages);
+      queryClient.invalidateQueries({ queryKey: tableKeys.all(tenant) });
+    }
 
     onSaved?.(response.data);
     onOpenChange(false);
@@ -130,6 +142,8 @@ export function TableFormDialog({
                 entityId={table?.id}
                 folder="/tables"
                 maxCount={3}
+                pending={pendingImages}
+                onPendingChange={setPendingImages}
               />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>

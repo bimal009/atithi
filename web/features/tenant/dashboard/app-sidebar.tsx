@@ -102,6 +102,7 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { tenant: string }) {
   const pathname = usePathname()
   const basePath = `/s/${tenant}/dashboard`
+  const rootPath = `/s/${tenant}`
 
   const { data: hotel } = useHotelBySlugQuery(tenant)
   const { data: kitchenPendingCount = 0 } = useKitchenPendingCount(tenant)
@@ -147,7 +148,7 @@ export function AppSidebar({
             <SidebarGroupContent className="flex flex-col gap-0.5">
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const href = `${basePath}${item.href}`
+                  const href = item.absolute ? `${rootPath}${item.href}` : `${basePath}${item.href}`
                   const isActive =
                     item.href === "" ? pathname === href : pathname.startsWith(href)
 

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,10 +31,12 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { attachPendingImages } from "@/features/tenant/hotelImages/api/hotel-images";
 import { EntityImageManager } from "@/features/tenant/hotelImages/components/entity-image-manager";
+import type { PendingHotelImage } from "@/features/tenant/hotelImages/types";
 
 import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
-import { useCreateCabin, useUpdateCabin } from "../client/useCabins";
+import { cabinKeys, useCreateCabin, useUpdateCabin } from "../client/useCabins";
 import { cabinSchema, type CabinInput, type CabinValues } from "../schema";
 import type { Cabin } from "../types";
 
@@ -76,6 +79,7 @@ export function CabinFormDialog({
   onSaved?: (cabin: Cabin) => void;
 }) {
   const isEdit = !!cabin;
+  const queryClient = useQueryClient();
   const create = useCreateCabin(tenant);
   const update = useUpdateCabin(tenant);
   const pending = isEdit ? update.isPending : create.isPending;
@@ -84,6 +88,8 @@ export function CabinFormDialog({
     () => billingTypesQuery.data?.billingTypes ?? [],
     [billingTypesQuery.data],
   );
+
+  const [pendingImages, setPendingImages] = React.useState<PendingHotelImage[]>([]);
 
   const {
     register,
@@ -102,6 +108,7 @@ export function CabinFormDialog({
   React.useEffect(() => {
     if (!open) return;
     reset(valuesOf(cabin, billingTypes[0]?.id));
+    setPendingImages([]);
   }, [open, cabin, reset, billingTypes]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -125,6 +132,11 @@ export function CabinFormDialog({
     const response = cabin
       ? await update.mutateAsync({ id: cabin.id, input: payload })
       : await create.mutateAsync(payload);
+
+    if (!cabin && pendingImages.length) {
+      await attachPendingImages(tenant, "cabin", response.data.id, pendingImages);
+      queryClient.invalidateQueries({ queryKey: cabinKeys.all(tenant) });
+    }
 
     onSaved?.(response.data);
     onOpenChange(false);
@@ -151,7 +163,9 @@ export function CabinFormDialog({
                 entityType="cabin"
                 entityId={cabin?.id}
                 folder="/cabins"
-                maxCount={5}
+                maxCount={3}
+                pending={pendingImages}
+                onPendingChange={setPendingImages}
               />
               <FieldDescription>JPG, PNG, WebP or AVIF, up to 5 MB each.</FieldDescription>
             </Field>

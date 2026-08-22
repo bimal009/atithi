@@ -17,7 +17,7 @@ export function PublicSiteView({
   page: Page;
   detailId?: string;
 }) {
-  const { hotel, website, roomTypes, cabins, tables, menuItems, galleryImages, currency, mapUrl } = site;
+  const { hotel, website, roomTypes, cabins, tables, menuItems, galleryImages, testimonials, currency, mapUrl, amenities } = site;
 
   const content = React.useMemo(() => {
     const hasSavedContent = website.content && Object.values(website.content).some((v) => v);
@@ -43,6 +43,14 @@ export function PublicSiteView({
     tables,
     menuItems,
     galleryImages: galleryImages.map((img) => ({ url: img.url, section: img.section || "General" })),
+    amenities,
+    testimonials: testimonials.map((t) => ({
+      id: t.id,
+      guestName: t.guestName,
+      stayLabel: t.stayLabel,
+      quote: t.quote,
+      rating: t.rating,
+    })),
     mapUrl,
     formatMoney,
     content,
