@@ -1068,10 +1068,12 @@ export function MinimalTemplate({
                   {hotel.email}
                 </FooterLink>
               )}
-              <FooterLink href={waLink(hotel.phoneNumber)} external>
-                <WhatsAppIcon className="size-3.5 shrink-0" />
-                WhatsApp
-              </FooterLink>
+              {whatsappNumber && (
+                <FooterLink href={waLink(whatsappNumber)} external>
+                  <WhatsAppIcon className="size-3.5 shrink-0" />
+                  WhatsApp
+                </FooterLink>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--site-bg)]/10 pt-6 text-xs sm:flex-row">
@@ -1080,15 +1082,17 @@ export function MinimalTemplate({
         </div>
       </footer>
 
-      <a
-        href={waLink(hotel.phoneNumber)}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp"
-        className="fixed right-4 bottom-4 z-40 flex size-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/15 transition-transform duration-200 hover:scale-105 sm:right-6 sm:bottom-6"
-      >
-        <WhatsAppIcon className="size-6" />
-      </a>
+      {whatsappNumber && (
+        <a
+          href={waLink(whatsappNumber)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="fixed right-4 bottom-4 z-40 flex size-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/15 transition-transform duration-200 hover:scale-105 sm:right-6 sm:bottom-6"
+        >
+          <WhatsAppIcon className="size-6" />
+        </a>
+      )}
 
       <Dialog open={!!selectedDish} onOpenChange={(open) => !open && setSelectedDish(null)}>
         <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden rounded-sm p-0" showCloseButton>
