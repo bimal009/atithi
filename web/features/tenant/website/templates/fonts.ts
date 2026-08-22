@@ -1,11 +1,19 @@
 import {
   Bricolage_Grotesque,
+  Cormorant_Garamond,
+  DM_Sans,
+  DM_Serif_Display,
   Fraunces,
   Instrument_Serif,
+  Jost,
   Karla,
+  Libre_Caslon_Display,
+  Libre_Franklin,
   Manrope,
   Newsreader,
+  Playfair_Display,
   Public_Sans,
+  Source_Sans_3,
   Work_Sans,
 } from "next/font/google";
 
@@ -58,4 +66,55 @@ export const estateBody = Work_Sans({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-estate-body",
+});
+
+// Heritage — classic luxury hotel serif
+export const heritageDisplay = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-heritage-display",
+});
+export const heritageBody = Source_Sans_3({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-heritage-body",
+});
+
+// Orchard — elegant boutique serif, lighter touch
+export const orchardDisplay = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-orchard-display",
+});
+export const orchardBody = Jost({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-orchard-body",
+});
+
+// Atelier — clean modern editorial serif
+export const atelierDisplay = DM_Serif_Display({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-atelier-display",
+});
+export const atelierBody = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-atelier-body",
+});
+
+// Caslon — bold vintage-luxury display
+export const caslonDisplay = Libre_Caslon_Display({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-caslon-display",
+});
+export const caslonBody = Libre_Franklin({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-caslon-body",
 });

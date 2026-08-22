@@ -4,7 +4,7 @@ import type { MenuItem } from "@/features/tenant/menuItem/types";
 import type { RoomType } from "@/features/tenant/roomType/types";
 import type { DiningTable } from "@/features/tenant/table/types";
 
-export type TemplateId = "stonehouse" | "meridian";
+export type TemplateId = "stonehouse";
 
 export const SECTION_KEYS = [
   "rooms",

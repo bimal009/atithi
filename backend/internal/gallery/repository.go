@@ -47,6 +47,9 @@ func (r *galleryRepo) Create(ctx context.Context, hotelID, url, userID string) (
 	)
 
 	if err != nil {
+		if apperr.IsCheckViolation(err) {
+			return model.GalleryImage{}, apperr.ErrLimitExceeded
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.GalleryImage{}, apperr.ErrHotelNotFound
 		}

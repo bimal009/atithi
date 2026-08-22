@@ -96,8 +96,8 @@ function ImageCarousel({
           </CarouselItem>
         ))}
       </CarouselContent>
-      <CarouselPrevious className="left-2 size-7" />
-      <CarouselNext className="right-2 size-7" />
+      <CarouselPrevious className="left-2 size-7 border-[var(--site-border)] bg-[var(--site-card)]/90 text-[var(--site-fg)] hover:bg-[var(--site-card)]" />
+      <CarouselNext className="right-2 size-7 border-[var(--site-border)] bg-[var(--site-card)]/90 text-[var(--site-fg)] hover:bg-[var(--site-card)]" />
     </Carousel>
   );
 }
@@ -131,13 +131,11 @@ const TESTIMONIALS = [
 
 export function HospitalitySite({
   data,
-  variant,
   editable = false,
   onContentChange,
 }: {
   data: SiteData;
   themeId: string;
-  variant: "stonehouse" | "meridian";
   editable?: boolean;
   onContentChange?: (patch: Partial<SiteContent>) => void;
 }) {
@@ -145,8 +143,6 @@ export function HospitalitySite({
   const [page, setPage] = React.useState<Page>("home");
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
-
-  const isStonehouse = variant === "stonehouse";
 
   const set = React.useCallback(
     (key: keyof SiteContent) => (value: string) => onContentChange?.({ [key]: value }),
@@ -217,7 +213,11 @@ export function HospitalitySite({
               {formatMoney(room.basePrice)}
               <span className="ml-1 text-xs font-normal text-[var(--site-muted)]">/ night</span>
             </span>
-            <Button size="sm" className="rounded-full" onClick={() => goTo("contact")}>
+            <Button
+              size="sm"
+              className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
+              onClick={() => goTo("contact")}
+            >
               Book now
             </Button>
           </div>
@@ -259,7 +259,11 @@ export function HospitalitySite({
               {formatMoney(cabin.basePrice)}
               <span className="ml-1 text-xs font-normal text-[var(--site-muted)]">/ night</span>
             </span>
-            <Button size="sm" className="rounded-full" onClick={() => goTo("contact")}>
+            <Button
+              size="sm"
+              className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
+              onClick={() => goTo("contact")}
+            >
               Reserve
             </Button>
           </div>
@@ -275,11 +279,7 @@ export function HospitalitySite({
         <button
           type="button"
           onClick={() => goTo("home")}
-          className={
-            isStonehouse
-              ? "cursor-pointer font-[family-name:var(--font-display)] text-lg font-semibold"
-              : "cursor-pointer font-[family-name:var(--font-display)] text-lg font-semibold tracking-wide uppercase"
-          }
+          className="cursor-pointer font-[family-name:var(--font-display)] text-lg font-semibold"
         >
           {hotel.name}
         </button>
@@ -348,14 +348,8 @@ export function HospitalitySite({
       {page === "home" && (
         <div className="flex flex-col">
           {/* Hero */}
-          <section className={isStonehouse ? "px-6 pt-8 sm:px-10" : ""}>
-            <div
-              className={
-                isStonehouse
-                  ? "relative overflow-hidden rounded-[2rem]"
-                  : "relative overflow-hidden"
-              }
-            >
+          <section className="px-6 pt-8 sm:px-10">
+            <div className="relative overflow-hidden rounded-[2rem]">
               <EditableImage
                 src={content.heroImageUrl || hotel.logoUrl}
                 editable={editable}
@@ -419,13 +413,7 @@ export function HospitalitySite({
             </div>
 
             {/* Decorative availability search */}
-            <div
-              className={
-                isStonehouse
-                  ? "relative z-10 mx-4 -mt-8 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--site-card)] p-5 shadow-xl ring-1 ring-[var(--site-border)] sm:mx-10 sm:-mt-9 sm:grid-cols-5 sm:items-end"
-                  : "grid grid-cols-2 gap-3 border-b border-[var(--site-border)] p-6 sm:grid-cols-5 sm:items-end sm:px-10"
-              }
-            >
+            <div className="relative z-10 mx-4 -mt-8 grid grid-cols-2 gap-3 rounded-2xl bg-[var(--site-card)] p-5 shadow-xl ring-1 ring-[var(--site-border)] sm:mx-10 sm:-mt-9 sm:grid-cols-5 sm:items-end">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-[var(--site-muted)]">Check-in</span>
                 <Input type="date" className="bg-transparent" />
@@ -442,7 +430,10 @@ export function HospitalitySite({
                 <span className="text-xs font-medium text-[var(--site-muted)]">Rooms</span>
                 <Input type="number" min={1} defaultValue={1} className="bg-transparent" />
               </div>
-              <Button className="rounded-full" onClick={() => goTo("contact")}>
+              <Button
+                className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
+                onClick={() => goTo("contact")}
+              >
                 Search availability
               </Button>
             </div>
@@ -511,7 +502,11 @@ export function HospitalitySite({
                     className="text-[var(--site-muted)]"
                   />
                 </div>
-                <Button variant="outline" className="rounded-full" onClick={() => goTo("rooms")}>
+                <Button
+                  variant="outline"
+                  className="rounded-full border-[var(--site-border)] bg-transparent text-[var(--site-fg)] hover:bg-[var(--site-primary)]/10"
+                  onClick={() => goTo("rooms")}
+                >
                   View all rooms
                 </Button>
               </div>
@@ -543,7 +538,11 @@ export function HospitalitySite({
                     className="text-[var(--site-muted)]"
                   />
                 </div>
-                <Button variant="outline" className="rounded-full" onClick={() => goTo("cabins")}>
+                <Button
+                  variant="outline"
+                  className="rounded-full border-[var(--site-border)] bg-transparent text-[var(--site-fg)] hover:bg-[var(--site-primary)]/10"
+                  onClick={() => goTo("cabins")}
+                >
                   View all cabins
                 </Button>
               </div>
@@ -566,7 +565,11 @@ export function HospitalitySite({
                   as="h2"
                   className="font-[family-name:var(--font-display)] text-3xl font-semibold"
                 />
-                <Button variant="outline" className="rounded-full" onClick={() => goTo("gallery")}>
+                <Button
+                  variant="outline"
+                  className="rounded-full border-[var(--site-border)] bg-transparent text-[var(--site-fg)] hover:bg-[var(--site-primary)]/10"
+                  onClick={() => goTo("gallery")}
+                >
                   View full gallery
                 </Button>
               </div>
@@ -619,12 +622,15 @@ export function HospitalitySite({
                   className="text-[var(--site-muted)]"
                 />
                 <div className="flex flex-wrap gap-3">
-                  <Button className="rounded-full" onClick={() => goTo("restaurant")}>
+                  <Button
+                    className="rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
+                    onClick={() => goTo("restaurant")}
+                  >
                     View menu
                   </Button>
                   <Button
                     variant="outline"
-                    className="rounded-full"
+                    className="rounded-full border-[var(--site-border)] bg-transparent text-[var(--site-fg)] hover:bg-[var(--site-primary)]/10"
                     onClick={() => goTo("contact")}
                   >
                     Reserve a table
@@ -679,7 +685,7 @@ export function HospitalitySite({
                 <Button
                   size="lg"
                   variant="outline"
-                  className="rounded-full"
+                  className="rounded-full border-[var(--site-border)] bg-transparent text-[var(--site-fg)] hover:bg-[var(--site-primary)]/10"
                   onClick={() => goTo("contact")}
                 >
                   Contact us
@@ -785,7 +791,7 @@ export function HospitalitySite({
               className="text-[var(--site-muted)]"
             />
             <Button
-              className="mt-2 w-fit rounded-full"
+              className="mt-2 w-fit rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
               onClick={() => goTo("contact")}
             >
               Reserve a table
@@ -892,7 +898,10 @@ export function HospitalitySite({
               <Input placeholder="Phone" />
               <Input placeholder="Subject" />
               <Textarea placeholder="Message" rows={4} />
-              <Button type="submit" className="w-fit rounded-full">
+              <Button
+                type="submit"
+                className="w-fit rounded-full bg-[var(--site-primary)] text-[var(--site-primary-fg)] hover:opacity-90"
+              >
                 Send message
               </Button>
             </form>

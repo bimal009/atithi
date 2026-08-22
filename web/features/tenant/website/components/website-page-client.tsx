@@ -35,7 +35,6 @@ import { defaultSiteContent, type SiteContent, type TemplateId } from "../types"
 import { FontPicker } from "./font-picker";
 import { GalleryManager } from "./gallery-manager";
 import { SectionToggles } from "./section-toggles";
-import { TemplatePicker } from "./template-picker";
 import { ThemePicker } from "./theme-picker";
 
 const DEVICES = [
@@ -80,7 +79,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
   const hotel = hotelQuery.data;
 
-  const [template, setTemplate] = React.useState<TemplateId>("stonehouse");
+  const [template] = React.useState<TemplateId>("stonehouse");
   const [theme, setTheme] = React.useState("amber");
   const [fontPairing, setFontPairing] = React.useState("fraunces-public");
   const [content, setContent] = React.useState<SiteContent | null>(null);
@@ -92,7 +91,6 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     if (seeded.current || !hotel || !websiteQuery.data) return;
     seeded.current = true;
 
-    setTemplate((websiteQuery.data.template as TemplateId) || "stonehouse");
     setTheme(websiteQuery.data.theme || "amber");
     setFontPairing(websiteQuery.data.fontPairing || "fraunces-public");
 
@@ -134,10 +132,6 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
 
   const inspector = (
     <>
-      <InspectorSection title="Template">
-        <TemplatePicker value={template} onChange={setTemplate} />
-      </InspectorSection>
-      <Separator />
       <InspectorSection title="Color theme">
         <ThemePicker value={theme} onChange={setTheme} />
       </InspectorSection>
