@@ -9,6 +9,7 @@ import (
 	"github.com/bimal009/atithi/internal/customer"
 	"github.com/bimal009/atithi/internal/gallery"
 	"github.com/bimal009/atithi/internal/hotel"
+	"github.com/bimal009/atithi/internal/publicsite"
 	"github.com/bimal009/atithi/internal/hotelsettings"
 	"github.com/bimal009/atithi/internal/hotelwebsite"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
@@ -33,6 +34,7 @@ type Handlers struct {
 	HotelSettings  *hotelsettings.HotelSettingsHandler
 	HotelWebsite   *hotelwebsite.HotelWebsiteHandler
 	Gallery        *gallery.GalleryHandler
+	PublicSite     *publicsite.PublicSiteHandler
 	BillingType    *billingtypes.BillingTypeHandler
 	Category       *categories.CategoryHandler
 	AddOn          *addons.AddOnHandler
@@ -62,8 +64,16 @@ func Register(r *gin.Engine, h *Handlers) {
 	registerAuthRoutes(api, h.Auth, h.RequireAuth)
 	registerHotelRoutes(api, h)
 	registerUploadRoutes(api, h.Image, h.RequireAuth)
+	registerPublicRoutes(api, h)
 
 	api.GET("/dishes", h.RequireAuth, h.MenuItem.SearchDishes)
+}
+
+func registerPublicRoutes(rg *gin.RouterGroup, h *Handlers) {
+	public := rg.Group("/public")
+	{
+		public.GET("/hotels/:slug/site", h.PublicSite.Get)
+	}
 }
 
 func registerUploadRoutes(

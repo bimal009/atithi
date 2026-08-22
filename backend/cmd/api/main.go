@@ -21,6 +21,7 @@ import (
 	"github.com/bimal009/atithi/internal/hotelsettings"
 	"github.com/bimal009/atithi/internal/gallery"
 	"github.com/bimal009/atithi/internal/hotelwebsite"
+	"github.com/bimal009/atithi/internal/publicsite"
 	handlers "github.com/bimal009/atithi/internal/imagekit"
 	"github.com/bimal009/atithi/internal/member"
 	"github.com/bimal009/atithi/internal/menuitems"
@@ -128,6 +129,10 @@ func main() {
 	galleryService := gallery.NewGalleryService(slog, galleryRepo)
 	galleryHandler := gallery.NewGalleryHandler(slog, galleryService)
 
+	publicSiteRepo := publicsite.NewPublicSiteRepo(pool)
+	publicSiteService := publicsite.NewPublicSiteService(slog, publicSiteRepo)
+	publicSiteHandler := publicsite.NewPublicSiteHandler(slog, publicSiteService)
+
 	billingTypeService := billingtypes.NewBillingTypeService(slog, billingTypeRepo, notificationService)
 	billingTypeHandler := billingtypes.NewBillingTypeHandler(slog, billingTypeService)
 
@@ -209,6 +214,7 @@ func main() {
 		HotelSettings:  hotelSettingsHandler,
 		HotelWebsite:   hotelWebsiteHandler,
 		Gallery:        galleryHandler,
+		PublicSite:     publicSiteHandler,
 		BillingType:    billingTypeHandler,
 		Category:       categoryHandler,
 		AddOn:          addOnHandler,

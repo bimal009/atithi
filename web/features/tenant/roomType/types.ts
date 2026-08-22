@@ -10,6 +10,7 @@ export type RoomType = {
   amenities: string[];
   restrictions: string[];
   images: string[];
+  isTopPick: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -24,6 +25,7 @@ export type CreateRoomTypeInput = {
   amenities?: string[];
   restrictions?: string[];
   images?: string[];
+  isTopPick?: boolean;
 };
 
 export type UpdateRoomTypeInput = Partial<CreateRoomTypeInput>;

@@ -59,6 +59,7 @@ export type SiteData = {
   tables: DiningTable[];
   menuItems: MenuItem[];
   galleryImages: string[];
+  mapUrl?: string;
   formatMoney: (amount: number) => string;
   content: SiteContent;
 };

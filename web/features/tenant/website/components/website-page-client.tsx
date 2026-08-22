@@ -80,8 +80,8 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
   const hotel = hotelQuery.data;
 
   const [template] = React.useState<TemplateId>("stonehouse");
-  const [theme, setTheme] = React.useState("amber");
-  const [fontPairing, setFontPairing] = React.useState("fraunces-public");
+  const [theme, setTheme] = React.useState("tripto-blue");
+  const [fontPairing, setFontPairing] = React.useState("tripto-roboto-inter");
   const [content, setContent] = React.useState<SiteContent | null>(null);
   const [device, setDevice] = React.useState<(typeof DEVICES)[number]["id"]>("desktop");
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -91,8 +91,8 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     if (seeded.current || !hotel || !websiteQuery.data) return;
     seeded.current = true;
 
-    setTheme(websiteQuery.data.theme || "amber");
-    setFontPairing(websiteQuery.data.fontPairing || "fraunces-public");
+    setTheme(websiteQuery.data.theme || "tripto-blue");
+    setFontPairing(websiteQuery.data.fontPairing || "tripto-roboto-inter");
 
     const saved = websiteQuery.data.content;
     const hasSavedContent = saved && Object.values(saved).some((v) => v);
@@ -122,6 +122,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
     tables: tablesQuery.data?.tables ?? [],
     menuItems: menuItemsQuery.data?.menuItems ?? [],
     galleryImages: (galleryQuery.data ?? []).map((img) => img.url),
+    mapUrl: settingsQuery.data?.mapUrl,
     formatMoney,
     content,
   };
@@ -174,6 +175,14 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
           <div className="flex items-center gap-1.5">
             <Button
               size="sm"
+              variant="outline"
+              className="hidden sm:inline-flex"
+              render={<a href={`/s/${tenant}`} target="_blank" rel="noopener noreferrer" />}
+            >
+              View live site
+            </Button>
+            <Button
+              size="sm"
               onClick={() => updateWebsite.mutate({ template, theme, fontPairing, content })}
               disabled={updateWebsite.isPending}
               data-icon={updateWebsite.isPending ? "inline-start" : undefined}
@@ -221,7 +230,7 @@ export function WebsitePageClient({ tenant }: { tenant: string }) {
               <span className="mb-2 block text-xs text-muted-foreground">
                 {activeTemplate.name} · {activeDevice.label}
               </span>
-              <div className="overflow-hidden rounded-lg shadow-2xl ring-1 ring-border">
+              <div className="relative overflow-hidden rounded-lg shadow-2xl ring-1 ring-border will-change-transform">
                 <SiteThemeProvider
                   themeId={theme}
                   mode={TEMPLATE_MODE[template] ?? "light"}

@@ -19,6 +19,7 @@ type CreateRoomTypeRequest struct {
 	Amenities     []string `json:"amenities,omitempty"`
 	Restrictions  []string `json:"restrictions,omitempty"`
 	Images        []string `json:"images,omitempty" validate:"omitempty,max=8,dive,url"`
+	IsTopPick     *bool    `json:"isTopPick,omitempty"`
 }
 
 type UpdateRoomTypeRequest struct {
@@ -31,4 +32,5 @@ type UpdateRoomTypeRequest struct {
 	Amenities     []string `json:"amenities,omitempty"`
 	Restrictions  []string `json:"restrictions,omitempty"`
 	Images        []string `json:"images,omitempty" validate:"omitempty,max=8,dive,url"`
+	IsTopPick     *bool    `json:"isTopPick,omitempty"`
 }

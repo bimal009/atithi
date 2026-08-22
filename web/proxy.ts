@@ -13,6 +13,11 @@ import { SESSION_COOKIE } from "@/features/auth/constants";
 const PUBLIC_ROUTES = ["/", "/login", "/verify-otp"];
 const AUTH_ROUTES = ["/login", "/verify-otp"];
 
+/** The guest-facing hotel site under /s/[tenant] — public except the tenant's own /dashboard. */
+function isPublicSiteRoute(pathname: string) {
+  return pathname.startsWith("/s/") && !pathname.includes("/dashboard");
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
@@ -21,7 +26,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/hotels", request.url));
   }
 
-  const isPublic = PUBLIC_ROUTES.includes(pathname);
+  const isPublic = PUBLIC_ROUTES.includes(pathname) || isPublicSiteRoute(pathname);
 
   if (!hasSession && !isPublic) {
     const loginUrl = new URL("/login", request.url);

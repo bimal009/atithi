@@ -14,6 +14,7 @@ type RoomType struct {
 	Amenities     []string  `db:"amenities" json:"amenities"`
 	Restrictions  []string  `db:"restrictions" json:"restrictions"`
 	Images        []string  `db:"images" json:"images"`
+	IsTopPick     bool      `db:"is_top_pick" json:"isTopPick"`
 	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt     time.Time `db:"updated_at" json:"updatedAt"`
 }

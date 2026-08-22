@@ -33,6 +33,8 @@ export type ThemePreset = {
 };
 
 export const THEME_PRESETS: ThemePreset[] = [
+  { id: "tripto-blue", label: "Tripto Blue", swatch: "#0057FF", light: { primary: "#0057FF", primaryFg: "#FFFFFF" }, dark: { primary: "#0057FF", primaryFg: "#FFFFFF" } },
+  { id: "clay", label: "Clay", swatch: "oklch(0.585 0.14 42)", light: { primary: "oklch(0.585 0.14 42)", primaryFg: "oklch(0.985 0.008 84)" }, dark: { primary: "oklch(0.585 0.14 42)", primaryFg: "oklch(0.985 0.008 84)" } },
   { id: "deafult", label: "Slate", swatch: "oklch(0.205 0 0)", light: { primary: "oklch(0.205 0 0)", primaryFg: "oklch(0.985 0 0)" }, dark: { primary: "oklch(0.922 0 0)", primaryFg: "oklch(0.205 0 0)" } },
   { id: "red", label: "Red", swatch: "oklch(0.505 0.213 27.518)", light: { primary: "oklch(0.505 0.213 27.518)", primaryFg: "oklch(0.971 0.013 17.38)" }, dark: { primary: "oklch(0.444 0.177 26.899)", primaryFg: "oklch(0.971 0.013 17.38)" } },
   { id: "orange", label: "Orange", swatch: "oklch(0.553 0.195 38.402)", light: { primary: "oklch(0.553 0.195 38.402)", primaryFg: "oklch(0.98 0.016 73.684)" }, dark: { primary: "oklch(0.47 0.157 37.304)", primaryFg: "oklch(0.98 0.016 73.684)" } },

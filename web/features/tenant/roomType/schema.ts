@@ -9,6 +9,7 @@ export const roomTypeSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   amenities: z.string().trim().optional(),
   restrictions: z.string().trim().optional(),
+  isTopPick: z.boolean(),
 });
 
 export type RoomTypeInput = z.input<typeof roomTypeSchema>;

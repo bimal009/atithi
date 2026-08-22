@@ -4,6 +4,7 @@ import {
   DM_Sans,
   DM_Serif_Display,
   Fraunces,
+  Inter,
   Instrument_Serif,
   Jost,
   Karla,
@@ -13,6 +14,7 @@ import {
   Newsreader,
   Playfair_Display,
   Public_Sans,
+  Roboto,
   Source_Sans_3,
   Work_Sans,
 } from "next/font/google";
@@ -117,4 +119,16 @@ export const caslonBody = Libre_Franklin({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-caslon-body",
+});
+
+// Tripto — modern booking-platform sans, matches the Tripto Figma design system
+export const triptoDisplay = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-tripto-display",
+});
+export const triptoBody = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-tripto-body",
 });

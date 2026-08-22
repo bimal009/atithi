@@ -190,7 +190,7 @@ export function RoomFormDialog({
                   {billingTypeName(billingTypes, selectedType.billingTypeId)} · Sleeps{" "}
                   {selectedType.capacity}.set on the room type.{" "}
                   <Link
-                    href={`/${tenant}/dashboard/rooms/types`}
+                    href={`/s/${tenant}/dashboard/rooms/types`}
                     className="underline hover:text-foreground"
                   >
                     Manage room types

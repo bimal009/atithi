@@ -101,7 +101,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & { tenant: string }) {
   const pathname = usePathname()
-  const basePath = `/${tenant}/dashboard`
+  const basePath = `/s/${tenant}/dashboard`
 
   const { data: hotel } = useHotelBySlugQuery(tenant)
   const { data: kitchenPendingCount = 0 } = useKitchenPendingCount(tenant)

@@ -53,6 +53,11 @@ func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, re
 		images = []string{}
 	}
 
+	isTopPick := false
+	if req.IsTopPick != nil {
+		isTopPick = *req.IsTopPick
+	}
+
 	newRoomType := &model.RoomType{
 		ID:            uuid.NewString(),
 		HotelID:       hotelID,
@@ -65,6 +70,7 @@ func (s *roomTypeService) Create(ctx context.Context, hotelID, userID string, re
 		Amenities:     amenities,
 		Restrictions:  restrictions,
 		Images:        images,
+		IsTopPick:     isTopPick,
 	}
 
 	created, err := s.repo.Create(ctx, newRoomType, userID)
@@ -138,6 +144,9 @@ func (s *roomTypeService) Update(ctx context.Context, id, hotelID, userID string
 	}
 	if req.Images != nil {
 		existing.Images = req.Images
+	}
+	if req.IsTopPick != nil {
+		existing.IsTopPick = *req.IsTopPick
 	}
 
 	updated, err := s.repo.Update(ctx, &existing, userID)

@@ -30,13 +30,13 @@ func NewRoomTypeRepo(db *pgxpool.Pool) RoomTypeRepo {
 
 func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, userID string) (model.RoomType, error) {
 	query := `
-		INSERT INTO room_types (id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images)
-		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11
+		INSERT INTO room_types (id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick)
+		SELECT $1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 		WHERE EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = $2::uuid AND m.user_id = $12::uuid AND m.status = 'active'
+			WHERE m.hotel_id = $2::uuid AND m.user_id = $13::uuid AND m.status = 'active'
 		)
-		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, created_at, updated_at
+		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick, created_at, updated_at
 	`
 
 	var created model.RoomType
@@ -54,6 +54,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 		roomType.Amenities,
 		roomType.Restrictions,
 		roomType.Images,
+		roomType.IsTopPick,
 		userID,
 	).Scan(
 		&created.ID,
@@ -67,6 +68,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 		&created.Amenities,
 		&created.Restrictions,
 		&created.Images,
+		&created.IsTopPick,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 	)
@@ -86,7 +88,7 @@ func (r *roomTypeRepo) Create(ctx context.Context, roomType *model.RoomType, use
 
 func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (model.RoomType, error) {
 	query := `
-		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, created_at, updated_at
+		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick, created_at, updated_at
 		FROM room_types
 		WHERE id = $1::uuid AND hotel_id = $2::uuid
 		  AND EXISTS (
@@ -109,6 +111,7 @@ func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 		&roomType.Amenities,
 		&roomType.Restrictions,
 		&roomType.Images,
+		&roomType.IsTopPick,
 		&roomType.CreatedAt,
 		&roomType.UpdatedAt,
 	)
@@ -125,7 +128,7 @@ func (r *roomTypeRepo) Get(ctx context.Context, id, hotelID, userID string) (mod
 
 func (r *roomTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string, pagination model.Pagination) ([]model.RoomType, int, error) {
 	query := `
-		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, created_at, updated_at,
+		SELECT id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick, created_at, updated_at,
 		       COUNT(*) OVER() AS total
 		FROM room_types
 		WHERE hotel_id = $1::uuid
@@ -161,6 +164,7 @@ func (r *roomTypeRepo) ListForHotel(ctx context.Context, hotelID, userID string,
 			&roomType.Amenities,
 			&roomType.Restrictions,
 			&roomType.Images,
+			&roomType.IsTopPick,
 			&roomType.CreatedAt,
 			&roomType.UpdatedAt,
 			&total,
@@ -190,13 +194,14 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 			amenities = $7,
 			restrictions = $8,
 			images = $9,
+			is_top_pick = $10,
 			updated_at = now()
-		WHERE id = $10::uuid AND hotel_id = $11::uuid
+		WHERE id = $11::uuid AND hotel_id = $12::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = room_types.hotel_id AND m.user_id = $12::uuid AND m.status = 'active'
+			WHERE m.hotel_id = room_types.hotel_id AND m.user_id = $13::uuid AND m.status = 'active'
 		  )
-		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, created_at, updated_at
+		RETURNING id, hotel_id, name, base_price, billing_type_id, pricing_label, capacity, description, amenities, restrictions, images, is_top_pick, created_at, updated_at
 	`
 
 	var updated model.RoomType
@@ -212,6 +217,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 		roomType.Amenities,
 		roomType.Restrictions,
 		roomType.Images,
+		roomType.IsTopPick,
 		roomType.ID,
 		roomType.HotelID,
 		userID,
@@ -227,6 +233,7 @@ func (r *roomTypeRepo) Update(ctx context.Context, roomType *model.RoomType, use
 		&updated.Amenities,
 		&updated.Restrictions,
 		&updated.Images,
+		&updated.IsTopPick,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 	)

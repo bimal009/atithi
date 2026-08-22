@@ -25,7 +25,7 @@ async function loadRolesPageData(tenant: string, activeTab: RoleTab) {
 }
 
 export default async function RolesPage(
-  props: PageProps<"/[tenant]/dashboard/staff/roles">,
+  props: PageProps<"/s/[tenant]/dashboard/staff/roles">,
 ) {
   const { tenant } = await props.params;
   const searchParams = await props.searchParams;

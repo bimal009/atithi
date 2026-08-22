@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useBillingTypesQuery } from "../../billingType/client/useBillingTypes";
@@ -46,6 +47,7 @@ const emptyValues: RoomTypeInput = {
   capacity: 2,
   amenities: "",
   restrictions: "",
+  isTopPick: false,
 };
 
 function valuesOf(roomType?: RoomType, defaultBillingTypeId?: string): RoomTypeInput {
@@ -59,6 +61,7 @@ function valuesOf(roomType?: RoomType, defaultBillingTypeId?: string): RoomTypeI
     capacity: roomType.capacity,
     amenities: roomType.amenities.join(", "),
     restrictions: roomType.restrictions.join(", "),
+    isTopPick: roomType.isTopPick,
   };
 }
 
@@ -100,6 +103,7 @@ export function RoomTypeFormDialog({
   });
 
   const billingTypeId = watch("billingTypeId");
+  const isTopPick = watch("isTopPick");
 
   React.useEffect(() => {
     if (!open) return;
@@ -124,6 +128,7 @@ export function RoomTypeFormDialog({
         .map((r) => r.trim())
         .filter(Boolean),
       images,
+      isTopPick: values.isTopPick,
     };
 
     const response = roomType
@@ -278,6 +283,22 @@ export function RoomTypeFormDialog({
               />
               <FieldDescription>Comma-separated.</FieldDescription>
               <FieldError errors={[errors.restrictions]} />
+            </Field>
+
+            <Field orientation="horizontal" className="justify-between">
+              <div className="flex flex-col gap-0.5">
+                <FieldLabel htmlFor="type-top-pick">Top pick</FieldLabel>
+                <FieldDescription>
+                  Highlight this room type as a guest favorite on the hotel&apos;s website.
+                </FieldDescription>
+              </div>
+              <Switch
+                id="type-top-pick"
+                checked={isTopPick}
+                onCheckedChange={(checked) =>
+                  setValue("isTopPick", checked, { shouldValidate: true })
+                }
+              />
             </Field>
           </FieldGroup>
 

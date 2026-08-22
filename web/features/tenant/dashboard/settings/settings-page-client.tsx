@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { HotelSettingsForm } from "./hotel-settings-form";
+import { LocationSettingsForm } from "./location-settings-form";
 import { ProfileSettingsForm } from "./profile-settings-form";
 
 const tabParser = parseAsStringLiteral(["profile", "hotel"] as const)
@@ -24,11 +25,14 @@ export function SettingsPageClient({ tenant }: { tenant: string }) {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="hotel">Hotel settings</TabsTrigger>
         </TabsList>
-        <TabsContent value={tab} className="mt-4">
+        <TabsContent value={tab} className="mt-4 flex flex-col gap-6">
           {tab === "profile" ? (
             <ProfileSettingsForm />
           ) : (
-            <HotelSettingsForm tenant={tenant} />
+            <>
+              <HotelSettingsForm tenant={tenant} />
+              <LocationSettingsForm tenant={tenant} />
+            </>
           )}
         </TabsContent>
       </Tabs>

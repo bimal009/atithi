@@ -1,10 +1,20 @@
 import {
+  atelierBody,
+  atelierDisplay,
   auroraBody,
   auroraDisplay,
+  caslonBody,
+  caslonDisplay,
   estateBody,
   estateDisplay,
+  heritageBody,
+  heritageDisplay,
   onyxBody,
   onyxDisplay,
+  orchardBody,
+  orchardDisplay,
+  triptoBody,
+  triptoDisplay,
   verdantBody,
   verdantDisplay,
 } from "./fonts";
@@ -18,6 +28,13 @@ export type FontPairing = {
 };
 
 export const FONT_PAIRINGS: FontPairing[] = [
+  {
+    id: "tripto-roboto-inter",
+    label: "Roboto / Inter",
+    displayVar: "var(--font-tripto-display)",
+    bodyVar: "var(--font-tripto-body)",
+    className: `${triptoDisplay.variable} ${triptoBody.variable}`,
+  },
   {
     id: "fraunces-public",
     label: "Fraunces / Public Sans",
@@ -45,6 +62,41 @@ export const FONT_PAIRINGS: FontPairing[] = [
     displayVar: "var(--font-estate-display)",
     bodyVar: "var(--font-estate-body)",
     className: `${estateDisplay.variable} ${estateBody.variable}`,
+  },
+  {
+    id: "playfair-source",
+    label: "Playfair Display / Source Sans 3",
+    displayVar: "var(--font-heritage-display)",
+    bodyVar: "var(--font-heritage-body)",
+    className: `${heritageDisplay.variable} ${heritageBody.variable}`,
+  },
+  {
+    id: "cormorant-jost",
+    label: "Cormorant Garamond / Jost",
+    displayVar: "var(--font-orchard-display)",
+    bodyVar: "var(--font-orchard-body)",
+    className: `${orchardDisplay.variable} ${orchardBody.variable}`,
+  },
+  {
+    id: "dmserif-dmsans",
+    label: "DM Serif Display / DM Sans",
+    displayVar: "var(--font-atelier-display)",
+    bodyVar: "var(--font-atelier-body)",
+    className: `${atelierDisplay.variable} ${atelierBody.variable}`,
+  },
+  {
+    id: "fraunces-dmsans",
+    label: "Fraunces / DM Sans",
+    displayVar: "var(--font-aurora-display)",
+    bodyVar: "var(--font-atelier-body)",
+    className: `${auroraDisplay.variable} ${atelierBody.variable}`,
+  },
+  {
+    id: "librecaslon-franklin",
+    label: "Libre Caslon Display / Libre Franklin",
+    displayVar: "var(--font-caslon-display)",
+    bodyVar: "var(--font-caslon-body)",
+    className: `${caslonDisplay.variable} ${caslonBody.variable}`,
   },
 ];
 

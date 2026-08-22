@@ -22,7 +22,7 @@ import { RoomStatusChart } from "@/features/tenant/dashboard/overview/room-statu
 
 export function OverviewPageClient({ tenant }: { tenant: string }) {
   const loading = useMockLoading()
-  const base = `/${tenant}/dashboard`
+  const base = `/s/${tenant}/dashboard`
 
   const { occupancyRate, occupied, total } = getRoomStats()
   const todayBookings = getTodayBookings()

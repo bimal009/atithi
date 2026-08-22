@@ -1,0 +1,1 @@
+ALTER TABLE room_types ADD COLUMN is_top_pick BOOLEAN NOT NULL DEFAULT false;

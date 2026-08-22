@@ -9,7 +9,7 @@ import (
 
 type HotelSettingsRepo interface {
 	Get(ctx context.Context, hotelID string) (model.HotelSettings, error)
-	Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64) (model.HotelSettings, error)
+	Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64, mapURL *string) (model.HotelSettings, error)
 }
 
 type hotelSettingsRepo struct {
@@ -25,7 +25,7 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 		INSERT INTO hotel_settings (hotel_id)
 		VALUES ($1::uuid)
 		ON CONFLICT (hotel_id) DO UPDATE SET hotel_id = EXCLUDED.hotel_id
-		RETURNING hotel_id, currency, tax_percent, service_charge_percent, created_at, updated_at
+		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, created_at, updated_at
 	`
 
 	var settings model.HotelSettings
@@ -35,6 +35,7 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 		&settings.Currency,
 		&settings.TaxPercent,
 		&settings.ServiceChargePercent,
+		&settings.MapURL,
 		&settings.CreatedAt,
 		&settings.UpdatedAt,
 	)
@@ -45,25 +46,27 @@ func (r *hotelSettingsRepo) Get(ctx context.Context, hotelID string) (model.Hote
 	return settings, nil
 }
 
-func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64) (model.HotelSettings, error) {
+func (r *hotelSettingsRepo) Update(ctx context.Context, hotelID string, currency *string, taxPercent, serviceChargePercent *float64, mapURL *string) (model.HotelSettings, error) {
 	query := `
-		INSERT INTO hotel_settings (hotel_id, currency, tax_percent, service_charge_percent)
-		VALUES ($1::uuid, COALESCE($2::text, 'NPR'), COALESCE($3::numeric, 0), COALESCE($4::numeric, 0))
+		INSERT INTO hotel_settings (hotel_id, currency, tax_percent, service_charge_percent, map_url)
+		VALUES ($1::uuid, COALESCE($2::text, 'NPR'), COALESCE($3::numeric, 0), COALESCE($4::numeric, 0), $5::text)
 		ON CONFLICT (hotel_id) DO UPDATE SET
 			currency = COALESCE($2::text, hotel_settings.currency),
 			tax_percent = COALESCE($3::numeric, hotel_settings.tax_percent),
 			service_charge_percent = COALESCE($4::numeric, hotel_settings.service_charge_percent),
+			map_url = COALESCE($5::text, hotel_settings.map_url),
 			updated_at = now()
-		RETURNING hotel_id, currency, tax_percent, service_charge_percent, created_at, updated_at
+		RETURNING hotel_id, currency, tax_percent, service_charge_percent, map_url, created_at, updated_at
 	`
 
 	var settings model.HotelSettings
 
-	err := r.DB.QueryRow(ctx, query, hotelID, currency, taxPercent, serviceChargePercent).Scan(
+	err := r.DB.QueryRow(ctx, query, hotelID, currency, taxPercent, serviceChargePercent, mapURL).Scan(
 		&settings.HotelID,
 		&settings.Currency,
 		&settings.TaxPercent,
 		&settings.ServiceChargePercent,
+		&settings.MapURL,
 		&settings.CreatedAt,
 		&settings.UpdatedAt,
 	)

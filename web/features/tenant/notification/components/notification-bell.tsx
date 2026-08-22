@@ -24,7 +24,7 @@ const RECENT_LIMIT = 8;
 export function NotificationBell({ tenant }: { tenant: string }) {
   useNotificationSocket(tenant);
 
-  const basePath = `/${tenant}/dashboard`;
+  const basePath = `/s/${tenant}/dashboard`;
   const { data: unreadCount = 0 } = useUnreadNotificationsCount(tenant);
   const { data, isLoading } = useNotificationsQuery(tenant, { page: 1, limit: RECENT_LIMIT });
   const markRead = useMarkNotificationRead(tenant);

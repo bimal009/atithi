@@ -71,7 +71,7 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
             <Card key={hotel.id} className="@container/card">
               <CardHeader className="grid-cols-[1fr_auto]">
                 <Link
-                  href={`/${hotel.slug}/dashboard`}
+                  href={`/s/${hotel.slug}/dashboard`}
                   className="flex min-w-0 items-center gap-3 rounded-sm transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <Avatar className="rounded-md border" size="lg">
@@ -110,7 +110,7 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      render={<Link href={`/${hotel.slug}/dashboard`} />}
+                      render={<Link href={`/s/${hotel.slug}/dashboard`} />}
                     >
                       <ExternalLinkIcon aria-hidden />
                       Dashboard
