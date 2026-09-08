@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function NotificationsPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { tenant } = await params;
+  const { id } = await params;
 
-  return <NotificationsPageClient tenant={tenant} />;
+  return <NotificationsPageClient id={id} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlusIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -205,11 +206,13 @@ export function AddOnFormDialog({
                           onClick={() => pickSuggestion(dish)}
                         >
                           {dish.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img
+                            <Image
                               src={dish.imageUrl}
                               alt=""
+                              width={32}
+                              height={32}
                               className="size-8 shrink-0 rounded object-cover"
+                              unoptimized
                             />
                           ) : (
                             <span className="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
@@ -244,12 +247,15 @@ export function AddOnFormDialog({
                 {uploading ? (
                   <Spinner />
                 ) : imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                  <img
-                    src={imageUrl}
-                    alt="Add-on preview"
-                    className="size-full object-cover"
-                  />
+                  <div className="relative size-full">
+                    <Image
+                      src={imageUrl}
+                      alt="Add-on preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
                 ) : (
                   <span className="flex flex-col items-center gap-1.5">
                     <ImagePlusIcon className="size-5" />

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ImageOffIcon, LayersIcon, PencilIcon, Trash2Icon, UsersIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -69,11 +70,13 @@ export function RoomCard({
             <CarouselContent className="ml-0 size-full">
               {room.images.map((url, index) => (
                 <CarouselItem key={`${url}-${index}`} className="relative size-full pl-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-                  <img
+                  <Image
                     src={url}
                     alt={`Room ${room.number} photo ${index + 1}`}
-                    className="size-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    unoptimized
                   />
                 </CarouselItem>
               ))}

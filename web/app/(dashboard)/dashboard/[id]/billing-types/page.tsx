@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function BillingTypesPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { tenant } = await params;
+  const { id } = await params;
 
-  return <BillingTypesGrid tenant={tenant} />;
+  return <BillingTypesGrid id={id} />;
 }

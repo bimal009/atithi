@@ -3,9 +3,9 @@ import { OverviewPageClient } from "@/features/tenant/dashboard/overview/overvie
 export default async function OverviewPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { tenant } = await params
+  const { id } = await params
 
-  return <OverviewPageClient tenant={tenant} />
+  return <OverviewPageClient id={id} />
 }

@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function RoomTypesPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { tenant } = await params;
+  const { id } = await params;
 
-  return <RoomTypesPageClient tenant={tenant} />;
+  return <RoomTypesPageClient id={id} />;
 }

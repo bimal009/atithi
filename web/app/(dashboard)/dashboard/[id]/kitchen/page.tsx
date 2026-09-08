@@ -3,9 +3,9 @@ import { KitchenPageClient } from "@/features/tenant/dashboard/kitchen/kitchen-p
 export default async function KitchenQueuePage({
   params,
 }: {
-  params: Promise<{ tenant: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { tenant } = await params
+  const { id } = await params
 
-  return <KitchenPageClient tenant={tenant} />
+  return <KitchenPageClient id={id} />
 }

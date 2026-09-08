@@ -3,9 +3,9 @@ import { OrdersPageClient } from "@/features/tenant/dashboard/orders/orders-page
 export default async function OrdersPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { tenant } = await params
+  const { id } = await params
 
-  return <OrdersPageClient tenant={tenant} />
+  return <OrdersPageClient id={id} />
 }

@@ -21,14 +21,14 @@ import { NotificationItem } from "./notification-item";
 
 const RECENT_LIMIT = 8;
 
-export function NotificationBell({ tenant }: { tenant: string }) {
-  useNotificationSocket(tenant);
+export function NotificationBell({ id }: { id: string }) {
+  useNotificationSocket(id);
 
-  const basePath = `/s/${tenant}/dashboard`;
-  const { data: unreadCount = 0 } = useUnreadNotificationsCount(tenant);
-  const { data, isLoading } = useNotificationsQuery(tenant, { page: 1, limit: RECENT_LIMIT });
-  const markRead = useMarkNotificationRead(tenant);
-  const markAllRead = useMarkAllNotificationsRead(tenant);
+  const basePath = `/dashboard/${id}`;
+  const { data: unreadCount = 0 } = useUnreadNotificationsCount(id);
+  const { data, isLoading } = useNotificationsQuery(id, { page: 1, limit: RECENT_LIMIT });
+  const markRead = useMarkNotificationRead(id);
+  const markAllRead = useMarkAllNotificationsRead(id);
 
   const notifications = data?.notifications ?? [];
 

@@ -12,11 +12,11 @@ export const metadata: Metadata = {
   title: "Roles & Permissions · Atithi",
 };
 
-async function loadRolesPageData(tenant: string, activeTab: RoleTab) {
+async function loadRolesPageData(id: string, activeTab: RoleTab) {
   try {
     const [{ data: rolesData }, { data: permissionsData }] = await Promise.all([
-      activeTab === "system" ? listSystemRoles(tenant) : listHotelRoles(tenant),
-      listPermissions(tenant),
+      activeTab === "system" ? listSystemRoles(id) : listHotelRoles(id),
+      listPermissions(id),
     ]);
     return { ok: true as const, roles: rolesData.roles, permissions: permissionsData.permissions };
   } catch (error) {
@@ -24,14 +24,15 @@ async function loadRolesPageData(tenant: string, activeTab: RoleTab) {
   }
 }
 
-export default async function RolesPage(
-  props: PageProps<"/s/[tenant]/dashboard/staff/roles">,
-) {
-  const { tenant } = await props.params;
+export default async function RolesPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { id } = await props.params;
   const searchParams = await props.searchParams;
-  const activeTab: RoleTab = searchParams.tab === "custom" ? "custom" : "system";
+  const activeTab: RoleTab = searchParams?.tab === "custom" ? "custom" : "system";
 
-  const result = await loadRolesPageData(tenant, activeTab);
+  const result = await loadRolesPageData(id, activeTab);
 
   if (!result.ok) {
     return (
@@ -51,7 +52,7 @@ export default async function RolesPage(
 
   return (
     <RolesPageClient
-      tenant={tenant}
+      id={id}
       activeTab={activeTab}
       roles={result.roles}
       permissions={result.permissions}

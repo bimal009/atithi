@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { CloudUploadIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,8 +80,7 @@ export function MultiImageUpload({
             key={`${url}-${index}`}
             className="group relative aspect-square overflow-hidden rounded-lg border"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL, not a local static asset */}
-            <img src={url} alt="" className="size-full object-cover" />
+            <Image src={url} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 150px" unoptimized />
             <Button
               type="button"
               size="icon-xs"

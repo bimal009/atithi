@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { CloudUploadIcon, ImagesIcon, PlusIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -132,8 +133,7 @@ function SectionBlock({
         <div className="grid grid-cols-4 gap-2">
           {images.map((img) => (
             <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border">
-              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL, not a local static asset */}
-              <img src={img.url} alt="" className="size-full object-cover" />
+              <Image src={img.url} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 150px" unoptimized />
               <Button
                 type="button"
                 size="icon-xs"

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlusIcon, SearchIcon } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
@@ -274,11 +275,13 @@ export function MenuItemFormDialog({
                           onClick={() => pickSuggestion(dish)}
                         >
                           {dish.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img
+                            <Image
                               src={dish.imageUrl}
                               alt=""
+                              width={32}
+                              height={32}
                               className="size-8 shrink-0 rounded object-cover"
+                              unoptimized
                             />
                           ) : (
                             <span className="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
@@ -313,12 +316,15 @@ export function MenuItemFormDialog({
                 {uploading ? (
                   <Spinner />
                 ) : imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                  <img
-                    src={imageUrl}
-                    alt="Dish preview"
-                    className="size-full object-cover"
-                  />
+                  <div className="relative size-full">
+                    <Image
+                      src={imageUrl}
+                      alt="Dish preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
                 ) : (
                   <span className="flex flex-col items-center gap-1.5">
                     <ImagePlusIcon className="size-5" />
@@ -498,11 +504,13 @@ export function MenuItemFormDialog({
                           onCheckedChange={() => toggleAddOn(addOn.id)}
                         />
                         {addOn.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                          <img
+                          <Image
                             src={addOn.imageUrl}
                             alt=""
+                            width={24}
+                            height={24}
                             className="size-6 shrink-0 rounded-full object-cover"
+                            unoptimized
                           />
                         ) : (
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">

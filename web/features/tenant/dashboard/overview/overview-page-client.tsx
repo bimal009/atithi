@@ -20,9 +20,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { BookingsTrendChart } from "@/features/tenant/dashboard/overview/bookings-trend-chart"
 import { RoomStatusChart } from "@/features/tenant/dashboard/overview/room-status-chart"
 
-export function OverviewPageClient({ tenant }: { tenant: string }) {
+export function OverviewPageClient({ id }: { id: string }) {
   const loading = useMockLoading()
-  const base = `/s/${tenant}/dashboard`
+  const base = `/dashboard/${id}`
 
   const { occupancyRate, occupied, total } = getRoomStats()
   const todayBookings = getTodayBookings()

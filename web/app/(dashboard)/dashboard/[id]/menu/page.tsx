@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function MenuDishesPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { tenant } = await params
+  const { id } = await params
 
-  return <MenuItemsGrid tenant={tenant} />
+  return <MenuItemsGrid id={id} />
 }

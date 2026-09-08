@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ImagePlusIcon, PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -188,12 +189,15 @@ export function AddDishDialog({
                 className="flex h-28 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/50"
               >
                 {photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photoUrl}
-                    alt="Dish preview"
-                    className="h-full w-full object-cover"
-                  />
+                  <div className="relative h-full w-full">
+                    <Image
+                      src={photoUrl}
+                      alt="Dish preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
                 ) : (
                   <span className="flex flex-col items-center gap-1.5">
                     <ImagePlusIcon className="size-5" />

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { AlertCircleIcon, PencilIcon, PlusIcon, Trash2Icon, UtensilsCrossedIcon } from "lucide-react";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
@@ -92,12 +93,14 @@ export function MenuItemsGrid({ tenant }: { tenant: string }) {
       cellClassName: "pl-5",
       cell: (item) =>
         item.imageUrl ? (
-          <span className="block size-10 shrink-0 overflow-hidden rounded-full">
-            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-            <img
+          <span className="relative block size-10 shrink-0 overflow-hidden rounded-full">
+            <Image
               src={item.imageUrl}
               alt={item.name}
+              width={40}
+              height={40}
               className="size-full object-cover"
+              unoptimized
             />
           </span>
         ) : (

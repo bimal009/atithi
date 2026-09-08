@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function SettingsPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { tenant } = await params;
+  const { id } = await params;
 
-  return <SettingsPageClient tenant={tenant} />;
+  return <SettingsPageClient id={id} />;
 }

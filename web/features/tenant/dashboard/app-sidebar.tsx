@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useParams, usePathname } from "next/navigation"
 import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
@@ -72,7 +73,9 @@ function NavCollapsibleItem({
               return (
                 <SidebarMenuSubItem key={sub.title}>
                   <SidebarMenuSubButton
-                    isActive={pathname === subHref}
+                    isActive={
+                      pathname === subHref || pathname.startsWith(`${subHref}/`)
+                    }
                     className="data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground"
                     render={<Link href={subHref} />}
                   >
@@ -93,14 +96,17 @@ function NavCollapsibleItem({
   )
 }
 
-export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
-  const params = useParams<{ tenant?: string }>()
-  const tenant = params?.tenant ?? "demo"
-  const basePath = `/s/${tenant}/dashboard`
-  const rootPath = `/s/${tenant}`
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  id?: string
+}
 
-  // Dummy hotel data for now
+export function AppSidebar({ id: propId, ...props }: AppSidebarProps) {
+  const pathname = usePathname()
+  const params = useParams<{ id?: string; tenant?: string }>()
+  const id = propId ?? params?.id ?? params?.tenant ?? ""
+  const basePath = `/dashboard/${id}`
+  const rootPath = `/s/${id}`
+
   const hotel = {
     name: "Atithi Hotel & Restaurant",
     city: "Kathmandu, Nepal",
@@ -121,8 +127,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             >
               <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
                 {hotel?.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={hotel.logoUrl} alt="" className="size-full object-contain" />
+                  <Image
+                    src={hotel.logoUrl}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-full object-contain"
+                    unoptimized
+                  />
                 ) : (
                   <HotelIcon className="size-4.5" />
                 )}
@@ -149,7 +161,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 {group.items.map((item) => {
                   const href = item.absolute ? `${rootPath}${item.href}` : `${basePath}${item.href}`
                   const isActive =
-                    item.href === "" ? pathname === href : pathname.startsWith(href)
+                    item.href === ""
+                      ? pathname === href
+                      : pathname === href || pathname.startsWith(`${href}/`)
 
                   if (!item.items) {
                     return (
@@ -173,7 +187,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   }
 
                   const isSubActive = item.items.some(
-                    (sub) => pathname === `${basePath}${sub.href}`
+                    (sub) =>
+                      pathname === `${basePath}${sub.href}` ||
+                      pathname.startsWith(`${basePath}${sub.href}/`)
                   )
 
                   return (
@@ -198,7 +214,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Settings"
-              isActive={pathname === `${basePath}/settings`}
+              isActive={
+                pathname === `${basePath}/settings` ||
+                pathname.startsWith(`${basePath}/settings/`)
+              }
               className="data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
               render={<Link href={`${basePath}/settings`} />}
             >

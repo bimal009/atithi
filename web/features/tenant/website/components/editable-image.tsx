@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 /** Lightweight non-editable image renderer. The editable prop is accepted but ignored (editing is not supported in v1). */
 export function EditableImage({
@@ -25,10 +27,9 @@ export function EditableImage({
   fallback?: React.ReactNode;
 }) {
   return (
-    <div className={className}>
+    <div className={cn("relative", className)}>
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className={imgClassName ?? "size-full object-cover"} />
+        <Image src={src} alt={alt} fill className={imgClassName ?? "object-cover"} unoptimized />
       ) : fallback ? (
         fallback
       ) : (

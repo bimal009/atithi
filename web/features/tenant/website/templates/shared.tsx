@@ -1,4 +1,5 @@
 import { useState, type RefObject } from "react";
+import Image from "next/image";
 import { ChevronLeftIcon, ChevronRightIcon, DumbbellIcon, SparklesIcon, UtensilsIcon, WavesIcon, WifiIcon } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -39,8 +40,9 @@ export function GalleryBento({
             aria-label="View photo"
             className={`group aspect-square cursor-pointer overflow-hidden ${radius}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-            <img src={url} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="relative size-full">
+              <Image src={url} alt="" fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="(max-width: 768px) 50vw, 33vw" unoptimized />
+            </div>
           </button>
         ))}
       </div>
@@ -48,9 +50,8 @@ export function GalleryBento({
       <Dialog open={openIndex !== null} onOpenChange={(open) => !open && setOpenIndex(null)}>
         <DialogContent container={containerRef} className="max-w-4xl border-none bg-transparent p-0 shadow-none ring-0" showCloseButton>
           {openIndex !== null && (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-              <img src={images[openIndex]} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" />
+            <div className="relative flex items-center justify-center">
+              <Image src={images[openIndex]} alt="" width={1200} height={800} className="max-h-[80vh] w-full rounded-lg object-contain" unoptimized />
               {images.length > 1 && (
                 <>
                   <button

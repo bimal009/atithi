@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SearchIcon, UtensilsCrossedIcon } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
@@ -203,11 +204,13 @@ export function MenuSetFormDialog({
                             onCheckedChange={() => toggleItem(item.id)}
                           />
                           {item.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img
+                            <Image
                               src={item.imageUrl}
                               alt=""
+                              width={24}
+                              height={24}
                               className="size-6 shrink-0 rounded-full object-cover"
+                              unoptimized
                             />
                           ) : (
                             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">

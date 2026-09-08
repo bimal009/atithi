@@ -8,9 +8,9 @@ const DashboardLayout = async ({
   params,
 }: {
   children: React.ReactNode
-  params: Promise<{ tenant: string }>
+  params: Promise<{ id: string }>
 }) => {
-  const { tenant } = await params
+  const { id } = await params
 
   return (
     <SidebarProvider
@@ -21,9 +21,9 @@ const DashboardLayout = async ({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" id={id} />
       <SidebarInset>
-        <SiteHeader tenant={tenant} />
+        <SiteHeader id={id} />
         <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </div>

@@ -6,7 +6,7 @@ import { NotificationBell } from "@/features/tenant/notification/components/noti
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export function SiteHeader({ tenant }: { tenant: string }) {
+export function SiteHeader({ id }: { id: string }) {
   const { data: user } = useMe()
 
   return (
@@ -15,7 +15,7 @@ export function SiteHeader({ tenant }: { tenant: string }) {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 h-4 data-vertical:self-auto" />
         <div className="ml-auto flex items-center gap-2">
-          <NotificationBell tenant={tenant} />
+          <NotificationBell id={id} />
           {user && <NavUser user={user} />}
         </div>
       </div>

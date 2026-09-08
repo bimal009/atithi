@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default async function ReservationsPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { tenant } = await params;
+  const { id } = await params;
 
-  return <ReservationsTable tenant={tenant} />;
+  return <ReservationsTable id={id} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { AlertCircleIcon, PencilIcon, PlusIcon, SparkleIcon, Trash2Icon } from "lucide-react";
 import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 
@@ -68,12 +69,14 @@ export function AddOnsGrid({ tenant }: { tenant: string }) {
       cellClassName: "pl-5",
       cell: (addOn) =>
         addOn.imageUrl ? (
-          <span className="block size-10 shrink-0 overflow-hidden rounded-full">
-            {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-            <img
+          <span className="relative block size-10 shrink-0 overflow-hidden rounded-full">
+            <Image
               src={addOn.imageUrl}
               alt={addOn.name}
+              width={40}
+              height={40}
               className="size-full object-cover"
+              unoptimized
             />
           </span>
         ) : (
