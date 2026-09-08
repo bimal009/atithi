@@ -69,7 +69,8 @@ const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace
 
 const PAGE_SIZE = 10;
 
-export function RoomsGrid({ tenant }: { tenant: string }) {
+export function RoomsGrid({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [status, setStatus] = useQueryState("status", statusParser);
   const [page, setPage] = useQueryState("page", pageParser);

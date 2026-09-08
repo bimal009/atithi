@@ -35,7 +35,8 @@ function CategoriesSkeleton() {
   );
 }
 
-export function CategoriesPageClient({ tenant }: { tenant: string }) {
+export function CategoriesPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
 

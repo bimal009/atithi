@@ -44,7 +44,8 @@ function CustomersSkeleton() {
   );
 }
 
-export function CustomersPageClient({ tenant }: { tenant: string }) {
+export function CustomersPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
   const debouncedSearch = useDebouncedValue(search, 400);

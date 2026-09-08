@@ -56,7 +56,8 @@ const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace
 
 const PAGE_SIZE = 10;
 
-export function MenuItemsGrid({ tenant }: { tenant: string }) {
+export function MenuItemsGrid({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [foodType, setFoodType] = useQueryState("type", foodTypeParser);
   const [page, setPage] = useQueryState("page", pageParser);

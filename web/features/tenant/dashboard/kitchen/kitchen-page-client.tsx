@@ -43,7 +43,8 @@ function KitchenSkeleton() {
   )
 }
 
-export function KitchenPageClient({ tenant }: { tenant: string }) {
+export function KitchenPageClient({ id }: { id: string }) {
+  const tenant = id
   const ordersQuery = useOrdersQuery(tenant, KITCHEN_QUERY_PARAMS)
   const updateStatus = useUpdateOrderStatus(tenant)
   const resetPendingCount = useResetKitchenPendingCount(tenant)

@@ -178,7 +178,8 @@ function SectionBlock({
   );
 }
 
-export function GalleryPageClient({ tenant }: { tenant: string }) {
+export function GalleryPageClient({ id }: { id: string }) {
+  const tenant = id;
   const imagesQuery = useHotelImagesQuery(tenant, "gallery");
   const create = useCreateHotelImage(tenant, "gallery");
   const remove = useDeleteHotelImage(tenant, "gallery");

@@ -39,7 +39,8 @@ function RoomTypesSkeleton() {
   );
 }
 
-export function RoomTypesPageClient({ tenant }: { tenant: string }) {
+export function RoomTypesPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
 

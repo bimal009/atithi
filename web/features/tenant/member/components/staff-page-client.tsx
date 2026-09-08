@@ -48,7 +48,8 @@ function StaffSkeleton() {
   );
 }
 
-export function StaffPageClient({ tenant }: { tenant: string }) {
+export function StaffPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);

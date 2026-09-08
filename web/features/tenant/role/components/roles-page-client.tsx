@@ -10,16 +10,17 @@ const tabParser = parseAsStringLiteral(["system", "custom"] as const)
   .withOptions({ shallow: false, history: "replace" });
 
 export function RolesPageClient({
-  tenant,
+  id,
   activeTab,
   roles,
   permissions,
 }: {
-  tenant: string;
+  id: string;
   activeTab: RoleTab;
   roles: RoleSummary[];
   permissions: Permission[];
 }) {
+  const tenant = id;
   const [, setTab] = useQueryState("tab", tabParser);
 
   return (

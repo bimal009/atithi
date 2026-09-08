@@ -431,7 +431,8 @@ function WebsiteForm({ tenant }: { tenant: string }) {
 }
 
 
-export function WebsitePageClient({ tenant }: { tenant: string }) {
+export function WebsitePageClient({ id }: { id: string }) {
+  const tenant = id;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

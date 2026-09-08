@@ -15,7 +15,8 @@ const tabParser = parseAsStringLiteral(["profile", "hotel"] as const)
   .withDefault("profile")
   .withOptions({ history: "replace" });
 
-export function SettingsPageClient({ tenant }: { tenant: string }) {
+export function SettingsPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [tab, setTab] = useQueryState("tab", tabParser);
 
   return (

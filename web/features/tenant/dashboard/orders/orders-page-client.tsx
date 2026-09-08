@@ -100,7 +100,8 @@ function OrdersSkeleton() {
   )
 }
 
-export function OrdersPageClient({ tenant }: { tenant: string }) {
+export function OrdersPageClient({ id }: { id: string }) {
+  const tenant = id
   const [search, setSearch] = useQueryState("q", searchParser)
   const [status, setStatus] = useQueryState("status", statusParser)
   const [page, setPage] = useQueryState("page", pageParser)

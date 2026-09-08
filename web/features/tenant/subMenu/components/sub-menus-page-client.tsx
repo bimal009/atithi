@@ -35,7 +35,8 @@ function SubMenusSkeleton() {
   );
 }
 
-export function SubMenusPageClient({ tenant }: { tenant: string }) {
+export function SubMenusPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
 

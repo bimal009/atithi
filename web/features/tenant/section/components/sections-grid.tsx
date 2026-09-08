@@ -34,7 +34,8 @@ const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace
 
 const PAGE_SIZE = 10;
 
-export function SectionsGrid({ tenant }: { tenant: string }) {
+export function SectionsGrid({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);

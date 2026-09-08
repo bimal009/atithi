@@ -43,7 +43,8 @@ const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace
 
 const PAGE_SIZE = 10;
 
-export function MenuSetsGrid({ tenant }: { tenant: string }) {
+export function MenuSetsGrid({ id }: { id: string }) {
+  const tenant = id;
   const [search, setSearch] = useQueryState("q", searchParser);
   const [page, setPage] = useQueryState("page", pageParser);
   const [creating, setCreating] = React.useState(false);

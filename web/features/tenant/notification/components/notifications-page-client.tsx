@@ -42,7 +42,8 @@ const filterParser = parseAsStringLiteral(["all", "unread"] as const)
   .withOptions({ history: "replace" });
 const pageParser = parseAsInteger.withDefault(1).withOptions({ history: "replace" });
 
-export function NotificationsPageClient({ tenant }: { tenant: string }) {
+export function NotificationsPageClient({ id }: { id: string }) {
+  const tenant = id;
   const [filter, setFilter] = useQueryState("filter", filterParser);
   const [page, setPage] = useQueryState("page", pageParser);
 
