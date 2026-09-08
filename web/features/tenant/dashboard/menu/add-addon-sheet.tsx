@@ -4,7 +4,6 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 
 import type { AddOn } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -21,15 +20,9 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input"
 import { generateId } from "@/lib/utils"
 
-const addOnSchema = z.object({
-  name: z.string().trim().min(2, "Enter an add-on name").max(100),
-  price: z.coerce.number().min(0, "Enter a valid price"),
-})
+import { addOnMenuSchema, type AddOnMenuInput, type AddOnMenuValues } from "./schema";
 
-type AddOnInput = z.input<typeof addOnSchema>
-type AddOnValues = z.output<typeof addOnSchema>
-
-const emptyValues: AddOnInput = { name: "", price: 0 }
+const emptyValues: AddOnMenuInput = { name: "", price: 0 }
 
 export function AddAddOnSheet({
   onCreate,
@@ -43,8 +36,8 @@ export function AddAddOnSheet({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<AddOnInput, unknown, AddOnValues>({
-    resolver: zodResolver(addOnSchema),
+  } = useForm<AddOnMenuInput, unknown, AddOnMenuValues>({
+    resolver: zodResolver(addOnMenuSchema),
     defaultValues: emptyValues,
   })
 

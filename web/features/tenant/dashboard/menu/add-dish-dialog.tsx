@@ -4,7 +4,6 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ImagePlusIcon, PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 
 import { ADD_ONS, MENU_CATEGORIES, getSubMenusForCategory } from "@/lib/mock-data"
 import { formatCurrency, generateId } from "@/lib/utils"
@@ -39,19 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
-const dishSchema = z.object({
-  foodType: z.enum(["veg", "non-veg", "vegan", "egg"]),
-  name: z.string().trim().min(2, "Enter a dish name").max(150),
-  category: z.string().min(1, "Select a category"),
-  price: z.coerce.number().min(0, "Enter a valid price"),
-  discount: z.string().trim().optional(),
-  description: z.string().trim().max(1000).optional(),
-  ingredients: z.string().trim().max(1000).optional(),
-  available: z.boolean(),
-})
-
-type DishInput = z.input<typeof dishSchema>
-type DishValues = z.output<typeof dishSchema>
+import { dishSchema, type DishInput, type DishValues } from "./schema";
 
 const emptyValues: DishInput = {
   name: "",

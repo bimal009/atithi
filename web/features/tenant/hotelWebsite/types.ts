@@ -13,8 +13,5 @@ export type HotelWebsite = {
 };
 
 export type UpdateHotelWebsiteInput = {
-  template?: string;
-  theme?: string;
-  fontPairing?: string;
-  content?: SiteContent;
+  content?: Partial<SiteContent>;
 };

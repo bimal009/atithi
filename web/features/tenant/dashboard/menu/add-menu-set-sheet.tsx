@@ -4,7 +4,6 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 
 import { MENU_ITEMS } from "@/lib/mock-data"
 import { formatCurrency, generateId } from "@/lib/utils"
@@ -24,16 +23,9 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-const menuSetSchema = z.object({
-  name: z.string().trim().min(2, "Enter a set name").max(150),
-  description: z.string().trim().max(500).optional(),
-  price: z.coerce.number().min(0, "Enter a valid price"),
-})
+import { menuSetMenuSchema, type MenuSetMenuInput, type MenuSetMenuValues } from "./schema";
 
-type MenuSetInput = z.input<typeof menuSetSchema>
-type MenuSetValues = z.output<typeof menuSetSchema>
-
-const emptyValues: MenuSetInput = { name: "", description: "", price: 0 }
+const emptyValues: MenuSetMenuInput = { name: "", description: "", price: 0 }
 
 export function AddMenuSetSheet({
   onCreate,
@@ -48,8 +40,8 @@ export function AddMenuSetSheet({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<MenuSetInput, unknown, MenuSetValues>({
-    resolver: zodResolver(menuSetSchema),
+  } = useForm<MenuSetMenuInput, unknown, MenuSetMenuValues>({
+    resolver: zodResolver(menuSetMenuSchema),
     defaultValues: emptyValues,
   })
 

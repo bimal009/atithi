@@ -4,7 +4,6 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CalendarIcon, PlusIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 
 import { BOOKING_CHANNELS } from "@/lib/mock-data"
 import type { Booking, Room } from "@/types"
@@ -32,17 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { formatDate, generateId } from "@/lib/utils"
 
-const bookingSchema = z.object({
-  guestName: z.string().trim().min(2, "Enter the guest's name").max(100),
-  guestPhone: z.string().trim().min(7, "Enter a phone number").max(20),
-  roomId: z.string().min(1, "Select a room"),
-  channel: z.enum(["whatsapp", "instagram", "facebook"]),
-  guests: z.coerce.number().int().min(1, "At least 1 guest"),
-  notes: z.string().trim().max(1000).optional(),
-})
-
-type BookingInput = z.input<typeof bookingSchema>
-type BookingValues = z.output<typeof bookingSchema>
+import { bookingSchema, type BookingInput, type BookingValues } from "./schema";
 
 const emptyValues: BookingInput = {
   guestName: "",

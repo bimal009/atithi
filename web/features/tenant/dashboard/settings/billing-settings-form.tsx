@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -34,17 +33,7 @@ const CURRENCIES = [
 ];
 const CURRENCY_ITEMS = Object.fromEntries(CURRENCIES.map((c) => [c.value, c.label]));
 
-const billingSettingsSchema = z.object({
-  currency: z.string().length(3),
-  taxPercent: z.coerce.number().min(0, "Cannot be negative").max(100, "Cannot exceed 100"),
-  serviceChargePercent: z.coerce
-    .number()
-    .min(0, "Cannot be negative")
-    .max(100, "Cannot exceed 100"),
-});
-
-type BillingSettingsInput = z.input<typeof billingSettingsSchema>;
-type BillingSettingsValues = z.output<typeof billingSettingsSchema>;
+import { billingSettingsSchema, type BillingSettingsInput, type BillingSettingsValues } from "./schema";
 
 function BillingForm({ tenant, settings }: { tenant: string; settings: HotelSettings }) {
   const update = useUpdateHotelSettings(tenant);

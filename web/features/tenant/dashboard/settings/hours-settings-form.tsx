@@ -3,7 +3,6 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -22,12 +21,7 @@ import { SettingsRow } from "./settings-row";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
-const hoursSettingsSchema = z.object({
-  openingTime: z.string().optional().or(z.literal("")),
-  closingTime: z.string().optional().or(z.literal("")),
-});
-
-type HoursSettingsValues = z.infer<typeof hoursSettingsSchema>;
+import { hoursSettingsSchema, type HoursSettingsValues } from "./schema";
 
 function HoursForm({ tenant, settings }: { tenant: string; settings: HotelSettings }) {
   const update = useUpdateHotelSettings(tenant);

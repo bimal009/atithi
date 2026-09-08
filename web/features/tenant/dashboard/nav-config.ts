@@ -49,7 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       { title: "Notifications", href: "/notifications", icon: BellIcon },
-      { title: "Website", href: "/website-editor", icon: GlobeIcon, absolute: true },
+      { title: "Website", href: "/website", icon: GlobeIcon },
       { title: "Gallery", href: "/gallery", icon: ImagesIcon },
     ],
   },

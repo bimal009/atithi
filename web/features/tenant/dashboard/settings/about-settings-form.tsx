@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,13 +17,7 @@ import type { HotelSettings } from "@/features/tenant/hotelSettings/types";
 
 import { SettingsRow } from "./settings-row";
 
-const aboutSettingsSchema = z.object({
-  aboutUs: z.string().trim().max(5000, "Keep it under 5000 characters").optional().or(z.literal("")),
-  amenities: z.string().optional(),
-});
-
-type AboutSettingsInput = z.input<typeof aboutSettingsSchema>;
-type AboutSettingsValues = z.output<typeof aboutSettingsSchema>;
+import { aboutSettingsSchema, type AboutSettingsInput, type AboutSettingsValues } from "./schema";
 
 function AboutForm({ tenant, settings }: { tenant: string; settings: HotelSettings }) {
   const update = useUpdateHotelSettings(tenant);

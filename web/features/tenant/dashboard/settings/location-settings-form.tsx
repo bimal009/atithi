@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,13 +17,7 @@ import type { HotelSettings } from "@/features/tenant/hotelSettings/types";
 
 import { SettingsRow } from "./settings-row";
 
-const locationSettingsSchema = z.object({
-  mapUrl: z.string().trim().url("Paste a valid Google Maps link").optional().or(z.literal("")),
-  whatsappNumber: z.string().trim().optional().or(z.literal("")),
-});
-
-type LocationSettingsInput = z.input<typeof locationSettingsSchema>;
-type LocationSettingsValues = z.output<typeof locationSettingsSchema>;
+import { locationSettingsSchema, type LocationSettingsInput, type LocationSettingsValues } from "./schema";
 
 function LocationForm({ tenant, settings }: { tenant: string; settings: HotelSettings }) {
   const update = useUpdateHotelSettings(tenant);
