@@ -1,1 +1,1 @@
-DROP TABLE hotel_websites;
+DROP TABLE IF EXISTS hotel_websites;

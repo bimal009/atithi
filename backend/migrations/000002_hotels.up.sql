@@ -2,7 +2,6 @@ CREATE TABLE hotels (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_by   UUID REFERENCES users(id) ON DELETE SET NULL,
     name         VARCHAR(255) NOT NULL,
-    slug         VARCHAR(255) NOT NULL UNIQUE,
     description  TEXT,
     logo_url     TEXT,
     address      TEXT NOT NULL,

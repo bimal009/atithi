@@ -6,6 +6,7 @@ import {
   GlobeIcon,
   ImagesIcon,
   LayoutDashboardIcon,
+  LayoutTemplateIcon,
   MessageSquareIcon,
   ReceiptTextIcon,
   ShoppingBasketIcon,
@@ -21,7 +22,6 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   badge?: string
-  /** When true, `href` is resolved as `/s/{tenant}{href}` instead of nesting under the dashboard base path — for routes with their own layout, like the website editor. */
   absolute?: boolean
   items?: { title: string; href: string; badge?: string }[]
 }
@@ -38,7 +38,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Front of house",
     items: [
-      { title: "Messages", href: "/messages", icon: MessageSquareIcon },
       {
         title: "Orders",
         href: "/orders",
@@ -117,9 +116,15 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
+  {
+    label: "Coming soon",
+    items: [
+      { title: "Messages", href: "/messages", icon: MessageSquareIcon, badge: "Soon" },
+      { title: "Website Templates", href: "/website-templates", icon: LayoutTemplateIcon, badge: "Soon" },
+    ],
+  },
 ]
 
-/** Flat list of every nav item, incl. sub-items — used for page-title and active-state lookups. */
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items)
 
 export const ROLE_LABELS: Record<StaffRole, string> = {

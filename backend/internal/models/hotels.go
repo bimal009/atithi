@@ -5,7 +5,6 @@ import "time"
 type Hotel struct {
 	ID          string    `db:"id" json:"id"`
 	Name        string    `db:"name" json:"name"`
-	Slug        string    `db:"slug" json:"slug"`
 	Description *string   `db:"description" json:"description,omitempty"`
 	LogoURL     *string   `db:"-" json:"logoUrl,omitempty"`
 	Address     string    `db:"address" json:"address"`
