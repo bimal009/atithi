@@ -14,18 +14,20 @@ import (
 )
 
 type AuthHandler struct {
-	slog    *slog.Logger
-	service AuthService
-	cookie  config.Session
-	secure  bool
+	slog        *slog.Logger
+	service     AuthService
+	cookie      config.Session
+	secure      bool
+	frontendURL string
 }
 
-func NewAuthHandler(slog *slog.Logger, service AuthService, cookie config.Session, secure bool) *AuthHandler {
+func NewAuthHandler(slog *slog.Logger, service AuthService, cookie config.Session, secure bool, frontendURL string) *AuthHandler {
 	return &AuthHandler{
-		slog:    slog,
-		service: service,
-		cookie:  cookie,
-		secure:  secure,
+		slog:        slog,
+		service:     service,
+		cookie:      cookie,
+		secure:      secure,
+		frontendURL: frontendURL,
 	}
 }
 
@@ -126,7 +128,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		UserAgent: c.Request.UserAgent(),
 	}
 
-	user, issued, err := h.service.GoogleCallback(c.Request.Context(), code, state, meta)
+	_, issued, err := h.service.GoogleCallback(c.Request.Context(), code, state, meta)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -134,10 +136,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 
 	h.setSessionCookie(c, issued.Token)
 
-	c.JSON(http.StatusOK, responses.Success("logged in with google", AuthResponse{
-		User:    user,
-		Session: NewSessionResponse(issued.Session),
-	}))
+	c.Redirect(http.StatusTemporaryRedirect, h.frontendURL)
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {

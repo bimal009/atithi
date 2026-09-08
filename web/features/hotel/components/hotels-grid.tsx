@@ -10,10 +10,10 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   PhoneIcon,
+  PlusIcon,
   Trash2Icon,
 } from "lucide-react";
 
-import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import {
   AlertDialog,
@@ -25,7 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -34,64 +33,57 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 
 import { useDeleteHotel } from "../client/useHotels";
 import { HotelFormDialog } from "./hotel-form-dialog";
 import type { Hotel } from "../types";
 
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
-
 export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
   const [editingHotel, setEditingHotel] = React.useState<Hotel | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Hotel | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false);
   const remove = useDeleteHotel();
 
   return (
     <div className="flex flex-col gap-4">
       {hotels.length === 0 ? (
-        <Card className="py-2">
-          <CardContent>
-            <EmptyState
-              icon={HotelIcon}
-              title="No hotels yet"
-              description="Add your first property to start taking bookings."
-            />
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+              <HotelIcon className="size-6 text-muted-foreground" aria-hidden />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-medium">No hotels yet</p>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Add your first property to start taking bookings.
+              </p>
+            </div>
+            <Button onClick={() => setCreateOpen(true)}>
+              <PlusIcon aria-hidden />
+              Add hotel
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {hotels.map((hotel) => (
-            <Card key={hotel.id} className="@container/card">
-              <CardHeader className="grid-cols-[1fr_auto]">
+            <Card
+              key={hotel.id}
+              className="@container/card gap-0 py-0 transition-shadow hover:shadow-md"
+            >
+              <CardHeader className="grid-cols-[1fr_auto] gap-3 border-b py-4">
                 <Link
-                  href={`/s/${hotel.slug}/dashboard`}
-                  className="flex min-w-0 items-center gap-3 rounded-sm transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  href={`/dashboard/${hotel.id}`}
+                  className="group flex min-w-0 flex-col gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Avatar className="rounded-md border" size="lg">
-                    {hotel.logoUrl ? (
-                      <AvatarImage
-                        src={hotel.logoUrl}
-                        alt=""
-                        className="rounded-md object-contain"
-                      />
-                    ) : null}
-                    <AvatarFallback className="rounded-md text-xs font-medium">
-                      {initialsOf(hotel.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex min-w-0 flex-col">
-                    <CardTitle className="truncate">{hotel.name}</CardTitle>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {hotel.slug}.hiatithi.com
-                    </span>
-                  </div>
+                  <CardTitle className="truncate transition-colors group-hover:text-primary">
+                    {hotel.name}
+                  </CardTitle>
+                  <StatusBadge
+                    status={hotel.isActive ? "active" : "inactive"}
+                    className="w-fit"
+                  />
                 </Link>
 
                 <DropdownMenu>
@@ -100,7 +92,7 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 cursor-pointer justify-self-end"
+                        className="size-8 shrink-0 justify-self-end text-muted-foreground"
                         aria-label={`Actions for ${hotel.name}`}
                       >
                         <MoreHorizontalIcon aria-hidden />
@@ -108,23 +100,16 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
                     }
                   />
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      render={<Link href={`/s/${hotel.slug}/dashboard`} />}
-                    >
+                    <DropdownMenuItem render={<Link href={`/dashboard/${hotel.id}`} />}>
                       <ExternalLinkIcon aria-hidden />
                       Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setEditingHotel(hotel)}
-                    >
+                    <DropdownMenuItem onClick={() => setEditingHotel(hotel)}>
                       <PencilIcon aria-hidden />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
-                      className="cursor-pointer"
                       onClick={() => setPendingDelete(hotel)}
                     >
                       <Trash2Icon aria-hidden />
@@ -134,29 +119,29 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
                 </DropdownMenu>
               </CardHeader>
 
-              <CardContent className="flex flex-col gap-3">
-                <StatusBadge status={hotel.isActive ? "active" : "inactive"} />
-
+              <CardContent className="flex flex-col gap-3 py-4">
                 {hotel.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">
                     {hotel.description}
                   </p>
                 )}
 
-                <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-                  <div className="flex items-start gap-2">
+                <Separator className="my-0.5" />
+
+                <div className="flex flex-col gap-2 text-sm">
+                  <div className="flex items-start gap-2.5 text-muted-foreground">
                     <MapPinIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     <span className="truncate">
                       {hotel.address}
                       {hotel.city ? `, ${hotel.city}` : ""}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5 text-muted-foreground">
                     <PhoneIcon className="size-3.5 shrink-0" aria-hidden />
                     <span className="tabular-nums">+977 {hotel.phoneNumber}</span>
                   </div>
                   {hotel.email && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5 text-muted-foreground">
                       <MailIcon className="size-3.5 shrink-0" aria-hidden />
                       <span className="truncate">{hotel.email}</span>
                     </div>
@@ -169,8 +154,13 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
       )}
 
       <HotelFormDialog
-        open={editingHotel !== null}
-        onOpenChange={(open) => !open && setEditingHotel(null)}
+        open={editingHotel !== null || createOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingHotel(null);
+            setCreateOpen(false);
+          }
+        }}
         hotel={editingHotel ?? undefined}
       />
 
@@ -180,21 +170,16 @@ export function HotelsGrid({ hotels }: { hotels: Hotel[] }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove {pendingDelete?.name}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Remove {pendingDelete?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This deletes the hotel along with its rooms, bookings and staff
               access. It cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="cursor-pointer"
               disabled={remove.isPending}
               onClick={async () => {
                 if (!pendingDelete) return;

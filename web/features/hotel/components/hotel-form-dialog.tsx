@@ -3,9 +3,6 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CheckIcon, XIcon } from "lucide-react";
-import { debounce, parseAsString, useQueryState } from "nuqs";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -32,21 +28,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { NepalFlag } from "@/components/shared/nepal-flag";
 import { NEPAL_DIAL_CODE, normalizePhoneNumber } from "@/features/auth/schema";
-import { HotelLogoUpload } from "@/features/tenant/hotelImages/components/hotel-logo-upload";
 
 import {
   useCreateHotel,
-  useSlugAvailability,
   useUpdateHotel,
 } from "../client/useHotels";
-import { CreateHotelValues, createHotelSchema, slugify } from "../schema";
+import { CreateHotelValues, createHotelSchema } from "../schema";
 import type { Hotel } from "../types";
-
-const HOTEL_DOMAIN_SUFFIX = ".hiatithi.com";
 
 const emptyValues: CreateHotelValues = {
   name: "",
-  slug: "",
   address: "",
   phoneNumber: "",
   city: "",
@@ -58,7 +49,6 @@ function valuesOf(hotel?: Hotel): CreateHotelValues {
   if (!hotel) return emptyValues;
   return {
     name: hotel.name,
-    slug: hotel.slug,
     address: hotel.address,
     phoneNumber: hotel.phoneNumber,
     city: hotel.city ?? "",
@@ -85,69 +75,23 @@ export function HotelFormDialog({
     register,
     handleSubmit,
     reset,
-    setValue,
-    getValues,
-    watch,
     formState: { errors },
   } = useForm<CreateHotelValues>({
     resolver: zodResolver(createHotelSchema),
     defaultValues: emptyValues,
   });
 
-  const slugTouched = React.useRef(isEdit);
-
-  const [debouncedSlug, setDebouncedSlug] = React.useState("");
-
   React.useEffect(() => {
     if (!open) return;
-    const values = valuesOf(hotel);
-    reset(values);
-    slugTouched.current = isEdit;
-    setDebouncedSlug(values.slug);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, hotel?.id]);
+    reset(valuesOf(hotel));
+  }, [open, hotel, reset]);
 
   const nameField = register("name");
   const phoneField = register("phoneNumber");
-  const slugField = register("slug");
-
-  const slug = watch("slug") || "";
-
-  const [, setUrlSlug] = useQueryState(
-    "hotel_slug",
-    parseAsString.withDefault("").withOptions({
-      history: "replace",
-      clearOnDefault: true,
-      limitUrlUpdates: debounce(400),
-    }),
-  );
-
-  React.useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setUrlSlug(slug)
-      .then(() => {
-        if (!cancelled) setDebouncedSlug(slug);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, open, setUrlSlug]);
-
-  const slugAvailability = useSlugAvailability(debouncedSlug, {
-    ignore: hotel?.slug,
-  });
-  const slugSettling = slug.trim() !== debouncedSlug.trim();
-  const slugChecking = slugSettling || slugAvailability.checking;
-  const slugTaken = slugAvailability.available === false;
 
   const onSubmit = handleSubmit(async (values) => {
-    if (slugTaken || slugChecking) return;
-
     const payload = {
       name: values.name,
-      slug: values.slug,
       address: values.address,
       phoneNumber: values.phoneNumber,
       city: values.city || undefined,
@@ -178,8 +122,6 @@ export function HotelFormDialog({
           </DialogHeader>
 
           <FieldGroup className="max-h-[65vh] gap-5 overflow-y-auto scrollbar-none px-1 py-4 -mx-1">
-            <HotelLogoUpload tenant={hotel?.slug} disabled={pending} />
-
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="hotel-name">Hotel name</FieldLabel>
               <Input
@@ -188,59 +130,8 @@ export function HotelFormDialog({
                 placeholder="Hotel Everest View"
                 aria-invalid={!!errors.name}
                 {...nameField}
-                onChange={(event) => {
-                  nameField.onChange(event);
-                  if (!slugTouched.current) {
-                    setValue("slug", slugify(event.target.value), {
-                      shouldValidate: !!getValues("slug"),
-                    });
-                  }
-                }}
               />
               <FieldError errors={[errors.name]} />
-            </Field>
-
-            <Field data-invalid={!!errors.slug || slugTaken}>
-              <FieldLabel htmlFor="hotel-slug">URL name</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  id="hotel-slug"
-                  placeholder="hotel-everest-view"
-                  aria-invalid={!!errors.slug || slugTaken}
-                  {...slugField}
-                  onChange={(event) => {
-                    slugTouched.current = true;
-                    slugField.onChange(event);
-                  }}
-                />
-                <InputGroupAddon
-                  align="inline-end"
-                  className="pr-3 text-muted-foreground"
-                >
-                  {slugChecking ? (
-                    <Spinner className="size-3.5" />
-                  ) : slugAvailability.available === true ? (
-                    <CheckIcon
-                      className="size-3.5 text-emerald-600 dark:text-emerald-500"
-                      aria-hidden
-                    />
-                  ) : slugTaken ? (
-                    <XIcon className="size-3.5 text-destructive" aria-hidden />
-                  ) : null}
-                  {HOTEL_DOMAIN_SUFFIX}
-                </InputGroupAddon>
-              </InputGroup>
-              <FieldError errors={[errors.slug]} />
-              {slugTaken ? (
-                <FieldDescription className="text-destructive">
-                  That URL is already taken. try another one.
-                </FieldDescription>
-              ) : (
-                <FieldDescription>
-                  Letters, numbers and single dashes. This cannot be changed
-                  often staff links depend on it.
-                </FieldDescription>
-              )}
             </Field>
 
             <Field data-invalid={!!errors.address}>
@@ -339,7 +230,7 @@ export function HotelFormDialog({
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={pending || slugTaken || slugChecking}
+              disabled={pending}
               data-icon={pending ? "inline-start" : undefined}
             >
               {pending && <Spinner />}

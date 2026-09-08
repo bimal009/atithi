@@ -29,52 +29,6 @@ func NewHotelRepo(db *pgxpool.Pool) HotelRepo {
 	}
 }
 
-func (r *hotelRepo) logoForHotel(ctx context.Context, hotelID string) (*string, error) {
-	var url string
-	err := r.DB.QueryRow(ctx, `
-		SELECT url FROM hotel_images
-		WHERE hotel_id = $1::uuid AND entity_type = 'logo'
-		ORDER BY created_at DESC
-		LIMIT 1
-	`, hotelID).Scan(&url)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &url, nil
-}
-
-func (r *hotelRepo) logosForHotels(ctx context.Context, hotelIDs []string) (map[string]string, error) {
-	if len(hotelIDs) == 0 {
-		return map[string]string{}, nil
-	}
-
-	rows, err := r.DB.Query(ctx, `
-		SELECT hotel_id, url FROM hotel_images
-		WHERE hotel_id = ANY($1::uuid[]) AND entity_type = 'logo'
-		ORDER BY created_at DESC
-	`, hotelIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	byHotel := map[string]string{}
-	for rows.Next() {
-		var hotelID, url string
-		if err := rows.Scan(&hotelID, &url); err != nil {
-			return nil, err
-		}
-		if _, ok := byHotel[hotelID]; !ok {
-			byHotel[hotelID] = url
-		}
-	}
-	return byHotel, rows.Err()
-}
 
 func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
@@ -150,12 +104,6 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 		return model.Hotel{}, err
 	}
 
-	logo, err := r.logoForHotel(ctx, hotel.ID)
-	if err != nil {
-		return model.Hotel{}, err
-	}
-	hotel.LogoURL = logo
-
 	return hotel, nil
 }
 
@@ -188,12 +136,6 @@ func (r *hotelRepo) FindByID(ctx context.Context, id string) (model.Hotel, error
 		}
 		return model.Hotel{}, err
 	}
-
-	logo, err := r.logoForHotel(ctx, hotel.ID)
-	if err != nil {
-		return model.Hotel{}, err
-	}
-	hotel.LogoURL = logo
 
 	return hotel, nil
 }
@@ -239,20 +181,6 @@ func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hot
 
 	if err := rows.Err(); err != nil {
 		return nil, err
-	}
-
-	ids := make([]string, len(hotels))
-	for i, h := range hotels {
-		ids[i] = h.ID
-	}
-	logos, err := r.logosForHotels(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	for i := range hotels {
-		if url, ok := logos[hotels[i].ID]; ok {
-			hotels[i].LogoURL = &url
-		}
 	}
 
 	return hotels, nil
@@ -311,12 +239,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		}
 		return model.Hotel{}, err
 	}
-
-	logo, err := r.logoForHotel(ctx, updated.ID)
-	if err != nil {
-		return model.Hotel{}, err
-	}
-	updated.LogoURL = logo
 
 	return updated, nil
 }

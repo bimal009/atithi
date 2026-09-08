@@ -170,7 +170,7 @@ function WebsiteForm({ tenant }: { tenant: string }) {
           {/* Logo upload */}
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-foreground">Hotel logo</span>
-            <HotelLogoUpload tenant={hotel.slug} disabled={isPending} className="items-start" />
+            <HotelLogoUpload tenant={hotel.id} disabled={isPending} className="items-start" />
           </div>
 
           {/* Logo display toggle */}

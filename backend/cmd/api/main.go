@@ -125,7 +125,7 @@ func main() {
 		cfg.OAuth.ClientSecret,
 		cfg.OAuth.RedirectURL,
 	)
-	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
+	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production", cfg.App.FrontendURL)
 
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
 	hotelHandler := hotel.NewHotelHandler(slog, hotelService)
@@ -208,7 +208,7 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.App.FrontendURL,
+		AllowOrigins:     []string{cfg.App.FrontendURL},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,

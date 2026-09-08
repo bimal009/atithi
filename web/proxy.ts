@@ -3,17 +3,10 @@ import type { NextRequest } from "next/server";
 
 import { SESSION_COOKIE } from "@/features/auth/constants";
 
-/**
- * Optimistic auth routing only — it checks that a session cookie exists, not
- * that it is valid. Proxy runs on every request, so verifying the token here
- * would mean an API round trip per navigation. The real check lives in the
- * server-side DAL (features/auth/server/session.ts), which every protected
- * page already goes through.
- */
-const PUBLIC_ROUTES = ["/", "/login", "/verify-otp"];
-const AUTH_ROUTES = ["/login", "/verify-otp"];
 
-/** The guest-facing hotel site under /s/[tenant] — public except the tenant's own /dashboard. */
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/verify-otp"];
+const AUTH_ROUTES = ["/login", "/register", "/verify-otp"];
+
 function isPublicSiteRoute(pathname: string) {
   return pathname.startsWith("/s/") && !pathname.includes("/dashboard");
 }
@@ -38,8 +31,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next internals, static assets and image files. Without
-  // this the redirect above would also swallow CSS, JS and images.
+
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],

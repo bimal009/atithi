@@ -10,7 +10,7 @@ export default function AppLayout({
 }) {
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/75">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link
             href="/hotels"

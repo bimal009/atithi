@@ -457,7 +457,7 @@ export function MinimalTemplate({
           <div className="flex shrink-0 items-center gap-2.5">
             {logoDisplay !== "text" && (
               <EditableImage
-                src={content.logoUrl || hotel.logoUrl}
+                src={content.logoUrl}
                 fileId={content.logoFileId}
                 editable={editable}
                 onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
@@ -578,7 +578,7 @@ export function MinimalTemplate({
                 </div>
               </div>
               <EditableImage
-                src={content.heroImageUrl || hotel.logoUrl}
+                src={content.heroImageUrl}
                 fileId={content.heroImageFileId}
                 editable={editable}
                 onChange={(url, fileId) => onContentChange?.({ heroImageUrl: url, heroImageFileId: fileId })}

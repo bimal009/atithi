@@ -8,10 +8,10 @@ import (
 )
 
 type App struct {
-	Port        string   `env:"APP_PORT,required"`
-	Env         string   `env:"APP_ENV" envDefault:"production"`
-	FrontendURL []string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	AppBaseURL  string   `env:"BASE_APP_URL" envDefault:"hiatithi.app"`
+	Port        string `env:"APP_PORT,required"`
+	Env         string `env:"APP_ENV" envDefault:"production"`
+	FrontendURL string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	AppBaseURL  string `env:"BASE_APP_URL" envDefault:"hiatithi.app"`
 }
 
 type DB struct {

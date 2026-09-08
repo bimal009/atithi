@@ -75,7 +75,7 @@ export function PublicSiteView({
         data={data}
         themeId={website.theme}
         page={page}
-        basePath={`/s/${hotel.slug}`}
+        basePath={`/s/${hotel.id}`}
         detailId={detailId}
       />
     </SiteThemeProvider>

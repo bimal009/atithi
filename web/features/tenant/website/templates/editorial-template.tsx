@@ -328,7 +328,7 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
         <div className="flex items-center gap-2.5">
           {logoDisplay !== "text" && (
             <EditableImage
-              src={content.logoUrl || hotel.logoUrl}
+              src={content.logoUrl}
               fileId={content.logoFileId}
               editable={editable}
               onChange={(url, fileId) => onContentChange?.({ logoUrl: url, logoFileId: fileId })}
@@ -386,7 +386,7 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
             <div className="mx-auto w-full max-w-7xl">
               <div className="relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-[2rem] sm:min-h-[32rem] lg:min-h-[38rem]">
                 <EditableImage
-                  src={content.heroImageUrl || hotel.logoUrl}
+                  src={content.heroImageUrl}
                   fileId={content.heroImageFileId}
                   editable={editable}
                   onChange={(url, fileId) =>

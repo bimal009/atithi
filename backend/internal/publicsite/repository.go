@@ -53,19 +53,6 @@ func (r *publicSiteRepo) GetHotelBySlug(ctx context.Context, slug string) (model
 		return model.Hotel{}, err
 	}
 
-	var logoURL string
-	err = r.DB.QueryRow(ctx, `
-		SELECT url FROM hotel_images
-		WHERE hotel_id = $1::uuid AND entity_type = 'logo'
-		ORDER BY created_at DESC
-		LIMIT 1
-	`, hotel.ID).Scan(&logoURL)
-	if err == nil {
-		hotel.LogoURL = &logoURL
-	} else if err != pgx.ErrNoRows {
-		return model.Hotel{}, err
-	}
-
 	return hotel, nil
 }
 
