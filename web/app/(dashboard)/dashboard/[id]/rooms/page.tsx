@@ -1,25 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next"
 
-import { PublicSiteView } from "@/features/site/components/public-site-view";
-import { loadSite } from "@/features/site/lib/load-site";
+import { RoomsGrid } from "@/features/tenant/room/components/rooms-grid"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ tenant: string }>;
-}): Promise<Metadata> {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
-  return { title: `Rooms — ${site.hotel.name}` };
+export const metadata: Metadata = {
+  title: "Rooms · Atithi",
 }
 
 export default async function RoomsPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ tenant: string }>
 }) {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
+  const { tenant } = await params
 
-  return <PublicSiteView site={site} page="rooms" />;
+  return <RoomsGrid tenant={tenant} />
 }

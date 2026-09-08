@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
 
-import { PublicSiteView } from "@/features/site/components/public-site-view";
-import { loadSite } from "@/features/site/lib/load-site";
+import { GalleryPageClient } from "@/features/tenant/gallery/components/gallery-page-client";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ tenant: string }>;
-}): Promise<Metadata> {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
-  return { title: `Gallery — ${site.hotel.name}` };
-}
+export const metadata: Metadata = {
+  title: "Gallery · Atithi",
+};
 
 export default async function GalleryPage({
   params,
@@ -19,7 +12,6 @@ export default async function GalleryPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant } = await params;
-  const site = await loadSite(tenant);
 
-  return <PublicSiteView site={site} page="gallery" />;
+  return <GalleryPageClient tenant={tenant} />;
 }

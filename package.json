@@ -1,0 +1,16 @@
+{
+  "name": "atithi",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"backend,web\" -c \"cyan,magenta\" \"pnpm dev:backend\" \"pnpm dev:web\"",
+    "dev:backend": "cd backend && go run ./cmd/api/main.go",
+    "dev:web": "pnpm --dir web dev",
+    "build:web": "pnpm --dir web build",
+    "lint:web": "pnpm --dir web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+  "packageManager": "pnpm@11.23.0"
+}

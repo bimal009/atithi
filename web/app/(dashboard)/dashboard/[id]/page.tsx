@@ -1,31 +1,11 @@
-import type { Metadata } from "next";
+import { OverviewPageClient } from "@/features/tenant/dashboard/overview/overview-page-client"
 
-import { getPublicSite } from "@/features/site/api/public-site";
-import { PublicSiteView } from "@/features/site/components/public-site-view";
-import { loadSite } from "@/features/site/lib/load-site";
-
-export async function generateMetadata({
+export default async function OverviewPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
-}): Promise<Metadata> {
-  const { tenant } = await params;
-  const site = await getPublicSite(tenant);
-  if (!site) return {};
-
-  return {
-    title: site.hotel.name,
-    description: site.hotel.description ?? `Book your stay at ${site.hotel.name}.`,
-  };
-}
-
-export default async function TenantSitePage({
-  params,
-}: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ tenant: string }>
 }) {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
+  const { tenant } = await params
 
-  return <PublicSiteView site={site} page="home" />;
+  return <OverviewPageClient tenant={tenant} />
 }

@@ -1,25 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next"
 
-import { PublicSiteView } from "@/features/site/components/public-site-view";
-import { loadSite } from "@/features/site/lib/load-site";
+import { MenuItemsGrid } from "@/features/tenant/menuItem/components/menu-items-grid"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ tenant: string }>;
-}): Promise<Metadata> {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
-  return { title: `Menu — ${site.hotel.name}` };
+export const metadata: Metadata = {
+  title: "Dishes · Atithi",
 }
 
-export default async function MenuPage({
+export default async function MenuDishesPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: Promise<{ tenant: string }>
 }) {
-  const { tenant } = await params;
-  const site = await loadSite(tenant);
+  const { tenant } = await params
 
-  return <PublicSiteView site={site} page="restaurant" />;
+  return <MenuItemsGrid tenant={tenant} />
 }
