@@ -3,7 +3,7 @@ package member
 import model "github.com/bimal009/atithi/internal/models"
 
 type AddMemberRequest struct {
-	Phone  string `json:"phone" validate:"required,nepaliphone"`
+	Email  string `json:"email" validate:"required,email"`
 	RoleID string `json:"roleId" validate:"required,uuid"`
 }
 

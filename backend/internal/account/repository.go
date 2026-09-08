@@ -73,6 +73,9 @@ func (r *accountRepo) Create(ctx context.Context, tx pgx.Tx, account *model.Acco
 	)
 
 	if err != nil {
+		if apperr.IsUniqueViolation(err) {
+			return model.Account{}, apperr.ErrAccountAlreadyExists
+		}
 		return model.Account{}, err
 	}
 

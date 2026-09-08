@@ -33,15 +33,16 @@ func NewPublicSiteRepo(db *pgxpool.Pool) PublicSiteRepo {
 
 func (r *publicSiteRepo) GetHotelBySlug(ctx context.Context, slug string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
-		FROM hotels
-		WHERE slug = $1::text AND is_active = true
+		SELECT h.id, h.name, h.description, h.address, h.city, h.phone_number, h.email, h.is_active, h.created_by, h.created_at, h.updated_at
+		FROM hotels h
+		JOIN hotel_websites hw ON hw.hotel_id = h.id
+		WHERE hw.slug = $1::text AND h.is_active = true
 	`
 
 	var hotel model.Hotel
 
 	err := r.DB.QueryRow(ctx, query, slug).Scan(
-		&hotel.ID, &hotel.Name, &hotel.Slug, &hotel.Description,
+		&hotel.ID, &hotel.Name, &hotel.Description,
 		&hotel.Address, &hotel.City, &hotel.PhoneNumber, &hotel.Email, &hotel.IsActive,
 		&hotel.CreatedBy, &hotel.CreatedAt, &hotel.UpdatedAt,
 	)

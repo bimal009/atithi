@@ -113,7 +113,18 @@ func main() {
 
 	sessionService := session.NewSessionService(slog, sessionRepo, cfg.Session.IdleTTL, cfg.Session.AbsoluteTTL)
 
-	authService := auth.NewAuthService(slog, userRepo, redisClient, accountRepo, sessionService, pool)
+	authService := auth.NewAuthService(
+		slog,
+		userRepo,
+		redisClient,
+		accountRepo,
+		sessionService,
+		pool,
+		cfg.Auth,
+		cfg.OAuth.ClientID,
+		cfg.OAuth.ClientSecret,
+		cfg.OAuth.RedirectURL,
+	)
 	authHandler := auth.NewAuthHandler(slog, authService, cfg.Session, cfg.App.Env == "production")
 
 	hotelService := hotel.NewHotelService(slog, hotelRepo, memberRepo, roleRepo, pool)
@@ -211,7 +222,7 @@ func main() {
 		}))
 	})
 
-	r.GET("/hotels/slug/:slug/ws", requireAuth, validateHotel, validateMember, ws.Handler(hub, permissionService, slog))
+	r.GET("/hotels/:hotelId/ws", requireAuth, validateHotel, validateMember, ws.Handler(hub, permissionService, slog))
 
 	routes.Register(r, &routes.Handlers{
 		Auth:           authHandler,

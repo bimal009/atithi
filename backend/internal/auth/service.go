@@ -2,55 +2,40 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
+	"github.com/bimal009/atithi/config"
 	"github.com/bimal009/atithi/internal/account"
 	model "github.com/bimal009/atithi/internal/models"
 	"github.com/bimal009/atithi/internal/session"
 	"github.com/bimal009/atithi/internal/user"
 	"github.com/bimal009/atithi/pkg/apperr"
-	"github.com/bimal009/atithi/pkg/utils"
 	"github.com/bimal009/atithi/pkg/validator"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-)
-
-const (
-	otpDigits              = 6
-	otpTTL                 = 5 * time.Minute
-	otpResendCooldown      = 60 * time.Second
-	placeholderEmailDomain = "atithi.com"
-	// A 6-digit code is only a million guesses. Without a ceiling on attempts
-	// any account can be taken over from its phone number alone.
-	otpMaxAttempts = 5
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	googleoauth "golang.org/x/oauth2/google"
+	"google.golang.org/api/idtoken"
 )
 
 type AuthService interface {
-	Login(ctx context.Context, req *LoginRequest) (model.User, error)
-	ValidateOtp(ctx context.Context, phoneNumber, otp string, meta SessionMeta) (model.User, session.Issued, error)
-	Resend(ctx context.Context, phoneNumber string) error
-	// Refresh rotates the session token; it only works while the session is
-	// still alive.
+	LoginWithPassword(ctx context.Context, req *LoginRequest, meta SessionMeta) (model.User, session.Issued, error)
+	Register(ctx context.Context, req *RegisterRequest) (model.User, error)
+
+	GoogleAuthURL(ctx context.Context) (string, error)
+	GoogleCallback(ctx context.Context, code, state string, meta SessionMeta) (model.User, session.Issued, error)
+
 	Refresh(ctx context.Context, rawToken string) (session.Issued, error)
 	Logout(ctx context.Context, rawToken string) error
 	Me(ctx context.Context, userID string) (model.User, error)
 	Onboard(ctx context.Context, userID string, req *OnboardingRequest) (model.User, error)
-}
-
-func placeholderEmail(phoneNumber string) string {
-	var digits strings.Builder
-	for _, r := range phoneNumber {
-		if r >= '0' && r <= '9' {
-			digits.WriteRune(r)
-		}
-	}
-
-	return digits.String() + "@" + placeholderEmailDomain
 }
 
 type authService struct {
@@ -60,6 +45,8 @@ type authService struct {
 	accountRepo account.AccountRepo
 	sessions    session.SessionService
 	DB          *pgxpool.Pool
+	oauthConfig *oauth2.Config
+	cfg         config.AuthConfig
 }
 
 func NewAuthService(
@@ -69,6 +56,8 @@ func NewAuthService(
 	accountRepo account.AccountRepo,
 	sessions session.SessionService,
 	db *pgxpool.Pool,
+	cfg config.AuthConfig,
+	googleClientID, googleClientSecret, googleRedirectURL string,
 ) AuthService {
 	return &authService{
 		slog:        slog,
@@ -77,108 +66,58 @@ func NewAuthService(
 		accountRepo: accountRepo,
 		sessions:    sessions,
 		DB:          db,
+		cfg:         cfg,
+		oauthConfig: &oauth2.Config{
+			ClientID:     googleClientID,
+			ClientSecret: googleClientSecret,
+			RedirectURL:  googleRedirectURL,
+			Scopes:       []string{"openid", "email", "profile"},
+			Endpoint:     googleoauth.Endpoint,
+		},
 	}
 }
 
-func otpKey(phoneNumber string) string {
-	return "otp:" + phoneNumber
-}
-
-func otpCooldownKey(phoneNumber string) string {
-	return "otp:cooldown:" + phoneNumber
-}
-
-func otpAttemptsKey(phoneNumber string) string {
-	return "otp:attempts:" + phoneNumber
-}
-
-// registerFailedAttempt counts a wrong guess and burns the code once the
-// ceiling is hit, so the attacker has to request a new one and wait out the
-// resend cooldown.
-func (s *authService) registerFailedAttempt(ctx context.Context, phoneNumber string) error {
-	attempts, err := s.redis.Incr(ctx, otpAttemptsKey(phoneNumber)).Result()
+func (s *authService) hashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), s.cfg.BcryptCost)
 	if err != nil {
-		return err
-	}
-
-	if attempts == 1 {
-		s.redis.Expire(ctx, otpAttemptsKey(phoneNumber), otpTTL)
-	}
-
-	if attempts >= otpMaxAttempts {
-		if err := s.deleteOTP(ctx, phoneNumber); err != nil {
-			s.slog.Error("failed to burn otp after too many attempts", "phone", phoneNumber, "error", err)
-		}
-		s.slog.Warn("otp burned after too many failed attempts", "phone", phoneNumber, "attempts", attempts)
-		return apperr.ErrTooManyOtpAttempts
-	}
-
-	return nil
-}
-
-func (s *authService) setOTP(ctx context.Context, phoneNumber, code string) error {
-	return s.redis.Set(ctx, otpKey(phoneNumber), code, otpTTL).Err()
-}
-
-func (s *authService) getOTP(ctx context.Context, phoneNumber string) (string, error) {
-	code, err := s.redis.Get(ctx, otpKey(phoneNumber)).Result()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return "", apperr.ErrVerificationNotFound
-		}
-
 		return "", err
 	}
-
-	return code, nil
+	return string(hash), nil
 }
 
-func (s *authService) deleteOTP(ctx context.Context, phoneNumber string) error {
-	return s.redis.Del(ctx, otpKey(phoneNumber)).Err()
+func checkPassword(hash, password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-func (s *authService) checkResendCooldown(ctx context.Context, phoneNumber string) error {
-	ok, err := s.redis.SetNX(ctx, otpCooldownKey(phoneNumber), "1", otpResendCooldown).Result()
-	if err != nil {
-		return err
+func (s *authService) generateState() (string, error) {
+	b := make([]byte, s.cfg.OAuthStateBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
-
-	if !ok {
-		return apperr.ErrTooManyRequests
-	}
-
-	return nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func (s *authService) Login(ctx context.Context, req *LoginRequest) (model.User, error) {
+func oauthStateKey(state string) string {
+	return "oauth:state:" + state
+}
+
+func (s *authService) Register(ctx context.Context, req *RegisterRequest) (model.User, error) {
 	if err := validator.ValidateStruct(req); err != nil {
 		return model.User{}, err
 	}
 
-	phoneNumber := req.PhoneNumber
-
-	if err := s.checkResendCooldown(ctx, phoneNumber); err != nil {
-		return model.User{}, err
-	}
-
-	existingUser, err := s.userRepo.GetByPhone(ctx, phoneNumber)
-	if err != nil && !errors.Is(err, apperr.ErrUserNotFound) {
-		return model.User{}, err
-	}
-
+	_, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err == nil {
-		otp, err := utils.GenerateOTP(otpDigits)
-		if err != nil {
-			return model.User{}, fmt.Errorf("failed to generate otp: %w", err)
-		}
-		s.slog.Info("otp generated", "phone", existingUser.PhoneNumber, "otp", otp)
+		return model.User{}, apperr.ErrEmailTaken
+	}
+	if !errors.Is(err, apperr.ErrUserNotFound) {
+		return model.User{}, err
+	}
 
-		if err := s.setOTP(ctx, existingUser.PhoneNumber, otp); err != nil {
-			s.slog.Error("failed to store otp", "user_id", existingUser.ID, "error", err)
-			return model.User{}, fmt.Errorf("failed to store otp: %w", err)
-		}
-
-		return existingUser, nil
+	passwordHash, err := s.hashPassword(req.Password)
+	if err != nil {
+		s.slog.Error("failed to hash password", "error", err)
+		return model.User{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	tx, err := s.DB.Begin(ctx)
@@ -189,12 +128,10 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (model.User,
 	defer tx.Rollback(ctx)
 
 	now := time.Now()
-
 	newUser := &model.User{
 		ID:            uuid.NewString(),
-		PhoneNumber:   phoneNumber,
-		Name:          phoneNumber,
-		Email:         placeholderEmail(phoneNumber),
+		Email:         req.Email,
+		Name:          req.Name,
 		EmailVerified: false,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -203,54 +140,61 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (model.User,
 
 	createdUser, err := s.userRepo.Create(ctx, tx, newUser)
 	if err != nil {
-		s.slog.Error("failed to create user", "phone", phoneNumber, "error", err)
+		s.slog.Error("failed to create user", "email", req.Email, "error", err)
 		return model.User{}, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	otp, err := utils.GenerateOTP(otpDigits)
-	if err != nil {
-		return model.User{}, fmt.Errorf("failed to generate otp: %w", err)
+	credAccount := &model.Account{
+		ID:         uuid.NewString(),
+		AccountID:  createdUser.ID,
+		ProviderID: s.cfg.ProviderCredential,
+		UserID:     createdUser.ID,
+		Password:   &passwordHash,
 	}
-	s.slog.Info("otp generated", "phone", createdUser.PhoneNumber, "otp", otp)
 
-	if err := s.setOTP(ctx, createdUser.PhoneNumber, otp); err != nil {
-		s.slog.Error("failed to store otp", "user_id", createdUser.ID, "error", err)
-		return model.User{}, fmt.Errorf("failed to store otp: %w", err)
+	if _, err := s.accountRepo.Create(ctx, tx, credAccount); err != nil {
+		if errors.Is(err, apperr.ErrAccountAlreadyExists) {
+			return model.User{}, apperr.ErrEmailTaken
+		}
+		s.slog.Error("failed to create credential account", "user_id", createdUser.ID, "error", err)
+		return model.User{}, fmt.Errorf("failed to create credential account: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		s.slog.Error("failed to commit tx", "error", err)
-
-		if delErr := s.deleteOTP(ctx, createdUser.PhoneNumber); delErr != nil {
-			s.slog.Error("failed to discard otp after failed commit", "error", delErr)
-		}
-
 		return model.User{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	s.slog.Info("user registered", "user_id", createdUser.ID, "phone", createdUser.PhoneNumber)
+	s.slog.Info("user registered", "user_id", createdUser.ID, "email", createdUser.Email)
 
 	return createdUser, nil
 }
-
-func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string, meta SessionMeta) (model.User, session.Issued, error) {
-	storedOTP, err := s.getOTP(ctx, phoneNumber)
-	if err != nil {
+func (s *authService) LoginWithPassword(ctx context.Context, req *LoginRequest, meta SessionMeta) (model.User, session.Issued, error) {
+	if err := validator.ValidateStruct(req); err != nil {
 		return model.User{}, session.Issued{}, err
 	}
 
-	if storedOTP != otp {
-		if err := s.registerFailedAttempt(ctx, phoneNumber); err != nil {
-			return model.User{}, session.Issued{}, err
+	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, apperr.ErrUserNotFound) {
+			return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
 		}
-		return model.User{}, session.Issued{}, apperr.ErrInvalidOtp
+		return model.User{}, session.Issued{}, err
 	}
 
-	s.redis.Del(ctx, otpAttemptsKey(phoneNumber))
-
-	existingUser, err := s.userRepo.GetByPhone(ctx, phoneNumber)
+	accounts, err := s.accountRepo.GetByUserID(ctx, existingUser.ID)
 	if err != nil {
 		return model.User{}, session.Issued{}, err
+	}
+
+	if len(accounts) == 0 || accounts[0].ProviderID != s.cfg.ProviderCredential {
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	credAccount := accounts[0]
+
+	if credAccount.Password == nil || !checkPassword(*credAccount.Password, req.Password) {
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
 	}
 
 	tx, err := s.DB.Begin(ctx)
@@ -259,18 +203,6 @@ func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string, 
 		return model.User{}, session.Issued{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
-
-	if !existingUser.EmailVerified {
-		existingUser.EmailVerified = true
-
-		updatedUser, err := s.userRepo.UpdateTx(ctx, tx, &existingUser)
-		if err != nil {
-			s.slog.Error("failed to update user after otp validation", "user_id", existingUser.ID, "error", err)
-			return model.User{}, session.Issued{}, err
-		}
-
-		existingUser = updatedUser
-	}
 
 	issued, err := s.sessions.Issue(ctx, tx, existingUser.ID, session.Meta{
 		IPAddress: meta.IPAddress,
@@ -285,15 +217,151 @@ func (s *authService) ValidateOtp(ctx context.Context, phoneNumber, otp string, 
 		return model.User{}, session.Issued{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	if err := s.deleteOTP(ctx, phoneNumber); err != nil {
-		s.slog.Error("failed to delete otp after validation", "phone", phoneNumber, "error", err)
-	}
-
-	s.redis.Del(ctx, otpCooldownKey(phoneNumber))
-
-	s.slog.Info("otp validated", "user_id", existingUser.ID, "session_id", issued.Session.ID, "phone", existingUser.PhoneNumber)
+	s.slog.Info("user logged in", "user_id", existingUser.ID, "session_id", issued.Session.ID)
 
 	return existingUser, issued, nil
+}
+func (s *authService) GoogleAuthURL(ctx context.Context) (string, error) {
+	state, err := s.generateState()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate state: %w", err)
+	}
+
+	if err := s.redis.Set(ctx, oauthStateKey(state), "1", s.cfg.OAuthStateTTL).Err(); err != nil {
+		s.slog.Error("failed to store oauth state", "error", err)
+		return "", fmt.Errorf("failed to store oauth state: %w", err)
+	}
+
+	url := s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline)
+	return url, nil
+}
+
+func (s *authService) GoogleCallback(ctx context.Context, code, state string, meta SessionMeta) (model.User, session.Issued, error) {
+	if state == "" || code == "" {
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	deleted, err := s.redis.Del(ctx, oauthStateKey(state)).Result()
+	if err != nil {
+		s.slog.Error("failed to check oauth state", "error", err)
+		return model.User{}, session.Issued{}, fmt.Errorf("failed to check oauth state: %w", err)
+	}
+	if deleted == 0 {
+		s.slog.Warn("oauth state mismatch or expired", "state", state)
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	token, err := s.oauthConfig.Exchange(ctx, code)
+	if err != nil {
+		s.slog.Warn("failed to exchange oauth code", "error", err)
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok || rawIDToken == "" {
+		s.slog.Error("google token exchange missing id_token")
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	payload, err := idtoken.Validate(ctx, rawIDToken, s.oauthConfig.ClientID)
+	if err != nil {
+		s.slog.Warn("invalid google id token", "error", err)
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	email, _ := payload.Claims["email"].(string)
+	emailVerified, _ := payload.Claims["email_verified"].(bool)
+	name, _ := payload.Claims["name"].(string)
+	googleSubject := payload.Subject
+
+	if email == "" {
+		return model.User{}, session.Issued{}, apperr.ErrInvalidCredentials
+	}
+
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		s.slog.Error("failed to begin tx", "error", err)
+		return model.User{}, session.Issued{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	existingAccount, err := s.accountRepo.GetByProviderAndAccountID(ctx, s.cfg.ProviderGoogle, googleSubject)
+
+	var resultUser model.User
+
+	switch {
+	case err == nil:
+		resultUser, err = s.userRepo.Get(ctx, existingAccount.UserID)
+		if err != nil {
+			return model.User{}, session.Issued{}, err
+		}
+
+	case errors.Is(err, apperr.ErrAccountNotFound):
+		_, getErr := s.userRepo.GetByEmail(ctx, email)
+
+		switch {
+		case getErr == nil:
+			return model.User{}, session.Issued{}, apperr.ErrAccountMethodMismatch
+
+		case errors.Is(getErr, apperr.ErrUserNotFound):
+			now := time.Now()
+			newUser := &model.User{
+				ID:            uuid.NewString(),
+				Email:         email,
+				Name:          name,
+				EmailVerified: emailVerified,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+				Role:          model.RoleUser,
+			}
+
+			createdUser, createErr := s.userRepo.Create(ctx, tx, newUser)
+			if createErr != nil {
+				s.slog.Error("failed to create user via google", "email", email, "error", createErr)
+				return model.User{}, session.Issued{}, fmt.Errorf("failed to create user: %w", createErr)
+			}
+			resultUser = createdUser
+
+			googleAccount := &model.Account{
+				ID:         uuid.NewString(),
+				AccountID:  googleSubject,
+				ProviderID: s.cfg.ProviderGoogle,
+				UserID:     resultUser.ID,
+				IDToken:    &rawIDToken,
+			}
+
+			if _, createErr := s.accountRepo.Create(ctx, tx, googleAccount); createErr != nil {
+				if errors.Is(createErr, apperr.ErrAccountAlreadyExists) {
+					return model.User{}, session.Issued{}, apperr.ErrAccountMethodMismatch
+				}
+				s.slog.Error("failed to create google account", "user_id", resultUser.ID, "error", createErr)
+				return model.User{}, session.Issued{}, createErr
+			}
+
+		default:
+			return model.User{}, session.Issued{}, getErr
+		}
+
+	default:
+		return model.User{}, session.Issued{}, err
+	}
+
+	issued, err := s.sessions.Issue(ctx, tx, resultUser.ID, session.Meta{
+		IPAddress: meta.IPAddress,
+		UserAgent: meta.UserAgent,
+	})
+	if err != nil {
+		return model.User{}, session.Issued{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		s.slog.Error("failed to commit tx", "error", err)
+		return model.User{}, session.Issued{}, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	s.slog.Info("user logged in via google", "user_id", resultUser.ID, "session_id", issued.Session.ID)
+
+	return resultUser, issued, nil
 }
 
 func (s *authService) Refresh(ctx context.Context, rawToken string) (session.Issued, error) {
@@ -318,7 +386,6 @@ func (s *authService) Onboard(ctx context.Context, userID string, req *Onboardin
 		return model.User{}, err
 	}
 
-	// A new address has not been proven to belong to them.
 	if req.Email != existingUser.Email {
 		existingUser.Email = req.Email
 		existingUser.EmailVerified = false
@@ -342,28 +409,4 @@ func (s *authService) Onboard(ctx context.Context, userID string, req *Onboardin
 	s.slog.Info("user onboarded", "user_id", updatedUser.ID)
 
 	return updatedUser, nil
-}
-
-func (s *authService) Resend(ctx context.Context, phoneNumber string) error {
-	if _, err := s.userRepo.GetByPhone(ctx, phoneNumber); err != nil {
-		return err
-	}
-
-	if err := s.checkResendCooldown(ctx, phoneNumber); err != nil {
-		return err
-	}
-
-	otp, err := utils.GenerateOTP(otpDigits)
-	if err != nil {
-		return fmt.Errorf("failed to generate otp: %w", err)
-	}
-
-	if err := s.setOTP(ctx, phoneNumber, otp); err != nil {
-		s.slog.Error("failed to store otp", "phone", phoneNumber, "error", err)
-		return fmt.Errorf("failed to store otp: %w", err)
-	}
-
-	s.slog.Info("otp resent", "phone", phoneNumber, "otp", otp)
-
-	return nil
 }

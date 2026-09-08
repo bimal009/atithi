@@ -6,8 +6,15 @@ import (
 	model "github.com/bimal009/atithi/internal/models"
 )
 
+type RegisterRequest struct {
+	Name     string `json:"name" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
+}
+
 type LoginRequest struct {
-	PhoneNumber string `json:"phoneNumber" validate:"required,nepaliphone"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type CreateSessionRequest struct {
@@ -36,14 +43,6 @@ type CreateVerificationRequest struct {
 	Identifier string    `json:"identifier" validate:"required"`
 	Value      string    `json:"value" validate:"required"`
 	ExpiresAt  time.Time `json:"expiresAt" validate:"required"`
-}
-type ResendOtpRequest struct {
-	PhoneNumber string `json:"phoneNumber" validate:"required,nepaliphone"`
-}
-
-type ValidateOtpRequest struct {
-	PhoneNumber string `json:"phoneNumber" validate:"required,nepaliphone"`
-	Otp         string `json:"otp" validate:"required,len=6,number"`
 }
 
 type OnboardingRequest struct {

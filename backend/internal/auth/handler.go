@@ -53,8 +53,8 @@ func (h *AuthHandler) sessionToken(c *gin.Context) string {
 	return middleware.SessionToken(c, h.cookie.CookieName)
 }
 
-func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
@@ -66,17 +66,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.Login(c.Request.Context(), &req)
+	user, err := h.service.Register(c.Request.Context(), &req)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, responses.Success("otp sent sucessfully", user))
+	c.JSON(http.StatusCreated, responses.Success("registered successfully", user))
 }
 
-func (h *AuthHandler) ValidateOtp(c *gin.Context) {
-	var req ValidateOtpRequest
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
@@ -93,7 +93,7 @@ func (h *AuthHandler) ValidateOtp(c *gin.Context) {
 		UserAgent: c.Request.UserAgent(),
 	}
 
-	user, issued, err := h.service.ValidateOtp(c.Request.Context(), req.PhoneNumber, req.Otp, meta)
+	user, issued, err := h.service.LoginWithPassword(c.Request.Context(), &req, meta)
 	if err != nil {
 		apperr.HandleError(c, h.slog, err)
 		return
@@ -101,11 +101,45 @@ func (h *AuthHandler) ValidateOtp(c *gin.Context) {
 
 	h.setSessionCookie(c, issued.Token)
 
-	c.JSON(http.StatusOK, responses.Success("otp validated", AuthResponse{
+	c.JSON(http.StatusOK, responses.Success("logged in", AuthResponse{
 		User:    user,
 		Session: NewSessionResponse(issued.Session),
 	}))
 }
+
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	url, err := h.service.GoogleAuthURL(c.Request.Context())
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+
+	meta := SessionMeta{
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+	}
+
+	user, issued, err := h.service.GoogleCallback(c.Request.Context(), code, state, meta)
+	if err != nil {
+		apperr.HandleError(c, h.slog, err)
+		return
+	}
+
+	h.setSessionCookie(c, issued.Token)
+
+	c.JSON(http.StatusOK, responses.Success("logged in with google", AuthResponse{
+		User:    user,
+		Session: NewSessionResponse(issued.Session),
+	}))
+}
+
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	token := h.sessionToken(c)
 	if token == "" {
@@ -172,25 +206,4 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	h.clearSessionCookie(c)
 
 	c.JSON(http.StatusOK, responses.Success[any]("logged out", nil))
-}
-
-func (h *AuthHandler) Resend(c *gin.Context) {
-	var req ResendOtpRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, responses.BadRequest("invalid request body"))
-		return
-	}
-
-	if err := validator.ValidateStruct(&req); err != nil {
-		apperr.HandleError(c, h.slog, err)
-		return
-	}
-
-	if err := h.service.Resend(c.Request.Context(), req.PhoneNumber); err != nil {
-		apperr.HandleError(c, h.slog, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, responses.Success[any]("otp resent", nil))
 }

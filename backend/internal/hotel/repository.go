@@ -13,9 +13,7 @@ import (
 type HotelRepo interface {
 	Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error)
 	Get(ctx context.Context, id, userID string) (model.Hotel, error)
-	GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error)
-	SlugExists(ctx context.Context, slug string) (bool, error)
-	FindBySlug(ctx context.Context, slug string) (model.Hotel, error)
+	FindByID(ctx context.Context, id string) (model.Hotel, error)
 	ListForUser(ctx context.Context, userID string) ([]model.Hotel, error)
 	Update(ctx context.Context, hotel *model.Hotel, userID string) (model.Hotel, error)
 	Delete(ctx context.Context, id, userID string) error
@@ -80,9 +78,9 @@ func (r *hotelRepo) logosForHotels(ctx context.Context, hotelIDs []string) (map[
 
 func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (model.Hotel, error) {
 	query := `
-		INSERT INTO hotels (id, name, slug, description, address, city, phone_number, email, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		INSERT INTO hotels (id, name, description, address, city, phone_number, email, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, name, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 	`
 
 	var created model.Hotel
@@ -91,7 +89,6 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 		ctx, query,
 		hotel.ID,
 		hotel.Name,
-		hotel.Slug,
 		hotel.Description,
 		hotel.Address,
 		hotel.City,
@@ -101,7 +98,6 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 	).Scan(
 		&created.ID,
 		&created.Name,
-		&created.Slug,
 		&created.Description,
 		&created.Address,
 		&created.City,
@@ -114,9 +110,6 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 	)
 
 	if err != nil {
-		if apperr.IsUniqueViolation(err) {
-			return model.Hotel{}, apperr.ErrHotelSlugExists
-		}
 		return model.Hotel{}, err
 	}
 
@@ -125,7 +118,7 @@ func (r *hotelRepo) Create(ctx context.Context, tx pgx.Tx, hotel *model.Hotel) (
 
 func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE id = $1::uuid
 		  AND EXISTS (
@@ -139,7 +132,6 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 	err := r.DB.QueryRow(ctx, query, id, userID).Scan(
 		&hotel.ID,
 		&hotel.Name,
-		&hotel.Slug,
 		&hotel.Description,
 		&hotel.Address,
 		&hotel.City,
@@ -167,23 +159,18 @@ func (r *hotelRepo) Get(ctx context.Context, id, userID string) (model.Hotel, er
 	return hotel, nil
 }
 
-func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.Hotel, error) {
+func (r *hotelRepo) FindByID(ctx context.Context, id string) (model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
-		WHERE slug = $1
-		  AND EXISTS (
-			SELECT 1 FROM members m
-			WHERE m.hotel_id = hotels.id AND m.user_id = $2::uuid AND m.status = 'active'
-		  )
+		WHERE id = $1::uuid
 	`
 
 	var hotel model.Hotel
 
-	err := r.DB.QueryRow(ctx, query, slug, userID).Scan(
+	err := r.DB.QueryRow(ctx, query, id).Scan(
 		&hotel.ID,
 		&hotel.Name,
-		&hotel.Slug,
 		&hotel.Description,
 		&hotel.Address,
 		&hotel.City,
@@ -209,63 +196,11 @@ func (r *hotelRepo) GetBySlug(ctx context.Context, slug, userID string) (model.H
 	hotel.LogoURL = logo
 
 	return hotel, nil
-}
-
-func (r *hotelRepo) FindBySlug(ctx context.Context, slug string) (model.Hotel, error) {
-	query := `
-		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
-		FROM hotels
-		WHERE slug = $1
-	`
-
-	var hotel model.Hotel
-
-	err := r.DB.QueryRow(ctx, query, slug).Scan(
-		&hotel.ID,
-		&hotel.Name,
-		&hotel.Slug,
-		&hotel.Description,
-		&hotel.Address,
-		&hotel.City,
-		&hotel.PhoneNumber,
-		&hotel.Email,
-		&hotel.IsActive,
-		&hotel.CreatedBy,
-		&hotel.CreatedAt,
-		&hotel.UpdatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return model.Hotel{}, apperr.ErrHotelNotFound
-		}
-		return model.Hotel{}, err
-	}
-
-	logo, err := r.logoForHotel(ctx, hotel.ID)
-	if err != nil {
-		return model.Hotel{}, err
-	}
-	hotel.LogoURL = logo
-
-	return hotel, nil
-}
-
-func (r *hotelRepo) SlugExists(ctx context.Context, slug string) (bool, error) {
-	var exists bool
-
-	err := r.DB.QueryRow(
-		ctx,
-		`SELECT EXISTS (SELECT 1 FROM hotels WHERE slug = $1)`,
-		slug,
-	).Scan(&exists)
-
-	return exists, err
 }
 
 func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hotel, error) {
 	query := `
-		SELECT id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		SELECT id, name, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 		FROM hotels
 		WHERE EXISTS (
 			SELECT 1 FROM members m
@@ -287,7 +222,6 @@ func (r *hotelRepo) ListForUser(ctx context.Context, userID string) ([]model.Hot
 		if err := rows.Scan(
 			&hotel.ID,
 			&hotel.Name,
-			&hotel.Slug,
 			&hotel.Description,
 			&hotel.Address,
 			&hotel.City,
@@ -329,20 +263,19 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 		UPDATE hotels
 		SET
 			name = $1,
-			slug = $2,
-			description = $3,
-			address = $4,
-			city = $5,
-			phone_number = $6,
-			email = $7,
-			is_active = $8,
+			description = $2,
+			address = $3,
+			city = $4,
+			phone_number = $5,
+			email = $6,
+			is_active = $7,
 			updated_at = now()
-		WHERE id = $9::uuid
+		WHERE id = $8::uuid
 		  AND EXISTS (
 			SELECT 1 FROM members m
-			WHERE m.hotel_id = hotels.id AND m.user_id = $10::uuid AND m.status = 'active'
+			WHERE m.hotel_id = hotels.id AND m.user_id = $9::uuid AND m.status = 'active'
 		  )
-		RETURNING id, name, slug, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
+		RETURNING id, name, description, address, city, phone_number, email, is_active, created_by, created_at, updated_at
 	`
 
 	var updated model.Hotel
@@ -350,7 +283,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 	err := r.DB.QueryRow(
 		ctx, query,
 		hotel.Name,
-		hotel.Slug,
 		hotel.Description,
 		hotel.Address,
 		hotel.City,
@@ -362,7 +294,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 	).Scan(
 		&updated.ID,
 		&updated.Name,
-		&updated.Slug,
 		&updated.Description,
 		&updated.Address,
 		&updated.City,
@@ -377,9 +308,6 @@ func (r *hotelRepo) Update(ctx context.Context, hotel *model.Hotel, userID strin
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Hotel{}, apperr.ErrHotelNotFound
-		}
-		if apperr.IsUniqueViolation(err) {
-			return model.Hotel{}, apperr.ErrHotelSlugExists
 		}
 		return model.Hotel{}, err
 	}

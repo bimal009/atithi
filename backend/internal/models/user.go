@@ -13,7 +13,6 @@ const (
 
 type User struct {
 	ID            string    `db:"id" json:"id"`
-	PhoneNumber   string    `db:"phone_number" json:"phoneNumber"`
 	Name          string    `db:"name" json:"name"`
 	Email         string    `db:"email" json:"email"`
 	EmailVerified bool      `db:"email_verified" json:"emailVerified"`

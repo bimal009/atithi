@@ -36,6 +36,7 @@ var (
 	ErrTooManyOtpAttempts   = New(http.StatusTooManyRequests, "too_many_attempts", "Too many attempts, request a new OTP")
 	ErrSessionNotFound      = New(http.StatusUnauthorized, "unauthorized", "Session not found")
 	ErrSessionExpired       = New(http.StatusUnauthorized, "session_expired", "Session expired")
+	ErrInvalidCredentials   = New(http.StatusUnauthorized, "invalid_credentials", "Invalid credentials")
 	ErrHotelNotFound        = New(http.StatusNotFound, "not_found", "Hotel not found")
 
 	ErrRoleNotFound        = New(http.StatusNotFound, "not_found", "Role not found")
@@ -109,9 +110,18 @@ var (
 	ErrMenuSetNotFound   = New(http.StatusNotFound, "not_found", "Menu set not found")
 	ErrMenuSetNameExists = New(http.StatusConflict, "conflict", "Menu set name already exists")
 
-	ErrMenuItemNotFound = New(http.StatusNotFound, "not_found", "Menu item not found")
-	ErrMenuItemExists   = New(http.StatusConflict, "conflict", "This dish is already on your menu")
-
+	ErrMenuItemNotFound     = New(http.StatusNotFound, "not_found", "Menu item not found")
+	ErrMenuItemExists       = New(http.StatusConflict, "conflict", "This dish is already on your menu")
+	ErrAccountAlreadyExists = New(
+		http.StatusConflict,
+		"conflict",
+		"User already exists",
+	)
+	ErrAccountMethodMismatch = New(
+		http.StatusConflict,
+		"conflict",
+		"An account already exists with this email using a different sign-in method",
+	)
 	ErrOrderNotFound        = New(http.StatusNotFound, "not_found", "Order not found")
 	ErrOrderResourceInvalid = New(http.StatusBadRequest, "invalid_input", "Table or customer does not exist")
 )

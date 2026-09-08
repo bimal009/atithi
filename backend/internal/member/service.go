@@ -20,7 +20,7 @@ type RoleValidator interface {
 const ownerRoleSlug = "owner"
 
 type UserFinder interface {
-	GetByPhone(ctx context.Context, phone string) (model.User, error)
+	GetByEmail(ctx context.Context, email string) (model.User, error)
 }
 
 type MemberService interface {
@@ -79,7 +79,7 @@ func (s *memberService) Add(ctx context.Context, hotelID, invitedBy string, req 
 		return model.MemberDetail{}, err
 	}
 
-	user, err := s.users.GetByPhone(ctx, req.Phone)
+	user, err := s.users.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return model.MemberDetail{}, err
 	}
@@ -127,7 +127,6 @@ func (s *memberService) Add(ctx context.Context, hotelID, invitedBy string, req 
 		Member:    created,
 		UserName:  user.Name,
 		UserEmail: user.Email,
-		UserPhone: user.PhoneNumber,
 		UserImage: user.Image,
 		RoleName:  role.Name,
 		RoleSlug:  role.Slug,

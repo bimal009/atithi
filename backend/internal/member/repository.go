@@ -134,14 +134,14 @@ func (r *memberRepo) GetByHotelAndUser(ctx context.Context, hotelID, userID stri
 func (r *memberRepo) ListByHotel(ctx context.Context, hotelID, roleID string, pagination model.Pagination) ([]model.MemberDetail, int, error) {
 	query := `
 		SELECT m.id, m.hotel_id, m.user_id, m.role_id, m.status, m.invited_by, m.joined_at, m.created_at, m.updated_at,
-		       u.name, u.email, u.phone_number, u.image,
+		       u.name, u.email, u.image,
 		       r.name, r.slug,
 		       COUNT(*) OVER() AS total
 		FROM members m
 		JOIN users u ON u.id = m.user_id
 		JOIN roles r ON r.id = m.role_id
 		WHERE m.hotel_id = $1::uuid
-		  AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%' OR u.phone_number ILIKE '%' || $2 || '%')
+		  AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
 		  AND ($3 = '' OR m.role_id = NULLIF($3, '')::uuid)
 		ORDER BY m.created_at DESC
 		LIMIT $4 OFFSET $5
@@ -170,7 +170,6 @@ func (r *memberRepo) ListByHotel(ctx context.Context, hotelID, roleID string, pa
 			&member.UpdatedAt,
 			&member.UserName,
 			&member.UserEmail,
-			&member.UserPhone,
 			&member.UserImage,
 			&member.RoleName,
 			&member.RoleSlug,

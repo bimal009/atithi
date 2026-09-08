@@ -25,7 +25,6 @@ type MemberDetail struct {
 	Member
 	UserName  string  `db:"user_name" json:"userName"`
 	UserEmail string  `db:"user_email" json:"userEmail"`
-	UserPhone string  `db:"user_phone" json:"userPhone"`
 	UserImage *string `db:"user_image" json:"userImage,omitempty"`
 	RoleName  string  `db:"role_name" json:"roleName"`
 	RoleSlug  string  `db:"role_slug" json:"roleSlug"`

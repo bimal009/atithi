@@ -12,19 +12,19 @@ import (
 const ContextHotelID = "hotelID"
 
 type HotelGetter interface {
-	FindBySlug(ctx context.Context, slug string) (model.Hotel, error)
+	FindByID(ctx context.Context, id string) (model.Hotel, error)
 }
 
 func ValidateHotel(service HotelGetter, slog *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		slug := c.Param("slug")
-		if slug == "" {
+		hotelID := c.Param("hotelId")
+		if hotelID == "" {
 			apperr.HandleError(c, slog, apperr.ErrHotelNotFound)
 			c.Abort()
 			return
 		}
 
-		current, err := service.FindBySlug(c.Request.Context(), slug)
+		current, err := service.FindByID(c.Request.Context(), hotelID)
 		if err != nil {
 			apperr.HandleError(c, slog, err)
 			c.Abort()

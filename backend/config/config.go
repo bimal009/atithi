@@ -52,10 +52,19 @@ type ResendConfig struct {
 	FromName  string `env:"RESEND_FROM_NAME" envDefault:"Tixort"`
 }
 
+type AuthConfig struct {
+	BcryptCost         int           `env:"BCRYPT_COST" envDefault:"12"`
+	OAuthStateTTL      time.Duration `env:"OAUTH_STATE_TTL" envDefault:"10m"`
+	OAuthStateBytes    int           `env:"OAUTH_STATE_BYTES" envDefault:"32"`
+	ProviderCredential string        `env:"PROVIDER_CREDENTIAL" envDefault:"credential"`
+	ProviderGoogle     string        `env:"PROVIDER_GOOGLE" envDefault:"google"`
+}
+
 type Config struct {
 	App      App
 	DB       DB
 	Session  Session
+	Auth     AuthConfig
 	OAuth    OAuthConfig
 	ImageKit ImageKit
 	Redis    RedisConfig

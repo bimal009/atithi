@@ -12,7 +12,6 @@ import (
 
 type UserRepo interface {
 	Create(ctx context.Context, tx pgx.Tx, user *model.User) (model.User, error)
-	GetByPhone(ctx context.Context, phoneNumber string) (model.User, error)
 	GetByEmail(ctx context.Context, email string) (model.User, error)
 	Get(ctx context.Context, id string) (model.User, error)
 	GetAll(ctx context.Context) ([]model.User, error)
@@ -33,16 +32,15 @@ func NewUserRepo(db *pgxpool.Pool) UserRepo {
 
 func (r *userRepo) Create(ctx context.Context, tx pgx.Tx, user *model.User) (model.User, error) {
 	query := `
-		INSERT INTO users (id, phone_number, name, email)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		INSERT INTO users (id, name, email)
+		VALUES ($1, $2, $3)
+		RETURNING id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
 	`
 
 	var created model.User
 
-	err := tx.QueryRow(ctx, query, user.ID, user.PhoneNumber, user.Name, user.Email).Scan(
+	err := tx.QueryRow(ctx, query, user.ID, user.Name, user.Email).Scan(
 		&created.ID,
-		&created.PhoneNumber,
 		&created.Name,
 		&created.Email,
 		&created.EmailVerified,
@@ -60,41 +58,9 @@ func (r *userRepo) Create(ctx context.Context, tx pgx.Tx, user *model.User) (mod
 	return created, nil
 }
 
-func (r *userRepo) GetByPhone(ctx context.Context, phoneNumber string) (model.User, error) {
-	query := `
-		SELECT id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
-		FROM users
-		WHERE phone_number = $1
-	`
-
-	var user model.User
-
-	err := r.DB.QueryRow(ctx, query, phoneNumber).Scan(
-		&user.ID,
-		&user.PhoneNumber,
-		&user.Name,
-		&user.Email,
-		&user.EmailVerified,
-		&user.Image,
-		&user.IsOnboarded,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.Role,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return model.User{}, apperr.ErrUserNotFound
-		}
-		return model.User{}, err
-	}
-
-	return user, nil
-}
-
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	query := `
-		SELECT id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
 		FROM users
 		WHERE email = $1
 	`
@@ -103,7 +69,6 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, er
 
 	err := r.DB.QueryRow(ctx, query, email).Scan(
 		&user.ID,
-		&user.PhoneNumber,
 		&user.Name,
 		&user.Email,
 		&user.EmailVerified,
@@ -126,7 +91,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, er
 
 func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 	query := `
-		SELECT id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
 		FROM users
 		WHERE id = $1
 	`
@@ -135,7 +100,6 @@ func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 
 	err := r.DB.QueryRow(ctx, query, id).Scan(
 		&user.ID,
-		&user.PhoneNumber,
 		&user.Name,
 		&user.Email,
 		&user.EmailVerified,
@@ -158,7 +122,7 @@ func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 
 func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 	query := `
-		SELECT id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
 		FROM users
 		ORDER BY created_at DESC
 	`
@@ -175,7 +139,6 @@ func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 		var user model.User
 		if err := rows.Scan(
 			&user.ID,
-			&user.PhoneNumber,
 			&user.Name,
 			&user.Email,
 			&user.EmailVerified,
@@ -216,13 +179,12 @@ func updateUser(ctx context.Context, q querier, user *model.User) (model.User, e
 			name = $1,
 			email = $2,
 			email_verified = $3,
-			phone_number = $4,
-			image = $5,
-			role = $6,
-			is_onboarded = $7,
+			image = $4,
+			role = $5,
+			is_onboarded = $6,
 			updated_at = NOW()
-		WHERE id = $8
-		RETURNING id, phone_number, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		WHERE id = $7
+		RETURNING id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
 	`
 
 	var updated model.User
@@ -233,14 +195,12 @@ func updateUser(ctx context.Context, q querier, user *model.User) (model.User, e
 		user.Name,
 		user.Email,
 		user.EmailVerified,
-		user.PhoneNumber,
 		user.Image,
 		user.Role,
 		user.IsOnboarded,
 		user.ID,
 	).Scan(
 		&updated.ID,
-		&updated.PhoneNumber,
 		&updated.Name,
 		&updated.Email,
 		&updated.EmailVerified,
