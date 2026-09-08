@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, MailIcon, MapPinIcon, MenuIcon, PhoneIcon, SearchIcon, StarIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -46,10 +47,9 @@ function StayCard({ stay, kind, basePath, formatMoney }: { stay: RoomType | Cabi
   const href = pageHref(basePath, kind === "rooms" ? "room-detail" : "cabin-detail", stay.id);
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)]">
-      <div className="aspect-4/3 overflow-hidden bg-[var(--site-primary)]/10">
+      <div className="relative aspect-4/3 overflow-hidden bg-[var(--site-primary)]/10">
         {stay.images[0] && (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img src={stay.images[0]} alt={stay.name} className={cnImg("transition-transform duration-500 group-hover:scale-105")} />
+          <Image src={stay.images[0]} alt={stay.name} fill className={cnImg("transition-transform duration-500 group-hover:scale-105")} sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2.5 p-5">
@@ -216,10 +216,9 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {topPickRooms.slice(0, 4).map((room) => (
                 <button key={room.id} type="button" onClick={() => (basePath ? router.push(pageHref(basePath, "room-detail", room.id)) : goTo("rooms"))} className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] text-left">
-                  <div className="aspect-square overflow-hidden">
+                  <div className="relative aspect-square overflow-hidden">
                     {room.images[0] && (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                      <img src={room.images[0]} alt={room.name} className={cnImg("transition-transform duration-500 group-hover:scale-105")} />
+                      <Image src={room.images[0]} alt={room.name} fill className={cnImg("transition-transform duration-500 group-hover:scale-105")} sizes="(max-width: 768px) 100vw, 25vw" unoptimized />
                     )}
                   </div>
                   <div className="flex flex-col gap-1 p-4">
@@ -532,18 +531,16 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
               </Button>
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] lg:gap-12">
                 <div className="flex flex-col gap-6">
-                  <div className="overflow-hidden rounded-3xl border border-[var(--site-border)] bg-[var(--site-primary)]/10">
+                  <div className="relative aspect-4/3 w-full overflow-hidden rounded-3xl border border-[var(--site-border)] bg-[var(--site-primary)]/10">
                     {stay.images[activeImage] && (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                      <img src={stay.images[activeImage]} alt={stay.name} className="aspect-4/3 w-full object-cover" />
+                      <Image src={stay.images[activeImage]} alt={stay.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 60vw" unoptimized />
                     )}
                   </div>
                   {stay.images.length > 1 && (
                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                       {stay.images.map((img, i) => (
-                        <button key={img + i} type="button" onClick={() => setActiveImage(i)} className={i === activeImage ? "overflow-hidden rounded-xl border-2 border-[var(--site-primary)]" : "cursor-pointer overflow-hidden rounded-xl border-2 border-transparent hover:border-[var(--site-border)]"}>
-                          {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-                          <img src={img} alt="" className="aspect-4/3 w-full object-cover" />
+                        <button key={img + i} type="button" onClick={() => setActiveImage(i)} className={i === activeImage ? "relative aspect-4/3 w-full overflow-hidden rounded-xl border-2 border-[var(--site-primary)]" : "relative aspect-4/3 w-full cursor-pointer overflow-hidden rounded-xl border-2 border-transparent hover:border-[var(--site-border)]"}>
+                          <Image src={img} alt="" fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" unoptimized />
                         </button>
                       ))}
                     </div>
@@ -598,12 +595,13 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {related.map((s) => (
                       <Link key={s.id} href={pageHref(basePath, kind === "rooms" ? "room-detail" : "cabin-detail", s.id)} className="group grid grid-cols-[7rem_1fr] items-center gap-4 rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] p-3 sm:grid-cols-[9rem_1fr]">
-                        {s.images[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                          <img src={s.images[0]} alt={s.name} className="aspect-4/3 w-full rounded-xl object-cover" />
-                        ) : (
-                          <div className="aspect-4/3 w-full rounded-xl bg-[var(--site-primary)]/10" />
-                        )}
+                        <div className="relative aspect-4/3 w-full overflow-hidden rounded-xl">
+                          {s.images[0] ? (
+                            <Image src={s.images[0]} alt={s.name} fill className="rounded-xl object-cover" sizes="150px" unoptimized />
+                          ) : (
+                            <div className="size-full rounded-xl bg-[var(--site-primary)]/10" />
+                          )}
+                        </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium">{s.name}</p>
                           <p className="mt-1 text-sm text-[var(--site-muted)]">{formatMoney(s.basePrice)} / night</p>
@@ -649,10 +647,9 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {items.map((item) => (
                     <button key={item.id} type="button" onClick={() => setSelectedDish(item)} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--site-border)] bg-[var(--site-card)] text-left transition-colors hover:bg-[var(--site-primary)]/5">
-                      <div className="h-56 w-full shrink-0 overflow-hidden">
+                      <div className="relative h-56 w-full shrink-0 overflow-hidden">
                         {item.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                          <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
                         ) : (
                           <div className="size-full bg-[var(--site-primary)]/10" />
                         )}
@@ -907,10 +904,9 @@ export function EditorialTemplate({ data, editable = false, onContentChange, pag
         <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden p-0" showCloseButton>
           {selectedDish && (
             <>
-              <div className="h-48 w-full shrink-0 overflow-hidden">
+              <div className="relative h-48 w-full shrink-0 overflow-hidden">
                 {selectedDish.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                  <img src={selectedDish.imageUrl} alt={selectedDish.name} className="size-full object-cover" />
+                  <Image src={selectedDish.imageUrl} alt={selectedDish.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 500px" unoptimized />
                 ) : (
                   <div className="size-full bg-[var(--site-primary)]/10" />
                 )}

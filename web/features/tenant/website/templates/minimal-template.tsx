@@ -69,10 +69,9 @@ function StayCard({
   const href = pageHref(basePath, kind === "rooms" ? "room-detail" : "cabin-detail", stay.id);
   return (
     <div className="group flex flex-col gap-3">
-      <div className="block aspect-4/3 overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
+      <div className="relative block aspect-4/3 overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
         {stay.images[0] && (
-          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-          <img src={stay.images[0]} alt={stay.name} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <Image src={stay.images[0]} alt={stay.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2">
@@ -323,10 +322,9 @@ export function MinimalTemplate({
                     }}
                     className="group flex flex-col gap-3"
                   >
-                    <div className="aspect-square overflow-hidden rounded-sm">
+                    <div className="relative aspect-square overflow-hidden rounded-sm">
                       {room.images[0] && (
-                        // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                        <img src={room.images[0]} alt={room.name} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <Image src={room.images[0]} alt={room.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 25vw" unoptimized />
                       )}
                     </div>
                     <div className="flex flex-col gap-1">
@@ -715,18 +713,16 @@ export function MinimalTemplate({
               </Button>
               <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr] lg:gap-14">
                 <div className="flex flex-col gap-6">
-                  <div className="overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
+                  <div className="relative aspect-4/3 w-full overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
                     {stay.images[activeImage] && (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                      <img src={stay.images[activeImage]} alt={stay.name} className="aspect-4/3 w-full object-cover" />
+                      <Image src={stay.images[activeImage]} alt={stay.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 60vw" unoptimized />
                     )}
                   </div>
                   {stay.images.length > 1 && (
                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                       {stay.images.map((img, i) => (
-                        <button key={img + i} type="button" onClick={() => setActiveImage(i)} className={i === activeImage ? "overflow-hidden rounded-sm opacity-100 ring-2 ring-[var(--site-primary)] ring-offset-2" : "cursor-pointer overflow-hidden rounded-sm opacity-60 hover:opacity-100"}>
-                          {/* eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL */}
-                          <img src={img} alt="" className="aspect-4/3 w-full object-cover" />
+                        <button key={img + i} type="button" onClick={() => setActiveImage(i)} className={i === activeImage ? "relative aspect-4/3 w-full overflow-hidden rounded-sm opacity-100 ring-2 ring-[var(--site-primary)] ring-offset-2" : "relative aspect-4/3 w-full cursor-pointer overflow-hidden rounded-sm opacity-60 hover:opacity-100"}>
+                          <Image src={img} alt="" fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" unoptimized />
                         </button>
                       ))}
                     </div>
@@ -779,12 +775,11 @@ export function MinimalTemplate({
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     {related.map((s) => (
                       <Link key={s.id} href={pageHref(basePath, kind === "rooms" ? "room-detail" : "cabin-detail", s.id)} className="group grid grid-cols-[7rem_1fr] items-center gap-4 sm:grid-cols-[9rem_1fr]">
-                        <div className="overflow-hidden rounded-sm">
+                        <div className="relative aspect-4/3 w-full overflow-hidden rounded-sm">
                           {s.images[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                            <img src={s.images[0]} alt={s.name} className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <Image src={s.images[0]} alt={s.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="150px" unoptimized />
                           ) : (
-                            <div className="aspect-4/3 w-full bg-[var(--site-primary)]/10" />
+                            <div className="size-full bg-[var(--site-primary)]/10" />
                           )}
                         </div>
                         <div className="min-w-0">
@@ -837,10 +832,9 @@ export function MinimalTemplate({
                       onClick={() => setSelectedDish(item)}
                       className="flex h-full cursor-pointer flex-col gap-3 text-left"
                     >
-                      <div className="h-56 w-full shrink-0 overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
+                      <div className="relative h-56 w-full shrink-0 overflow-hidden rounded-sm bg-[var(--site-primary)]/10">
                         {item.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                          <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
                         )}
                       </div>
                       <div className="flex flex-1 flex-col gap-1.5">
@@ -1099,10 +1093,9 @@ export function MinimalTemplate({
         <DialogContent container={rootRef} className="max-w-md gap-4 overflow-hidden rounded-sm p-0" showCloseButton>
           {selectedDish && (
             <>
-              <div className="h-48 w-full shrink-0 overflow-hidden">
+              <div className="relative h-48 w-full shrink-0 overflow-hidden">
                 {selectedDish.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote ImageKit URL
-                  <img src={selectedDish.imageUrl} alt={selectedDish.name} className="size-full object-cover" />
+                  <Image src={selectedDish.imageUrl} alt={selectedDish.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 500px" unoptimized />
                 ) : (
                   <div className="size-full bg-[var(--site-primary)]/10" />
                 )}
