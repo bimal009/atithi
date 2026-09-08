@@ -15,4 +15,3 @@ CREATE TABLE accounts (
     CONSTRAINT uq_accounts_provider_account UNIQUE (provider_id, account_id)
 );
 CREATE INDEX idx_accounts_user_id ON accounts (user_id);
-CREATE UNIQUE INDEX uq_accounts_provider_account ON accounts (provider_id, account_id);
