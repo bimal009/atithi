@@ -101,6 +101,7 @@ func registerAuthRoutes(rg *gin.RouterGroup, h *auth.AuthHandler, requireAuth gi
 		authGroup.POST("/logout", h.Logout)
 
 		authGroup.GET("/me", requireAuth, h.Me)
+		authGroup.PATCH("/profile", requireAuth, h.Onboard)
 		authGroup.PATCH("/onboarding", requireAuth, h.Onboard)
 	}
 }
@@ -110,9 +111,9 @@ func registerHotelRoutes(rg *gin.RouterGroup, h *Handlers) {
 	{
 		hotels.POST("", h.Hotel.Create)
 		hotels.GET("", h.Hotel.GetAll)
-		hotels.GET("/:id", h.Hotel.Get)
-		hotels.PATCH("/:id", h.Hotel.Update)
-		hotels.DELETE("/:id", h.Hotel.Delete)
+		hotels.GET("/:hotelId", h.Hotel.Get)
+		hotels.PATCH("/:hotelId", h.Hotel.Update)
+		hotels.DELETE("/:hotelId", h.Hotel.Delete)
 		scoped := hotels.Group("/:hotelId", h.ValidateHotel, h.ValidateMember)
 		{
 			billingTypes := scoped.Group("/billing-types")

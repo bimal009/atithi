@@ -46,7 +46,10 @@ func (h *HotelHandler) Create(c *gin.Context) {
 }
 
 func (h *HotelHandler) Get(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("hotelId")
+	if id == "" {
+		id = c.Param("id")
+	}
 
 	hotel, err := h.service.Get(c.Request.Context(), id, middleware.UserID(c))
 	if err != nil {
@@ -68,7 +71,10 @@ func (h *HotelHandler) GetAll(c *gin.Context) {
 }
 
 func (h *HotelHandler) Update(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("hotelId")
+	if id == "" {
+		id = c.Param("id")
+	}
 
 	var req UpdateHotelRequest
 
@@ -92,7 +98,10 @@ func (h *HotelHandler) Update(c *gin.Context) {
 }
 
 func (h *HotelHandler) Delete(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("hotelId")
+	if id == "" {
+		id = c.Param("id")
+	}
 
 	if err := h.service.Delete(c.Request.Context(), id, middleware.UserID(c)); err != nil {
 		apperr.HandleError(c, h.slog, err)

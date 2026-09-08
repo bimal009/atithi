@@ -16,27 +16,27 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-import { useLogin } from "../client/useAuth";
-import { REGISTER_ROUTE } from "../constants";
-import { LoginValues, loginSchema } from "../schema";
+import { LOGIN_ROUTE } from "../constants";
+import { useRegister } from "../client/useAuth";
+import { registerSchema, RegisterValues } from "../schema";
 
-export function LoginForm({
+export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const login = useLogin();
+  const registerUser = useRegister();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { name: "", email: "", password: "" },
   });
 
   const onSubmit = handleSubmit((values) => {
-    login.mutate(values);
+    registerUser.mutate(values);
   });
 
   return (
@@ -47,12 +47,27 @@ export function LoginForm({
             <FieldGroup className="gap-7">
               <div className="flex flex-col items-center gap-2.5 text-center">
                 <h1 className="text-3xl font-semibold tracking-tight">
-                  Log in to Atithi
+                  Create your account
                 </h1>
                 <p className="text-balance text-[15px] leading-relaxed text-muted-foreground">
-                  Enter your email and password to continue
+                  Sign up with your name, email, and a password
                 </p>
               </div>
+
+              <Field data-invalid={!!errors.name}>
+                <FieldLabel htmlFor="name">Name</FieldLabel>
+                <Input
+                  id="name"
+                  type="text"
+                  autoComplete="name"
+                  autoFocus
+                  placeholder="Your name"
+                  aria-invalid={!!errors.name}
+                  className="h-12 rounded-xl text-base"
+                  {...register("name")}
+                />
+                <FieldError errors={[errors.name]} />
+              </Field>
 
               <Field data-invalid={!!errors.email}>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -60,7 +75,6 @@ export function LoginForm({
                   id="email"
                   type="email"
                   autoComplete="email"
-                  autoFocus
                   placeholder="you@example.com"
                   aria-invalid={!!errors.email}
                   className="h-12 rounded-xl text-base"
@@ -74,8 +88,8 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
                   aria-invalid={!!errors.password}
                   className="h-12 rounded-xl text-base"
                   {...register("password")}
@@ -88,21 +102,21 @@ export function LoginForm({
                   type="submit"
                   size="lg"
                   className="h-12 rounded-xl text-[15px] font-medium"
-                  disabled={login.isPending}
-                  data-icon={login.isPending ? "inline-start" : undefined}
+                  disabled={registerUser.isPending}
+                  data-icon={registerUser.isPending ? "inline-start" : undefined}
                 >
-                  {login.isPending && <Spinner />}
-                  {login.isPending ? "Logging in" : "Log in"}
+                  {registerUser.isPending && <Spinner />}
+                  {registerUser.isPending ? "Creating account" : "Sign up"}
                 </Button>
               </Field>
 
               <p className="text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{" "}
+                Already have an account?{" "}
                 <Link
-                  href={REGISTER_ROUTE}
+                  href={LOGIN_ROUTE}
                   className="font-medium text-foreground underline underline-offset-4"
                 >
-                  Sign up
+                  Log in
                 </Link>
               </p>
             </FieldGroup>

@@ -7,5 +7,5 @@ export const API_URL =
 export const API_BASE = `${API_URL}/api/v1`;
 
 export const AFTER_LOGIN_REDIRECT = "/hotels";
-export const ONBOARDING_ROUTE = "/onboarding";
 export const LOGIN_ROUTE = "/login";
+export const REGISTER_ROUTE = "/register";

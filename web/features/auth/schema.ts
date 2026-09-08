@@ -14,36 +14,34 @@ export const normalizePhoneNumber = (value: string) => {
   return local.replace(/^0+/, "").slice(0, 10);
 };
 
-export const loginSchema = z.object({
-  phoneNumber: z
-    .string()
-    .regex(
-      NEPALI_PHONE_REGEX,
-      "Enter a 10 digit Nepali mobile number starting with 98 or 97",
-    ),
-  acceptedTerms: z.boolean().refine((value) => value === true, {
-    message: "Accept the terms and conditions to continue",
-  }),
-});
-
 export const otpSchema = z.object({
   otp: z.string().regex(OTP_REGEX, `Enter the ${OTP_LENGTH}-digit code`),
 });
 
-export const onboardingSchema = z.object({
+export const loginSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(100),
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const profileSchema = z.object({
   name: z
     .string()
     .trim()
     .min(2, "Enter your full name")
     .max(100, "Keep it under 100 characters"),
-  email: z.email("Enter a valid email address"),
-  // Optional, and an empty string has to survive the resolver untouched so the
-  // field can be left blank.
+  email: z.string().email("Enter a valid email address"),
   image: z
-    .union([z.url("Enter a valid image URL"), z.literal("")])
+    .union([z.string().url("Enter a valid image URL"), z.literal("")])
     .optional(),
 });
 
-export type LoginValues = z.infer<typeof loginSchema>;
 export type OtpValues = z.infer<typeof otpSchema>;
-export type OnboardingValues = z.infer<typeof onboardingSchema>;
+export type LoginValues = z.infer<typeof loginSchema>;
+export type RegisterValues = z.infer<typeof registerSchema>;
+export type ProfileValues = z.infer<typeof profileSchema>;

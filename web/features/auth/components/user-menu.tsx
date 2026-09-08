@@ -14,11 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useLogout } from "../client/useAuth";
+import { useLogout, useMe } from "../client/useAuth";
 import type { AuthUser } from "../types";
 
-export function UserMenu({ user }: { user: AuthUser }) {
+export function UserMenu({ user: initialUser }: { user?: AuthUser } = {}) {
+  const { data: user } = useMe(initialUser);
   const logout = useLogout();
+
+  if (!user) return null;
 
   const initials =
     user.name

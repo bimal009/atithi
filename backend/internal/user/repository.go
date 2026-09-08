@@ -34,7 +34,7 @@ func (r *userRepo) Create(ctx context.Context, tx pgx.Tx, user *model.User) (mod
 	query := `
 		INSERT INTO users (id, name, email)
 		VALUES ($1, $2, $3)
-		RETURNING id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		RETURNING id, name, email, email_verified, image, created_at, updated_at, role
 	`
 
 	var created model.User
@@ -45,7 +45,6 @@ func (r *userRepo) Create(ctx context.Context, tx pgx.Tx, user *model.User) (mod
 		&created.Email,
 		&created.EmailVerified,
 		&created.Image,
-		&created.IsOnboarded,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 		&created.Role,
@@ -60,7 +59,7 @@ func (r *userRepo) Create(ctx context.Context, tx pgx.Tx, user *model.User) (mod
 
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	query := `
-		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, created_at, updated_at, role
 		FROM users
 		WHERE email = $1
 	`
@@ -73,7 +72,6 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, er
 		&user.Email,
 		&user.EmailVerified,
 		&user.Image,
-		&user.IsOnboarded,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.Role,
@@ -91,7 +89,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (model.User, er
 
 func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 	query := `
-		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, created_at, updated_at, role
 		FROM users
 		WHERE id = $1
 	`
@@ -104,7 +102,6 @@ func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 		&user.Email,
 		&user.EmailVerified,
 		&user.Image,
-		&user.IsOnboarded,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.Role,
@@ -122,7 +119,7 @@ func (r *userRepo) Get(ctx context.Context, id string) (model.User, error) {
 
 func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 	query := `
-		SELECT id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		SELECT id, name, email, email_verified, image, created_at, updated_at, role
 		FROM users
 		ORDER BY created_at DESC
 	`
@@ -143,7 +140,6 @@ func (r *userRepo) GetAll(ctx context.Context) ([]model.User, error) {
 			&user.Email,
 			&user.EmailVerified,
 			&user.Image,
-			&user.IsOnboarded,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 			&user.Role,
@@ -181,10 +177,9 @@ func updateUser(ctx context.Context, q querier, user *model.User) (model.User, e
 			email_verified = $3,
 			image = $4,
 			role = $5,
-			is_onboarded = $6,
 			updated_at = NOW()
-		WHERE id = $7
-		RETURNING id, name, email, email_verified, image, is_onboarded, created_at, updated_at, role
+		WHERE id = $6
+		RETURNING id, name, email, email_verified, image, created_at, updated_at, role
 	`
 
 	var updated model.User
@@ -197,7 +192,6 @@ func updateUser(ctx context.Context, q querier, user *model.User) (model.User, e
 		user.EmailVerified,
 		user.Image,
 		user.Role,
-		user.IsOnboarded,
 		user.ID,
 	).Scan(
 		&updated.ID,
@@ -205,7 +199,6 @@ func updateUser(ctx context.Context, q querier, user *model.User) (model.User, e
 		&updated.Email,
 		&updated.EmailVerified,
 		&updated.Image,
-		&updated.IsOnboarded,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,
 		&updated.Role,

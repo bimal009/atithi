@@ -395,7 +395,6 @@ func (s *authService) Onboard(ctx context.Context, userID string, req *Onboardin
 	if req.Image != nil {
 		existingUser.Image = req.Image
 	}
-	existingUser.IsOnboarded = true
 
 	updatedUser, err := s.userRepo.Update(ctx, &existingUser)
 	if err != nil {

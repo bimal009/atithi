@@ -4,9 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { useCompleteOnboarding, useMe } from "@/features/auth/client/useAuth";
-import { NEPAL_DIAL_CODE } from "@/features/auth/schema";
-import { OnboardingValues, onboardingSchema } from "@/features/auth/schema";
+import { useMe, useUpdateProfile } from "@/features/auth/client/useAuth";
+import { ProfileValues, profileSchema } from "@/features/auth/schema";
 import type { AuthUser } from "@/features/auth/types";
 import { AvatarUpload } from "@/features/upload/components/avatar-upload";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,7 @@ function initialsOf(name: string) {
 }
 
 function ProfileForm({ user }: { user: AuthUser }) {
-  const onboard = useCompleteOnboarding();
+  const updateProfile = useUpdateProfile();
 
   const {
     register,
@@ -36,8 +35,8 @@ function ProfileForm({ user }: { user: AuthUser }) {
     watch,
     setValue,
     formState: { errors, isDirty },
-  } = useForm<OnboardingValues>({
-    resolver: zodResolver(onboardingSchema),
+  } = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user.name,
       email: user.email,
@@ -49,7 +48,7 @@ function ProfileForm({ user }: { user: AuthUser }) {
   const image = watch("image");
 
   const onSubmit = handleSubmit(async (values) => {
-    await onboard.mutateAsync({
+    await updateProfile.mutateAsync({
       name: values.name,
       email: values.email,
       image: values.image ? values.image : undefined,
@@ -70,7 +69,7 @@ function ProfileForm({ user }: { user: AuthUser }) {
                 value={image || undefined}
                 onChange={(url) => setValue("image", url ?? "", { shouldValidate: true })}
                 fallback={initialsOf(name) || undefined}
-                disabled={onboard.isPending}
+                disabled={updateProfile.isPending}
                 className="items-start"
               />
             </SettingsRow>
@@ -93,7 +92,7 @@ function ProfileForm({ user }: { user: AuthUser }) {
 
             <SettingsRow
               label="Email"
-              description="Used for receipts and password-free sign in."
+              description="Used for receipts and sign in."
             >
               <Field data-invalid={!!errors.email}>
                 <Input
@@ -107,19 +106,6 @@ function ProfileForm({ user }: { user: AuthUser }) {
                 <FieldError errors={[errors.email]} />
               </Field>
             </SettingsRow>
-
-            <SettingsRow
-              label="Phone number"
-              description="Used to sign in. Contact support to change it."
-            >
-              <Field>
-                <Input
-                  value={`${NEPAL_DIAL_CODE} ${user.phoneNumber}`}
-                  disabled
-                  readOnly
-                />
-              </Field>
-            </SettingsRow>
           </FieldGroup>
         </form>
       </CardContent>
@@ -127,11 +113,11 @@ function ProfileForm({ user }: { user: AuthUser }) {
         <Button
           type="submit"
           form="profile-settings-form"
-          disabled={onboard.isPending || !isDirty}
-          data-icon={onboard.isPending ? "inline-start" : undefined}
+          disabled={updateProfile.isPending || !isDirty}
+          data-icon={updateProfile.isPending ? "inline-start" : undefined}
         >
-          {onboard.isPending && <Spinner />}
-          {onboard.isPending ? "Saving" : "Save changes"}
+          {updateProfile.isPending && <Spinner />}
+          {updateProfile.isPending ? "Saving" : "Save changes"}
         </Button>
       </CardFooter>
     </Card>

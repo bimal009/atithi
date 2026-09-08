@@ -6,17 +6,9 @@ import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/axios";
 
-import {
-  completeOnboarding,
-  login,
-  logout,
-  me,
-  refreshSession,
-  resendOtp,
-  validateOtp,
-} from "../api/auth";
-import { LOGIN_ROUTE } from "../constants";
-import { AuthUser, OnboardingInput } from "../types";
+import { login, logout, me, refreshSession, register, updateProfile } from "../api/auth";
+import { AFTER_LOGIN_REDIRECT, LOGIN_ROUTE } from "../constants";
+import { AuthUser, UpdateProfileInput } from "../types";
 
 export const authKeys = {
   user: ["auth", "user"] as const,
@@ -31,52 +23,37 @@ export const useMe = (initialData?: AuthUser) => {
   });
 };
 
-export const useLogin = () => {
-  return useMutation({
-    mutationFn: (phoneNumber: string) => login(phoneNumber),
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Could not send the OTP"));
-    },
-  });
-};
-
-export const useValidateOtp = () => {
+export const useRegister = () => {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ phoneNumber, otp }: { phoneNumber: string; otp: string }) =>
-      validateOtp(phoneNumber, otp),
+    mutationFn: (input: { name: string; email: string; password: string }) =>
+      register(input),
+    onSuccess: () => {
+      toast.success("Account created. Please log in.");
+      router.push(LOGIN_ROUTE);
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Could not create your account"));
+    },
+    onSettled: () => queryClient,
+  });
+};
+
+export const useLogin = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { email: string; password: string }) => login(input),
     onSuccess: (response) => {
       queryClient.setQueryData<AuthUser>(authKeys.user, response.data.user);
+      router.push(AFTER_LOGIN_REDIRECT);
+      router.refresh();
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, "Could not verify the code"));
-    },
-  });
-};
-
-export const useResendOtp = () => {
-  return useMutation({
-    mutationFn: (phoneNumber: string) => resendOtp(phoneNumber),
-    onSuccess: () => {
-      toast.success("We sent you a new code");
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Could not resend the OTP"));
-    },
-  });
-};
-
-export const useCompleteOnboarding = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: OnboardingInput) => completeOnboarding(input),
-    onSuccess: (response) => {
-      queryClient.setQueryData<AuthUser>(authKeys.user, response.data);
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, "Could not save your profile"));
+      toast.error(getErrorMessage(error, "Could not log you in"));
     },
   });
 };
@@ -88,7 +65,6 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: () => logout(),
     onSuccess: () => {
-      // The next user on this browser must not see the last one's data.
       queryClient.clear();
       router.replace(LOGIN_ROUTE);
       router.refresh();
@@ -102,5 +78,36 @@ export const useLogout = () => {
 export const useRefreshSession = () => {
   return useMutation({
     mutationFn: () => refreshSession(),
+  });
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateProfileInput) => updateProfile(input),
+    onSuccess: (response) => {
+      queryClient.setQueryData<AuthUser>(authKeys.user, response.data);
+      queryClient.invalidateQueries({ queryKey: authKeys.user });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Could not update profile"));
+    },
+  });
+};
+
+export const useValidateOtp = () => {
+  return useMutation({
+    mutationFn: async (_input: { phoneNumber: string; otp: string }) => {
+      throw new Error("OTP login is no longer supported");
+    },
+  });
+};
+
+export const useResendOtp = () => {
+  return useMutation({
+    mutationFn: async (_phoneNumber: string) => {
+      throw new Error("OTP login is no longer supported");
+    },
   });
 };

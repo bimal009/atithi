@@ -25,10 +25,13 @@ migrate-create:
 	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
 
 build:
-	go build -o bin/server ./cmd/...
+	go build -o bin/server ./cmd/api
+
+run:
+	go run ./cmd/api/main.go
 
 test:
-	go test ./test/...
+	go test ./...
 
 run-gateway:
 	go run ./cmd/gateway/main.go

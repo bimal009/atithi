@@ -2,13 +2,10 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useParams, usePathname } from "next/navigation"
 import { ChevronRightIcon, HotelIcon, SettingsIcon } from "lucide-react"
 
-import { useHotelBySlugQuery } from "@/features/hotel/client/useHotels"
 import { NAV_GROUPS } from "@/features/tenant/dashboard/nav-config"
-import { useKitchenPendingSocket } from "@/features/tenant/order/client/useKotSocket"
-import { useKitchenPendingCount } from "@/features/tenant/order/client/useOrders"
 import { Badge } from "@/components/ui/badge"
 import {
   Collapsible,
@@ -96,19 +93,21 @@ function NavCollapsibleItem({
   )
 }
 
-export function AppSidebar({
-  tenant,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & { tenant: string }) {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const params = useParams<{ tenant?: string }>()
+  const tenant = params?.tenant ?? "demo"
   const basePath = `/s/${tenant}/dashboard`
   const rootPath = `/s/${tenant}`
 
-  const { data: hotel } = useHotelBySlugQuery(tenant)
-  const { data: kitchenPendingCount = 0 } = useKitchenPendingCount(tenant)
-  useKitchenPendingSocket(tenant)
+  // Dummy hotel data for now
+  const hotel = {
+    name: "Atithi Hotel & Restaurant",
+    city: "Kathmandu, Nepal",
+    logoUrl: null,
+  }
 
-  const badgeFor = (href: string) => (href === "/kitchen" ? kitchenPendingCount : undefined)
+  const badgeFor = (_href: string) => undefined
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
