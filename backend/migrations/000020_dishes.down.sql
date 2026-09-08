@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS uq_dishes_name;
+DROP TABLE IF EXISTS dishes CASCADE;

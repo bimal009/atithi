@@ -1,1 +1,0 @@
-ALTER TABLE room_types ADD COLUMN images TEXT[] NOT NULL DEFAULT '{}';
