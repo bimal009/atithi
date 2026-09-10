@@ -26,16 +26,7 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <Logo />
-          <div className="flex items-center gap-2">
-            <Button nativeButton={false} render={<Link href="/login" />}>
-              Log in
-            </Button>
-          </div>
-        </div>
-      </header>
+
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
         <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
